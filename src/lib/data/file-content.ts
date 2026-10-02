@@ -25,15 +25,17 @@ export function readContentStore(): Store {
   try {
     return JSON.parse(readFileSync(filePath, "utf8")) as Store;
   } catch {
-    const store = initialStore();
-    writeContentStore(store);
-    return store;
+    return initialStore();
   }
 }
 
 function writeContentStore(store: Store) {
-  mkdirSync(path.dirname(filePath), { recursive: true });
-  writeFileSync(filePath, JSON.stringify(store, null, 2));
+  try {
+    mkdirSync(path.dirname(filePath), { recursive: true });
+    writeFileSync(filePath, JSON.stringify(store, null, 2));
+  } catch {
+    // Vercel cannot write this file. The in-memory records still render.
+  }
 }
 
 export function saveEventToStore(
