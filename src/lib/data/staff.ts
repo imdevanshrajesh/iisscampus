@@ -1,6 +1,7 @@
 import { contentMode, preferFileContent } from "@/lib/data/content-mode";
 import { readContentStore } from "@/lib/data/file-content";
 import { mapAchievement, mapCategory, mapEvent, mapImage } from "@/lib/data/map";
+import { seedAchievements, seedCategories, seedEvents } from "@/lib/data/seed";
 import { createStaffClient } from "@/lib/supabase/server";
 import type { Achievement, CampusEvent, Category } from "@/lib/types";
 
@@ -14,8 +15,32 @@ function workspaceFromStore() {
   };
 }
 
+function seedWorkspace() {
+  return {
+    events: seedEvents,
+    categories: seedCategories,
+    achievements: seedAchievements,
+    mediaHosts: [] as string[],
+  };
+}
+
 export async function getStaffWorkspace() {
-  if ((await contentMode()) === "file") return workspaceFromStore();
+  try {
+    return await loadStaffWorkspace();
+  } catch (error) {
+    console.error(error);
+    return seedWorkspace();
+  }
+}
+
+async function loadStaffWorkspace() {
+  if ((await contentMode()) === "file") {
+    try {
+      return workspaceFromStore();
+    } catch {
+      return seedWorkspace();
+    }
+  }
 
   const supabase = await createStaffClient();
   if (!supabase) return null;
@@ -39,7 +64,7 @@ export async function getStaffWorkspace() {
     settingsResult.error
   ) {
     preferFileContent();
-    return workspaceFromStore();
+    return seedWorkspace();
   }
 
   const imagesByEvent = new Map<string, ReturnType<typeof mapImage>[]>();

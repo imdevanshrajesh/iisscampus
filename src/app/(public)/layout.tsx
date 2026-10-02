@@ -3,8 +3,13 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { getPublicCatalog } from "@/lib/data/queries";
 
 export default async function PublicLayout({ children }: LayoutProps<"/">) {
-  const catalog = await getPublicCatalog();
-  const showSampleNote = catalog.events.some((event) => event.isSample);
+  let showSampleNote = true;
+  try {
+    const catalog = await getPublicCatalog();
+    showSampleNote = catalog.events.some((event) => event.isSample);
+  } catch (error) {
+    console.error(error);
+  }
 
   return (
     <>

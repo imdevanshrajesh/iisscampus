@@ -2,7 +2,6 @@ import { cache } from "react";
 import { selectPublicAchievements, selectPublicEvents } from "@/lib/data/catalog";
 import { mapAchievement, mapCategory, mapEvent, mapImage } from "@/lib/data/map";
 import { contentMode } from "@/lib/data/content-mode";
-import { readContentStore } from "@/lib/data/file-content";
 import { seedAchievements, seedCategories, seedEvents, seedMediaHosts } from "@/lib/data/seed";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { Achievement, CampusEvent, Category, PublicCatalog } from "@/lib/types";
@@ -39,7 +38,7 @@ async function supabaseCatalog(): Promise<PublicCatalog> {
     achievementsResult.error ||
     settingsResult.error
   ) {
-    throw new Error("Published campus records could not be loaded.");
+    return localCatalog();
   }
 
   const imagesByEvent = new Map<string, ReturnType<typeof mapImage>[]>();
@@ -79,27 +78,16 @@ async function supabaseCatalog(): Promise<PublicCatalog> {
   };
 }
 
-function catalogFromStore(): PublicCatalog {
-  const store = readContentStore();
-  return {
-    source: "local",
-    categories: store.categories,
-    events: selectPublicEvents(store.events),
-    achievements: selectPublicAchievements(store.achievements),
-    mediaHosts: seedMediaHosts,
-  };
-}
-
 export const getPublicCatalog = cache(async (): Promise<PublicCatalog> => {
-  if ((await contentMode()) === "file") return catalogFromStore();
   try {
-    const remote = await supabaseCatalog();
-    if (remote.events.length === 0 && remote.achievements.length === 0) return catalogFromStore();
-    return remote;
+    if ((await contentMode()) === "supabase") {
+      const remote = await supabaseCatalog();
+      if (remote.events.length > 0 || remote.achievements.length > 0) return remote;
+    }
   } catch (error) {
     console.error(error);
-    return catalogFromStore();
   }
+  return localCatalog();
 });
 
 export async function getPublicEvent(slug: string): Promise<{

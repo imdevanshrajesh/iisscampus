@@ -7,24 +7,29 @@ function isRole(value: unknown): value is CampusRole {
 }
 
 export async function getCampusActor(): Promise<Actor> {
-  const supabase = await createStaffClient();
-  if (!supabase) return null;
+  try {
+    const supabase = await createStaffClient();
+    if (!supabase) return null;
 
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return null;
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) return null;
 
-  const roleResult = await supabase
-    .from("campus_staff")
-    .select("role")
-    .eq("user_id", data.user.id)
-    .maybeSingle();
+    const roleResult = await supabase
+      .from("campus_staff")
+      .select("role")
+      .eq("user_id", data.user.id)
+      .maybeSingle();
 
-  if (roleResult.error) {
-    if (process.env.NODE_ENV === "development") {
-      return { userId: data.user.id, role: "administrator" as const };
+    if (roleResult.error) {
+      if (process.env.NODE_ENV === "development") {
+        return { userId: data.user.id, role: "administrator" as const };
+      }
+      return null;
     }
+    if (!isRole(roleResult.data?.role)) return null;
+    return { userId: data.user.id, role: roleResult.data.role };
+  } catch (error) {
+    console.error(error);
     return null;
   }
-  if (!isRole(roleResult.data?.role)) return null;
-  return { userId: data.user.id, role: roleResult.data.role };
 }

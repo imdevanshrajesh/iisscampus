@@ -6,8 +6,8 @@ export async function createStaffClient() {
   const env = getSupabasePublicEnv();
   if (!env) return null;
 
-  const cookieStore = await cookies();
   try {
+    const cookieStore = await cookies();
     return createServerClient(env.url, env.anonKey, {
       cookieOptions: campusAuthCookie,
       cookies: {
