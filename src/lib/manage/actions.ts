@@ -568,11 +568,15 @@ export async function grantRole(_state: ActionState, formData: FormData): Promis
   return { ok: "Role updated." };
 }
 
-export async function deleteEvent(formData: FormData) {
+const deleteFailed = "This record could not be deleted.";
+
+export async function deleteEvent(_state: ActionState, formData: FormData): Promise<ActionState> {
+  if (formData.get("confirm") !== "yes") return { error: "Confirm the delete, then try again." };
+
   if ((await contentMode()) === "file") {
     const actor = await getCampusActor();
-    if (!actor || formData.get("confirm") !== "yes") return;
-    if (!deleteFromStore(actor, "events", String(formData.get("id") ?? ""))) return;
+    if (!actor) return { error: "Sign in is required." };
+    if (!deleteFromStore(actor, "events", String(formData.get("id") ?? ""))) return { error: deleteFailed };
     revalidatePath("/");
     revalidatePath("/events");
     revalidatePath("/gallery");
@@ -581,8 +585,7 @@ export async function deleteEvent(formData: FormData) {
   }
 
   const context = await staffContext();
-  if ("error" in context) return;
-  if (formData.get("confirm") !== "yes") return;
+  if ("error" in context) return { error: context.error };
 
   const id = String(formData.get("id") ?? "");
   const existing = await context.supabase
@@ -590,12 +593,12 @@ export async function deleteEvent(formData: FormData) {
     .select("publication_status, slug")
     .eq("id", id)
     .maybeSingle();
-  if (existing.error || !existing.data) return;
+  if (existing.error || !existing.data) return { error: deleteFailed };
   const status = existing.data.publication_status as PublicationStatus;
-  if (!canDelete(context.actor, status)) return;
+  if (!canDelete(context.actor, status)) return { error: genericDenial };
 
-  const removed = await context.supabase.from("campus_events").delete().eq("id", id);
-  if (removed.error) return;
+  const removed = await context.supabase.from("campus_events").delete().eq("id", id).select("id");
+  if (removed.error || !removed.data?.length) return { error: deleteFailed };
 
   await writeAudit(context.supabase, context.actor.userId, "delete", "campus_events", id);
   revalidatePath("/");
@@ -606,19 +609,20 @@ export async function deleteEvent(formData: FormData) {
   redirect("/manage/events");
 }
 
-export async function deleteAchievement(formData: FormData) {
+export async function deleteAchievement(_state: ActionState, formData: FormData): Promise<ActionState> {
+  if (formData.get("confirm") !== "yes") return { error: "Confirm the delete, then try again." };
+
   if ((await contentMode()) === "file") {
     const actor = await getCampusActor();
-    if (!actor || formData.get("confirm") !== "yes") return;
-    if (!deleteFromStore(actor, "achievements", String(formData.get("id") ?? ""))) return;
+    if (!actor) return { error: "Sign in is required." };
+    if (!deleteFromStore(actor, "achievements", String(formData.get("id") ?? ""))) return { error: deleteFailed };
     revalidatePath("/achievements");
     revalidatePath("/manage/achievements");
-    return;
+    return {};
   }
 
   const context = await staffContext();
-  if ("error" in context) return;
-  if (formData.get("confirm") !== "yes") return;
+  if ("error" in context) return { error: context.error };
 
   const id = String(formData.get("id") ?? "");
   const existing = await context.supabase
@@ -626,14 +630,15 @@ export async function deleteAchievement(formData: FormData) {
     .select("publication_status")
     .eq("id", id)
     .maybeSingle();
-  if (existing.error || !existing.data) return;
+  if (existing.error || !existing.data) return { error: deleteFailed };
   const status = existing.data.publication_status as PublicationStatus;
-  if (!canDelete(context.actor, status)) return;
+  if (!canDelete(context.actor, status)) return { error: genericDenial };
 
-  const removed = await context.supabase.from("campus_achievements").delete().eq("id", id);
-  if (removed.error) return;
+  const removed = await context.supabase.from("campus_achievements").delete().eq("id", id).select("id");
+  if (removed.error || !removed.data?.length) return { error: deleteFailed };
 
   await writeAudit(context.supabase, context.actor.userId, "delete", "campus_achievements", id);
   revalidatePath("/achievements");
   revalidatePath("/manage/achievements");
+  return {};
 }
