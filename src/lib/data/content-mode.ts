@@ -16,8 +16,12 @@ export async function contentMode() {
     return mode;
   }
 
-  const probe = await supabase.from("campus_events").select("id").limit(1);
-  mode = probe.error || !probe.data?.length ? "file" : "supabase";
+  try {
+    const probe = await supabase.from("campus_events").select("id").limit(1);
+    mode = probe.error || !probe.data?.length ? "file" : "supabase";
+  } catch {
+    mode = "file";
+  }
   return mode;
 }
 

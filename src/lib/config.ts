@@ -41,15 +41,28 @@ export const siteConfig = {
   contactUrl: absoluteHttps(read("NEXT_PUBLIC_CONTACT_URL")),
 };
 
+function supabaseProjectUrl(value: string | undefined) {
+  if (!value) return null;
+  const trimmed = value.trim().replace(/^['"]+|['"]+$/g, "");
+  if (!trimmed || /\s/.test(trimmed)) return null;
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const url = new URL(withProtocol);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    if (!url.hostname || !url.hostname.includes(".")) return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
 export function isSupabaseConfigured() {
-  return Boolean(
-    read("NEXT_PUBLIC_SUPABASE_URL") && read("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-  );
+  return getSupabasePublicEnv() !== null;
 }
 
 export function getSupabasePublicEnv() {
-  const url = read("NEXT_PUBLIC_SUPABASE_URL");
-  const anonKey = read("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  const url = supabaseProjectUrl(read("NEXT_PUBLIC_SUPABASE_URL"));
+  const anonKey = read("NEXT_PUBLIC_SUPABASE_ANON_KEY")?.replace(/^['"]+|['"]+$/g, "");
   if (!url || !anonKey) return null;
   return { url, anonKey };
 }
