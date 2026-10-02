@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --surface: #f6f8fb;
+  --ink: #141b38;
+  --muted: #5c6b82;
+  --accent: #f48220;
+  --accent-ink: #ffffff;
+  --navy: #141b38;
+  --line: #e4e8ef;
+  --wash: #fff4eb;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-navy: var(--navy);
+  --color-line: var(--line);
+  --color-wash: var(--wash);
+  --font-sans: var(--font-geist-sans);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--ink);
+  font-family: var(--font-sans), sans-serif;
+}
+
+::selection {
+  background: #f8c89a;
+  color: #141b38;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.menu-dialog {
+  margin: 0 0 0 auto;
+  height: 100dvh;
+  max-height: 100dvh;
+  width: min(100%, 22rem);
+  border: 0;
+  padding: 0;
+  background: var(--background);
+  color: var(--ink);
+}
+
+.menu-dialog::backdrop,
+.lightbox-dialog::backdrop {
+  background: rgba(20, 27, 56, 0.5);
+}
+
+.lightbox-dialog {
+  width: min(960px, calc(100vw - 2rem));
+  border: 0;
+  border-radius: 12px;
+  padding: 0;
+  background: var(--background);
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
