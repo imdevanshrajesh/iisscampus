@@ -47,6 +47,24 @@ body {
   color: #141b38;
 }
 
+#content.council-shell {
+  --background: #08274b;
+  --surface: #0c335c;
+  --ink: #fdfbfd;
+  --muted: #6c9fc9;
+  --accent: #5a95c1;
+  --accent-ink: #08274b;
+  --line: rgba(108, 159, 201, 0.28);
+  --wash: #0c335c;
+  background: var(--background);
+  color: #f4f8f7;
+}
+
+#content.council-shell ::selection {
+  background: #5a95c1;
+  color: #08274b;
+}
+
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;

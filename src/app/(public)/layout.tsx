@@ -1,3 +1,4 @@
+import { PublicMain } from "@/components/council/council-shell";
 import { HomeLink, SiteChrome } from "@/components/layout/dynamic-island";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { campusPulse } from "@/lib/data/catalog";
@@ -17,10 +18,10 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
   return (
     <>
       <SiteChrome pulse={pulse} />
-      <main id="content" className="flex-1 pb-24 pt-20 md:pb-0 md:pt-24">
+      <PublicMain>
         <HomeLink />
         {children}
-      </main>
+      </PublicMain>
       <SiteFooter showSampleNote={showSampleNote} />
     </>
   );
