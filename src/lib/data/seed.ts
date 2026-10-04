@@ -5,6 +5,8 @@ const now = "2026-01-01T00:00:00.000Z";
 const councilRoster: [string, string][] = [
   ["Head Boy", "MOHAMMED REHAAN"],
   ["Deputy Head Boy", "DEVANSH RAJESH SINGH"],
+  ["Council Secretary", "MOHAMMED SHAYAAN"],
+  ["Council Secretary Vice Captain", "SRIRAM MENON"],
   ["Activity Captain", "AFHAM ABUBAKKER"],
   ["Activity Vice Captain", "YASH BHAVSAR"],
   ["Sports Captain", "ROHAN VISVAKARMA"],
@@ -25,8 +27,6 @@ const councilRoster: [string, string][] = [
   ["Linguistic Vice Captain", "ISSAM ISMAIL"],
   ["Eco-Innovator Captain", "SUMITH CHANDRA"],
   ["Eco-Innovator Vice Captain", "RISHIT RENOJ"],
-  ["Council Secretary", "MOHAMMED SHAYAAN"],
-  ["Council Secretary Vice Captain", "SRIRAM MENON"],
   ["Health & Nutrition Captain", "AKBAR ADHIL"],
   ["Health And Nutrition Vice Captain", "JOSHUA EMMANUEL"],
   ["Digital Defender Captain", "AHAMED BILAL"],

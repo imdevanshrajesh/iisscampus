@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { campusPulse, filterPublishedEvents, selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "../src/lib/data/catalog.ts";
+import { campusPulse, filterPublishedEvents, pairCouncilMembers, selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "../src/lib/data/catalog.ts";
 import type { CouncilYear } from "../src/lib/types.ts";
-import { seedAchievements, seedCategories, seedEvents } from "../src/lib/data/seed.ts";
+import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "../src/lib/data/seed.ts";
 import type { CampusEvent } from "../src/lib/types.ts";
 
 describe("public catalog", () => {
@@ -72,5 +72,16 @@ describe("public catalog", () => {
     };
     assert.equal(selectPublicCouncil([year]).length, 0);
     assert.equal(selectPublicCouncil([{ ...year, publicationStatus: "published" }]).length, 1);
+  });
+
+  it("places the council secretary after head boy and before activity", () => {
+    const pairs = pairCouncilMembers(seedCouncilYears[0].members);
+    const roles = pairs.map((pair) => pair.lead.role);
+    const head = roles.indexOf("Head Boy");
+    const secretary = roles.indexOf("Council Secretary");
+    const activity = roles.indexOf("Activity Captain");
+    assert.ok(head >= 0 && secretary === head + 1 && activity === secretary + 1);
+    assert.equal(pairs[secretary]?.deputy?.role, "Council Secretary Vice Captain");
+    assert.equal(pairs[head]?.deputy?.role, "Deputy Head Boy");
   });
 });
