@@ -16,219 +16,202 @@ export function HomePage({
   achievements: Achievement[];
   hosts: readonly string[];
 }) {
-  const featured = events.filter((event) => event.featured).slice(0, 3);
-  const upcoming = events.filter((event) => event.eventStatus === "upcoming" && !event.isSample);
+  const featured = events.filter((event) => event.featured);
+  const lead = (featured.length ? featured : events).slice(0, 4);
+  const ongoing = events.filter((event) => event.eventStatus === "ongoing" && !event.isSample);
+  const upcoming = events
+    .filter((event) => event.eventStatus === "upcoming" && !event.isSample)
+    .slice()
+    .sort((a, b) => (a.eventDate ?? "9999").localeCompare(b.eventDate ?? "9999"));
   const highlights = events.slice(0, 3);
 
   return (
     <>
-      <section className="mx-auto grid max-w-6xl items-end gap-12 px-5 py-16 md:px-8 md:py-24 lg:grid-cols-12">
-        <div className="lg:col-span-7">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent">
-            India International School, Sharjah
-          </p>
-          <h1 className="mt-5 max-w-xl text-5xl font-medium leading-[0.98] tracking-tight text-balance md:text-7xl">
-            Every moment on campus has a story.
-          </h1>
-          <p className="mt-6 max-w-lg text-lg leading-8 text-muted">
-            Discover the events, activities, achievements, and experiences that bring our school community together.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/events" className="rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-accent-ink">
-              Explore Events
-            </Link>
-            <a href="#highlights" className="rounded-md border border-line px-4 py-2.5 text-sm font-medium">
-              View Highlights
-            </a>
-          </div>
-        </div>
-        <div className="grid gap-3 lg:col-span-5">
-          {(featured.length ? featured : events).slice(0, 3).map((event, index) => (
-            <Link
-              key={event.id}
-              href={`/events/${event.slug}`}
-              className="grid grid-cols-[4.5rem_1fr] items-center gap-4 border-t border-line py-4"
-            >
-              <span className="text-sm text-muted">0{index + 1}</span>
-              <span>
-                <span className="block text-lg font-medium tracking-tight">{event.title}</span>
-                <span className="text-sm text-muted">
-                  {categories.find((category) => category.id === event.categoryId)?.name}
-                  {event.isSample ? " · Sample" : ""}
-                </span>
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="bg-surface">
-        <div className="mx-auto max-w-6xl px-5 py-16 md:px-8 md:py-24">
-          <div className="flex items-end justify-between gap-6">
-            <h2 className="text-3xl font-medium tracking-tight md:text-4xl">Featured</h2>
-            <Link href="/events" className="text-sm text-accent">
-              All activities
-            </Link>
-          </div>
-          {featured.length ? (
-            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {featured.map((event, index) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  categories={categories}
-                  hosts={hosts}
-                  priority={index === 0}
-                />
-              ))}
+      <section className="mx-auto max-w-6xl px-5 pb-6 pt-4 md:px-8 md:pt-8">
+        <p className="text-sm text-accent">India International School, Sharjah</p>
+        <div className="mt-4 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-xl">
+            <h1 className="font-display text-5xl leading-[0.95] text-ink md:text-7xl">What&apos;s on around campus.</h1>
+            <p className="mt-5 max-w-md text-lg leading-8 text-muted">
+              Events that are happening, the ones still to come, and the boys&apos; student council, kept in one place.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link href="/events" className="rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-ink">
+                See the events
+              </Link>
+              <Link href="/council" className="rounded-full border border-line px-4 py-2.5 text-sm font-medium">
+                Student council
+              </Link>
             </div>
+          </div>
+          {ongoing.length ? (
+            <aside className="w-full max-w-md rounded-3xl bg-navy px-5 py-5 text-white">
+              <p className="text-sm text-white/60">Right now</p>
+              <ul className="mt-3 divide-y divide-white/15">
+                {ongoing.slice(0, 3).map((event) => (
+                  <li key={event.id} className="py-3">
+                    <Link href={`/events/${event.slug}`} className="font-display text-2xl">
+                      {event.title}
+                    </Link>
+                    <p className="mt-1 text-sm text-white/65">{event.shortDescription}</p>
+                  </li>
+                ))}
+              </ul>
+            </aside>
           ) : (
-            <EmptyPanel
-              title="No featured activities yet"
-              text="Published events marked as featured will appear here."
-            />
+            <p className="max-w-xs text-sm leading-6 text-muted lg:pb-2">
+              Nothing is marked as happening today.
+              {upcoming[0] ? (
+                <>
+                  {" "}
+                  Next is{" "}
+                  <Link href={`/events/${upcoming[0].slug}`} className="font-medium text-ink">
+                    {upcoming[0].title}
+                  </Link>
+                  {formatEventDate(upcoming[0].eventDate) ? ` on ${formatEventDate(upcoming[0].eventDate)}` : ""}.
+                </>
+              ) : null}
+            </p>
           )}
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-5 py-16 md:px-8 md:py-24">
-        <h2 className="text-3xl font-medium tracking-tight md:text-4xl">Upcoming</h2>
-        {upcoming.length ? (
-          <ul className="mt-8 divide-y divide-line border-y border-line">
-            {upcoming.map((event) => (
-              <li key={event.id} className="grid gap-3 py-5 md:grid-cols-[10rem_1fr_auto] md:items-center">
-                <p className="text-sm text-muted">{formatEventDate(event.eventDate) ?? "Date to be announced"}</p>
-                <div>
-                  <Link href={`/events/${event.slug}`} className="text-lg font-medium tracking-tight">
-                    {event.title}
-                  </Link>
-                  <p className="mt-1 text-sm text-muted">{event.shortDescription}</p>
-                </div>
-                <Link href={`/events/${event.slug}`} className="text-sm text-accent">
-                  View details
-                </Link>
-              </li>
+      <section className="mx-auto max-w-6xl px-5 py-14 md:px-8">
+        <div className="flex items-end justify-between gap-6">
+          <h2 className="font-display text-4xl text-ink">On the board</h2>
+          <Link href="/events" className="text-sm text-accent">
+            All events
+          </Link>
+        </div>
+        {lead.length ? (
+          <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {lead.slice(0, 3).map((event, index) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                categories={categories}
+                hosts={hosts}
+                priority={index === 0}
+              />
             ))}
-          </ul>
+          </div>
         ) : (
-          <EmptyPanel
-            title="Nothing scheduled just yet"
-            text="When an upcoming activity is published, it will be listed here with its date and details. No dates are invented to fill this space."
-          />
+          <p className="mt-6 text-sm text-muted">Published events will show up here.</p>
         )}
       </section>
 
-      <section className="border-y border-line bg-background">
-        <div className="mx-auto max-w-6xl px-5 py-16 md:px-8 md:py-24">
-          <h2 className="text-3xl font-medium tracking-tight md:text-4xl">Explore by category</h2>
-          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {categories.map((category) => (
+      <section className="border-y border-line bg-surface">
+        <div className="mx-auto max-w-6xl px-5 py-14 md:px-8">
+          <h2 className="font-display text-4xl text-ink">Coming up</h2>
+          {upcoming.length ? (
+            <ul className="mt-6 divide-y divide-line">
+              {upcoming.slice(0, 5).map((event) => (
+                <li key={event.id} className="grid gap-2 py-5 md:grid-cols-[11rem_1fr] md:items-baseline">
+                  <p className="text-sm text-muted">{formatEventDate(event.eventDate) ?? "Date to be set"}</p>
+                  <div>
+                    <Link href={`/events/${event.slug}`} className="text-lg font-medium">
+                      {event.title}
+                    </Link>
+                    <p className="mt-1 text-sm leading-6 text-muted">{event.shortDescription}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-4 max-w-xl text-sm leading-6 text-muted">
+              When an upcoming activity is published with a date, it lands here. Dates are not filled in to make the list look busy.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-5 py-14 md:px-8">
+        <h2 className="font-display text-4xl text-ink">Browse by kind</h2>
+        <ul className="mt-6 divide-y divide-line border-y border-line">
+          {categories.map((category) => (
+            <li key={category.id}>
               <Link
-                key={category.id}
                 href={`/events?category=${category.slug}`}
-                className="rounded-xl border border-line bg-wash/60 p-5 transition-colors hover:border-accent"
+                className="grid gap-1 py-4 md:grid-cols-[14rem_1fr] md:items-baseline"
               >
-                <p className="text-lg font-medium tracking-tight">{category.name}</p>
-                <p className="mt-2 text-sm leading-6 text-muted">{category.description}</p>
+                <span className="font-display text-2xl">{category.name}</span>
+                <span className="text-sm leading-6 text-muted">{category.description}</span>
               </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="highlights" className="mx-auto max-w-6xl px-5 py-16 md:px-8 md:py-24">
-        <h2 className="text-3xl font-medium tracking-tight md:text-4xl">Recent highlights</h2>
-        <div className="mt-10 grid gap-8 md:grid-cols-3">
-          {highlights.map((event) => (
-            <article key={event.id}>
-              <MediaFrame
-                url={event.coverImageUrl}
-                alt={event.coverAlt}
-                hosts={hosts}
-                title={event.title}
-                kicker="Highlight"
-              />
-              <h3 className="mt-4 text-xl font-medium tracking-tight">
-                <Link href={`/events/${event.slug}`}>{event.title}</Link>
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-muted">{event.shortDescription}</p>
-            </article>
+            </li>
           ))}
+        </ul>
+      </section>
+
+      <section className="bg-wash">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-4 px-5 py-14 md:px-8">
+          <div>
+            <p className="text-sm text-accent">Student council · Boys</p>
+            <h2 className="font-display mt-2 text-4xl text-ink">The council, year by year.</h2>
+          </div>
+          <Link href="/council" className="text-sm font-medium text-accent">
+            View
+          </Link>
         </div>
       </section>
 
-      <section className="bg-navy text-white">
-        <div className="mx-auto max-w-6xl px-5 py-16 md:px-8 md:py-20">
-          <h2 className="text-3xl font-medium tracking-tight md:text-4xl">Achievements</h2>
+      <section className="mx-auto grid max-w-6xl gap-12 px-5 py-14 md:px-8 lg:grid-cols-2">
+        <div>
+          <div className="flex items-end justify-between gap-4">
+            <h2 className="font-display text-4xl text-ink">Achievements</h2>
+            <Link href="/achievements" className="text-sm text-accent">
+              Archive
+            </Link>
+          </div>
           {achievements.length ? (
-            <ul className="mt-8 grid gap-4 md:grid-cols-3">
-              {achievements.slice(0, 3).map((item) => (
-                <li key={item.id} className="rounded-xl border border-white/15 p-5">
+            <ul className="mt-6 divide-y divide-line border-y border-line">
+              {achievements.slice(0, 4).map((item) => (
+                <li key={item.id} className="py-4">
                   <p className="text-lg font-medium">{item.title}</p>
-                  <p className="mt-2 text-sm text-white/70">
+                  <p className="mt-1 text-sm text-muted">
                     {[item.competitionName, item.award, item.winnerName].filter(Boolean).join(" · ")}
                   </p>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="mt-6 max-w-xl text-base leading-7 text-white/75">
-              Competition results and named awards will appear here only after they are approved for publication.
+            <p className="mt-4 text-sm leading-6 text-muted">
+              Competition results show up here after someone publishes them.
             </p>
           )}
-          <Link href="/achievements" className="mt-8 inline-flex text-sm text-white">
-            View the archive
-          </Link>
         </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-5 py-16 md:px-8 md:py-24">
-        <div className="flex items-end justify-between gap-6">
-          <h2 className="text-3xl font-medium tracking-tight md:text-4xl">Gallery</h2>
-          <Link href="/gallery" className="text-sm text-accent">
-            Open gallery
-          </Link>
-        </div>
-        <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-3">
-          {events.slice(0, 3).map((event) => (
-            <Link key={event.id} href={`/gallery#gallery-${event.slug}`} className="block">
-              <MediaFrame
-                url={event.coverImageUrl}
-                alt={event.coverAlt}
-                hosts={hosts}
-                title={event.title}
-                kicker="Photograph pending"
-              />
+        <div>
+          <div className="flex items-end justify-between gap-4">
+            <h2 className="font-display text-4xl text-ink">From the gallery</h2>
+            <Link href="/gallery" className="text-sm text-accent">
+              All photographs
             </Link>
-          ))}
+          </div>
+          <div className="mt-6 grid grid-cols-3 gap-2">
+            {highlights.map((event) => (
+              <Link key={event.id} href={`/gallery#gallery-${event.slug}`}>
+                <MediaFrame
+                  url={event.coverImageUrl}
+                  alt={event.coverAlt}
+                  hosts={hosts}
+                  title={event.title}
+                  kicker="Photo"
+                />
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
       <section className="border-t border-line">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-16 md:flex-row md:items-end md:justify-between md:px-8 md:py-20">
-          <div>
-            <h2 className="text-3xl font-medium tracking-tight md:text-4xl">Be part of what&apos;s next.</h2>
-            <p className="mt-4 max-w-xl text-base leading-7 text-muted">
-              Discover student-led events, participate in initiatives, and register for selected activities through Arigo.
-            </p>
-          </div>
-          <a
-            href={siteConfig.arigoUrl ?? "https://arigo.buildkre.com"}
-            className="rounded-md bg-navy px-4 py-2.5 text-sm font-medium text-white"
-          >
-            Explore Arigo
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-14 md:flex-row md:items-end md:justify-between md:px-8">
+          <p className="max-w-xl text-base leading-7 text-muted">
+            Registration for a chosen activity opens on Arigo. Signing in there does not, on its own, put a student on an event list.
+          </p>
+          <a href={siteConfig.arigoUrl ?? "https://arigo.buildkre.com"} className="text-sm font-medium text-accent">
+            Open Arigo
           </a>
         </div>
       </section>
     </>
-  );
-}
-
-function EmptyPanel({ title, text }: { title: string; text: string }) {
-  return (
-    <div className="mt-8 rounded-xl border border-line bg-background px-6 py-10">
-      <p className="text-lg font-medium tracking-tight">{title}</p>
-      <p className="mt-2 max-w-xl text-sm leading-6 text-muted">{text}</p>
-    </div>
   );
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AchievementForm } from "@/components/manage/achievement-form";
 import { DeleteRecord } from "@/components/manage/delete-record";
 import { ManageUnavailable } from "@/components/manage/unavailable";
@@ -16,12 +17,19 @@ export default async function ManageAchievementsPage() {
         {access.workspace.achievements.map((item) => (
           <li key={item.id} className="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
             <div>
-              <p className="font-medium">{item.title}</p>
+              <Link href={`/manage/achievements/${item.id}/edit`} className="font-medium">
+                {item.title}
+              </Link>
               <p className="text-xs uppercase tracking-[0.14em] text-muted">{item.publicationStatus.replace("_", " ")}</p>
             </div>
+            <div className="flex items-center gap-4">
+              <Link href={`/manage/achievements/${item.id}/edit`} className="text-sm text-accent">
+                Edit
+              </Link>
             {canDelete({ userId: "staff", role: access.role }, item.publicationStatus) ? (
               <DeleteRecord action={deleteAchievement} id={item.id} label="Delete" />
             ) : null}
+            </div>
           </li>
         ))}
         {access.workspace.achievements.length === 0 ? (

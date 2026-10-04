@@ -1,4 +1,4 @@
-import type { Achievement, CampusEvent, Category } from "@/lib/types";
+import type { Achievement, CampusEvent, Category, CouncilKind, CouncilMember, CouncilYear, EventStatus } from "@/lib/types";
 
 export type EventQuery = {
   query?: string;
@@ -13,6 +13,106 @@ export function selectPublicEvents(events: CampusEvent[]) {
 
 export function selectPublicAchievements(achievements: Achievement[]) {
   return achievements.filter((item) => item.publicationStatus === "published");
+}
+
+export function selectPublicCouncil(years: CouncilYear[]) {
+  return years
+    .filter((year) => year.publicationStatus === "published")
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label));
+}
+
+export function councilYearsOfKind(years: CouncilYear[], kind: CouncilKind) {
+  return selectPublicCouncil(years).filter((year) => year.kind === kind);
+}
+
+function councilPostKey(role: string) {
+  return role
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/\b(vice|deputy|captain)\b/g, "")
+    .replace(/[^a-z]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isVicePost(role: string) {
+  return /\b(vice|deputy)\b/i.test(role);
+}
+
+export function pairCouncilMembers(members: CouncilMember[]) {
+  const ordered = members.slice().sort((a, b) => a.sortOrder - b.sortOrder);
+  const vices = new Map<string, CouncilMember>();
+  for (const member of ordered) {
+    if (isVicePost(member.role)) vices.set(councilPostKey(member.role), member);
+  }
+
+  const used = new Set<string>();
+  const pairs: { lead: CouncilMember; deputy: CouncilMember | null }[] = [];
+  for (const member of ordered) {
+    if (isVicePost(member.role)) continue;
+    const deputy = vices.get(councilPostKey(member.role)) ?? null;
+    if (deputy) used.add(deputy.id);
+    pairs.push({ lead: member, deputy });
+  }
+  for (const member of ordered) {
+    if (isVicePost(member.role) && !used.has(member.id)) pairs.push({ lead: member, deputy: null });
+  }
+  return pairs;
+}
+
+export function eventStatusLabel(status: EventStatus | null) {
+  if (status === "ongoing") return "On now";
+  if (status === "upcoming") return "Coming up";
+  if (status === "completed") return "Finished";
+  return null;
+}
+
+export type CampusPulse = {
+  tone: "live" | "next" | "quiet";
+  label: string;
+  href: string;
+  detail: string;
+};
+
+export function campusPulse(events: CampusEvent[]): CampusPulse {
+  const published = selectPublicEvents(events).filter((event) => !event.isSample);
+  const live = published.filter((event) => event.eventStatus === "ongoing");
+  if (live.length === 1) {
+    return {
+      tone: "live",
+      label: live[0].title,
+      href: `/events/${live[0].slug}`,
+      detail: "Happening now",
+    };
+  }
+  if (live.length > 1) {
+    return {
+      tone: "live",
+      label: `${live.length} on now`,
+      href: "/events?status=ongoing",
+      detail: live.map((event) => event.title).join(", "),
+    };
+  }
+
+  const next = published
+    .filter((event) => event.eventStatus === "upcoming" && event.eventDate)
+    .sort((a, b) => (a.eventDate ?? "").localeCompare(b.eventDate ?? ""));
+  if (next[0]) {
+    return {
+      tone: "next",
+      label: next[0].title,
+      href: `/events/${next[0].slug}`,
+      detail: formatEventDate(next[0].eventDate) ?? "Coming up",
+    };
+  }
+
+  return {
+    tone: "quiet",
+    label: "Nothing live",
+    href: "/events",
+    detail: "No event is marked as happening now.",
+  };
 }
 
 export function categoryById(categories: Category[], id: string) {

@@ -1,9 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 
-export function Wordmark({ href = "/" }: { href?: string }) {
+export function Wordmark({ href = "/", tone = "ink" }: { href?: string; tone?: "ink" | "paper" }) {
   return (
-    <Link href={href} className="flex items-center gap-2.5 text-ink">
+    <Link href={href} className={`flex items-center gap-2.5 ${tone === "paper" ? "text-white" : "text-ink"}`}>
       <Image
         src="/brand/iiss-mark.webp"
         alt=""

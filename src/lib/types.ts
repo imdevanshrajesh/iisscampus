@@ -2,6 +2,8 @@ export type PublicationStatus = "draft" | "in_review" | "published" | "archived"
 
 export type EventStatus = "upcoming" | "ongoing" | "completed";
 
+export type CouncilKind = "current" | "upcoming" | "past";
+
 export type CampusRole = "editor" | "administrator";
 
 export type Category = {
@@ -86,10 +88,55 @@ export type Achievement = {
   publishedAt: string | null;
 };
 
+export type CouncilMember = {
+  id: string;
+  role: string;
+  name: string;
+  imageUrl: string | null;
+  imageAlt: string | null;
+  sortOrder: number;
+};
+
+export type CouncilPhoto = {
+  id: string;
+  url: string;
+  alt: string;
+  caption: string | null;
+  sortOrder: number;
+};
+
+export type CouncilPost = {
+  id: string;
+  title: string;
+  body: string;
+  publishedOn: string | null;
+  imageUrl: string | null;
+  imageAlt: string | null;
+  sortOrder: number;
+};
+
+export type CouncilYear = {
+  id: string;
+  label: string;
+  slug: string;
+  kind: CouncilKind;
+  summary: string;
+  publicationStatus: PublicationStatus;
+  sortOrder: number;
+  isSample: boolean;
+  members: CouncilMember[];
+  photos: CouncilPhoto[];
+  posts: CouncilPost[];
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string | null;
+};
+
 export type PublicCatalog = {
   source: "local" | "supabase";
   categories: Category[];
   events: CampusEvent[];
   achievements: Achievement[];
+  councilYears: CouncilYear[];
   mediaHosts: string[];
 };

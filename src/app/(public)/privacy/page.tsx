@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <div className="mx-auto max-w-3xl px-5 py-14 md:px-8 md:py-20">
-      <h1 className="text-4xl font-medium tracking-tight">Privacy</h1>
+      <h1 className="font-display text-5xl text-ink">Privacy</h1>
       <div className="mt-8 space-y-5 text-base leading-7">
         <p>
           Visitors can read published pages without an account. IISSCampus does not ask students to create a password here, and it does not store Arigo passwords.

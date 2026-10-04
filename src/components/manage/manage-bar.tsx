@@ -1,40 +1,24 @@
-import Link from "next/link";
 import { Wordmark } from "@/components/brand/wordmark";
+import { ManageNav } from "@/components/manage/manage-nav";
 import { signOut } from "@/lib/manage/actions";
 import { getCampusActor } from "@/lib/auth/session";
-
-const links = [
-  { href: "/manage", label: "Overview" },
-  { href: "/manage/events", label: "Events" },
-  { href: "/manage/achievements", label: "Achievements" },
-  { href: "/manage/gallery", label: "Gallery" },
-];
 
 export async function ManageBar() {
   const actor = await getCampusActor();
 
   return (
-    <header className="border-b border-line bg-background">
+    <header className="bg-navy text-white">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-4 md:px-8">
-        <Wordmark />
+        <Wordmark href="/manage" tone="paper" />
         {actor ? (
-          <nav className="flex flex-wrap items-center gap-4 text-sm" aria-label="Content">
-            {links.map((link) => (
-              <Link key={link.href} href={link.href} className="text-ink">
-                {link.label}
-              </Link>
-            ))}
-            {actor.role === "administrator" ? (
-              <Link href="/manage/settings" className="text-ink">
-                Settings
-              </Link>
-            ) : null}
+          <div className="flex flex-wrap items-center gap-3">
+            <ManageNav showSettings={actor.role === "administrator"} />
             <form action={signOut}>
-              <button type="submit" className="text-muted">
+              <button type="submit" className="rounded-full px-3 py-1.5 text-sm text-white/70">
                 Sign out
               </button>
             </form>
-          </nav>
+          </div>
         ) : null}
       </div>
     </header>

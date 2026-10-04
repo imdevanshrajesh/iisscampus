@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { filterPublishedEvents, selectPublicAchievements, selectPublicEvents } from "../src/lib/data/catalog.ts";
+import { campusPulse, filterPublishedEvents, selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "../src/lib/data/catalog.ts";
+import type { CouncilYear } from "../src/lib/types.ts";
 import { seedAchievements, seedCategories, seedEvents } from "../src/lib/data/seed.ts";
 import type { CampusEvent } from "../src/lib/types.ts";
 
@@ -41,5 +42,35 @@ describe("public catalog", () => {
 
     const empty = filterPublishedEvents(events, seedCategories, { query: "not-a-real-event" });
     assert.equal(empty.length, 0);
+  });
+
+  it("shows a live pulse for ongoing events and hides unpublished council years", () => {
+    const live = campusPulse([
+      { ...seedEvents[0], isSample: false, eventStatus: "ongoing", title: "House match" },
+    ]);
+    assert.equal(live.tone, "live");
+    assert.equal(live.label, "House match");
+
+    const quiet = campusPulse(seedEvents);
+    assert.equal(quiet.tone, "quiet");
+
+    const year: CouncilYear = {
+      id: "30000000-0000-4000-8000-000000000001",
+      label: "2025–26",
+      slug: "2025-26",
+      kind: "current",
+      summary: "",
+      publicationStatus: "draft",
+      sortOrder: 0,
+      isSample: false,
+      members: [],
+      photos: [],
+      posts: [],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      publishedAt: null,
+    };
+    assert.equal(selectPublicCouncil([year]).length, 0);
+    assert.equal(selectPublicCouncil([{ ...year, publicationStatus: "published" }]).length, 1);
   });
 });

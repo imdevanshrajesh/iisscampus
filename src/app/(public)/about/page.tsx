@@ -13,16 +13,17 @@ const kinds = [
   "Academic exhibitions and competitions",
   "Technology and student-led projects",
   "Sustainability work",
+  "The boys' student council, year by year",
 ];
 
 export default function AboutPage() {
   return (
     <div className="mx-auto max-w-3xl px-5 py-14 md:px-8 md:py-20">
-      <p className="text-xs font-medium uppercase tracking-[0.16em] text-accent">About</p>
-      <h1 className="mt-3 text-4xl font-medium tracking-tight md:text-5xl">A record of school life.</h1>
+      <p className="text-sm text-accent">About</p>
+      <h1 className="font-display mt-3 text-5xl text-ink md:text-6xl">A record of school life.</h1>
       <div className="mt-8 space-y-5 text-base leading-7 text-ink">
         <p>
-          IISSCampus is a place to discover and keep activities, student initiatives, and achievements from India International School, Sharjah. It is an independent archive. It is not the official school website.
+          IISSCampus keeps activities, the boys&apos; student council, and achievements from India International School, Sharjah. It is an independent archive. It is not the official school website.
         </p>
         <p>
           The official site remains at{" "}

@@ -1,14 +1,15 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { canDelete, canEditPublication, canTransition, type Actor } from "@/lib/auth/permissions";
-import { seedAchievements, seedCategories, seedEvents } from "@/lib/data/seed";
-import type { Achievement, CampusEvent, Category, PublicationStatus } from "@/lib/types";
-import type { AchievementInput, EventInput } from "@/lib/validation/content";
+import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "@/lib/data/seed";
+import type { Achievement, CampusEvent, Category, CouncilYear, PublicationStatus } from "@/lib/types";
+import type { AchievementInput, CouncilInput, EventInput } from "@/lib/validation/content";
 
 type Store = {
   events: CampusEvent[];
   achievements: Achievement[];
   categories: Category[];
+  councilYears: CouncilYear[];
 };
 
 const filePath = path.join(process.cwd(), "data", "campus.json");
@@ -18,12 +19,26 @@ function initialStore(): Store {
     events: seedEvents,
     achievements: seedAchievements,
     categories: seedCategories,
+    councilYears: seedCouncilYears,
   };
 }
 
 export function readContentStore(): Store {
   try {
-    return JSON.parse(readFileSync(filePath, "utf8")) as Store;
+    const parsed = JSON.parse(readFileSync(filePath, "utf8")) as Partial<Store>;
+    return {
+      events: Array.isArray(parsed.events) ? parsed.events : seedEvents,
+      achievements: Array.isArray(parsed.achievements) ? parsed.achievements : seedAchievements,
+      categories: Array.isArray(parsed.categories) ? parsed.categories : seedCategories,
+      councilYears: Array.isArray(parsed.councilYears)
+        ? parsed.councilYears.map((year) => ({
+            ...year,
+            members: year.members ?? [],
+            photos: year.photos ?? [],
+            posts: year.posts ?? [],
+          }))
+        : seedCouncilYears,
+    };
   } catch {
     return initialStore();
   }
@@ -191,7 +206,104 @@ export function saveAchievementToStore(actor: Actor, input: AchievementInput, in
   return { ok: true };
 }
 
-export function deleteFromStore(actor: Actor, kind: "events" | "achievements", id: string) {
+function nextPublication(
+  actor: Actor,
+  existing: { publicationStatus: PublicationStatus; publishedAt: string | null } | undefined,
+  intent: string,
+  now: string,
+): { error: string } | { status: PublicationStatus; publishedAt: string | null } {
+  let status: PublicationStatus = existing?.publicationStatus ?? "draft";
+  let publishedAt = existing?.publishedAt ?? null;
+
+  if (!existing) {
+    if (intent !== "save") return { error: "Save the draft before changing its status." };
+    return { status, publishedAt };
+  }
+
+  if (intent === "save") {
+    if (!canEditPublication(actor, existing.publicationStatus)) {
+      return { error: "You do not have permission to do that." };
+    }
+    return { status, publishedAt };
+  }
+
+  const nextStatus: PublicationStatus | null =
+    intent === "submit"
+      ? "in_review"
+      : intent === "publish"
+        ? "published"
+        : intent === "unpublish" || intent === "restore"
+          ? "draft"
+          : intent === "archive"
+            ? "archived"
+            : null;
+  if (!nextStatus || !canTransition(actor, existing.publicationStatus, nextStatus)) {
+    return { error: "You do not have permission to do that." };
+  }
+  status = nextStatus;
+  if (status === "published") publishedAt = publishedAt ?? now;
+  return { status, publishedAt };
+}
+
+export function saveCouncilToStore(actor: Actor, input: CouncilInput, intent: string, id: string) {
+  const store = readContentStore();
+  const now = new Date().toISOString();
+  const existing = id ? store.councilYears.find((year) => year.id === id) : undefined;
+  if (id && !existing) return { error: "That council year could not be found." };
+
+  const publication = nextPublication(actor, existing, intent, now);
+  if ("error" in publication) return publication;
+
+  if (store.councilYears.some((year) => year.slug === input.slug && year.id !== id)) {
+    return { error: "That address is already in use." };
+  }
+
+  const record: CouncilYear = {
+    id: existing?.id ?? crypto.randomUUID(),
+    label: input.label,
+    slug: input.slug,
+    kind: input.kind,
+    summary: input.summary,
+    publicationStatus: publication.status,
+    sortOrder: input.sortOrder,
+    isSample: existing?.isSample ?? false,
+    members: input.members.map((member, index) => ({
+      id: member.id ?? crypto.randomUUID(),
+      role: member.role,
+      name: member.name,
+      imageUrl: member.imageUrl,
+      imageAlt: member.imageAlt,
+      sortOrder: index,
+    })),
+    photos: input.photos.map((photo, index) => ({
+      id: photo.id ?? crypto.randomUUID(),
+      url: photo.url,
+      alt: photo.alt,
+      caption: photo.caption,
+      sortOrder: index,
+    })),
+    posts: input.posts.map((post, index) => ({
+      id: post.id ?? crypto.randomUUID(),
+      title: post.title,
+      body: post.body,
+      publishedOn: post.publishedOn,
+      imageUrl: post.imageUrl,
+      imageAlt: post.imageAlt,
+      sortOrder: index,
+    })),
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+    publishedAt: publication.publishedAt,
+  };
+
+  store.councilYears = existing
+    ? store.councilYears.map((year) => (year.id === existing.id ? record : year))
+    : [record, ...store.councilYears];
+  writeContentStore(store);
+  return { id: record.id, slug: record.slug, status: record.publicationStatus };
+}
+
+export function deleteFromStore(actor: Actor, kind: "events" | "achievements" | "council", id: string) {
   const store = readContentStore();
   if (kind === "events") {
     const existing = store.events.find((event) => event.id === id);
@@ -200,10 +312,14 @@ export function deleteFromStore(actor: Actor, kind: "events" | "achievements", i
     store.achievements = store.achievements.map((item) =>
       item.eventId === id ? { ...item, eventId: null } : item,
     );
-  } else {
+  } else if (kind === "achievements") {
     const existing = store.achievements.find((item) => item.id === id);
     if (!existing || !canDelete(actor, existing.publicationStatus)) return false;
     store.achievements = store.achievements.filter((item) => item.id !== id);
+  } else {
+    const existing = store.councilYears.find((year) => year.id === id);
+    if (!existing || !canDelete(actor, existing.publicationStatus)) return false;
+    store.councilYears = store.councilYears.filter((year) => year.id !== id);
   }
   writeContentStore(store);
   return true;

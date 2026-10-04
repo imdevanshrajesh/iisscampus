@@ -1,6 +1,15 @@
 -- Removes only IISSCampus objects. Does not drop Arigo tables or functions.
 -- Run in the SQL editor if the campus migration needs to be reversed.
 
+drop trigger if exists campus_council_photos_media_url on public.campus_council_photos;
+drop trigger if exists campus_council_posts_media_url on public.campus_council_posts;
+drop trigger if exists campus_council_years_set_updated_at on public.campus_council_years;
+drop table if exists public.campus_council_members;
+drop table if exists public.campus_council_posts;
+drop table if exists public.campus_council_photos;
+drop table if exists public.campus_council_years;
+drop type if exists public.campus_council_kind;
+
 drop trigger if exists campus_events_media_url on public.campus_events;
 drop trigger if exists campus_event_images_media_url on public.campus_event_images;
 drop trigger if exists campus_achievements_media_url on public.campus_achievements;

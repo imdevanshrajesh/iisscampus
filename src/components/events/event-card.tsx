@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MediaFrame } from "@/components/media/media-frame";
-import { categoryById, formatEventDate } from "@/lib/data/catalog";
+import { categoryById, eventStatusLabel, formatEventDate } from "@/lib/data/catalog";
+import { classifyMediaUrl } from "@/lib/media/url";
 import type { CampusEvent, Category } from "@/lib/types";
 
 export function EventCard({
@@ -16,6 +17,8 @@ export function EventCard({
 }) {
   const category = categoryById(categories, event.categoryId);
   const date = formatEventDate(event.eventDate);
+  const status = event.isSample ? null : eventStatusLabel(event.eventStatus);
+  const pictured = Boolean(event.coverImageUrl && classifyMediaUrl(event.coverImageUrl, hosts).ok);
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-xl border border-line bg-background shadow-[0_1px_0_rgba(20,27,56,0.04)]">
@@ -34,9 +37,9 @@ export function EventCard({
           {category ? <span>{category.name}</span> : null}
           {date ? <span>{date}</span> : null}
           {event.isSample ? <span>Sample</span> : null}
-          {event.eventStatus && !event.isSample ? <span>{event.eventStatus}</span> : null}
+          {status ? <span className={event.eventStatus === "ongoing" ? "text-accent" : ""}>{status}</span> : null}
         </div>
-        <h3 className="text-xl font-medium tracking-tight">
+        <h3 className={pictured ? "text-balance text-xl font-medium leading-snug" : "sr-only"}>
           <Link href={`/events/${event.slug}`} className="transition-colors group-hover:text-accent">
             {event.title}
           </Link>

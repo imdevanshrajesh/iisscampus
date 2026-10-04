@@ -1,26 +1,39 @@
 import { cache } from "react";
-import { selectPublicAchievements, selectPublicEvents } from "@/lib/data/catalog";
-import { mapAchievement, mapCategory, mapEvent, mapImage } from "@/lib/data/map";
+import { selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "@/lib/data/catalog";
+import { readContentStore } from "@/lib/data/file-content";
+import { groupCouncilRows, mapAchievement, mapCategory, mapEvent, mapImage } from "@/lib/data/map";
 import { contentMode } from "@/lib/data/content-mode";
 import { seedAchievements, seedCategories, seedEvents, seedMediaHosts } from "@/lib/data/seed";
 import { createPublicClient } from "@/lib/supabase/public";
-import type { Achievement, CampusEvent, Category, PublicCatalog } from "@/lib/types";
+import type { Achievement, CampusEvent, Category, CouncilYear, PublicCatalog } from "@/lib/types";
 
 function localCatalog(): PublicCatalog {
+  const store = readContentStore();
   return {
     source: "local",
     categories: seedCategories,
     events: selectPublicEvents(seedEvents),
     achievements: selectPublicAchievements(seedAchievements),
+    councilYears: selectPublicCouncil(store.councilYears),
     mediaHosts: seedMediaHosts,
   };
+}
+
+function publishedCouncil(
+  years: Record<string, unknown>[] | null,
+  photos: Record<string, unknown>[],
+  posts: Record<string, unknown>[],
+  members: Record<string, unknown>[],
+): CouncilYear[] {
+  if (!years) return [];
+  return selectPublicCouncil(groupCouncilRows(years, photos, posts, members));
 }
 
 async function supabaseCatalog(): Promise<PublicCatalog> {
   const supabase = createPublicClient();
   if (!supabase) return localCatalog();
 
-  const [eventsResult, imagesResult, relationsResult, categoriesResult, achievementsResult, settingsResult] =
+  const [eventsResult, imagesResult, relationsResult, categoriesResult, achievementsResult, settingsResult, councilYearsResult, councilPhotosResult, councilPostsResult, councilMembersResult] =
     await Promise.all([
       supabase.from("campus_events").select("*").eq("publication_status", "published"),
       supabase.from("campus_event_images").select("*"),
@@ -28,6 +41,10 @@ async function supabaseCatalog(): Promise<PublicCatalog> {
       supabase.from("campus_categories").select("*").order("sort_order"),
       supabase.from("campus_achievements").select("*").eq("publication_status", "published"),
       supabase.from("campus_settings").select("media_hosts").eq("id", true).maybeSingle(),
+      supabase.from("campus_council_years").select("*").eq("publication_status", "published").order("sort_order"),
+      supabase.from("campus_council_photos").select("*"),
+      supabase.from("campus_council_posts").select("*"),
+      supabase.from("campus_council_members").select("*"),
     ]);
 
   if (
@@ -74,6 +91,12 @@ async function supabaseCatalog(): Promise<PublicCatalog> {
     achievements: selectPublicAchievements(
       (achievementsResult.data ?? []).map((row) => mapAchievement(row as Record<string, unknown>)),
     ),
+    councilYears: publishedCouncil(
+      councilYearsResult.error ? null : ((councilYearsResult.data ?? []) as Record<string, unknown>[]),
+      councilPhotosResult.error ? [] : ((councilPhotosResult.data ?? []) as Record<string, unknown>[]),
+      councilPostsResult.error ? [] : ((councilPostsResult.data ?? []) as Record<string, unknown>[]),
+      councilMembersResult.error ? [] : ((councilMembersResult.data ?? []) as Record<string, unknown>[]),
+    ),
     mediaHosts: Array.isArray(hosts) ? hosts.map(String) : [],
   };
 }
@@ -82,7 +105,7 @@ export const getPublicCatalog = cache(async (): Promise<PublicCatalog> => {
   try {
     if ((await contentMode()) === "supabase") {
       const remote = await supabaseCatalog();
-      if (remote.events.length > 0 || remote.achievements.length > 0) return remote;
+      if (remote.events.length > 0 || remote.achievements.length > 0 || remote.councilYears.length > 0) return remote;
     }
   } catch (error) {
     console.error(error);

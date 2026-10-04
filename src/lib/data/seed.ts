@@ -1,6 +1,79 @@
-import type { Achievement, CampusEvent, Category } from "@/lib/types";
+import type { Achievement, CampusEvent, Category, CouncilMember, CouncilYear } from "@/lib/types";
 
 const now = "2026-01-01T00:00:00.000Z";
+
+const councilRoster: [string, string][] = [
+  ["Head Boy", "MOHAMMED REHAAN"],
+  ["Deputy Head Boy", "DEVANSH RAJESH SINGH"],
+  ["Activity Captain", "AFHAM ABUBAKKER"],
+  ["Activity Vice Captain", "YASH BHAVSAR"],
+  ["Sports Captain", "ROHAN VISVAKARMA"],
+  ["Sports Vice Captain", "MUHAMMAD SHIHAN"],
+  ["Ruby House Captain", "ZAYAN JASSEER"],
+  ["Ruby House Vice Captain", "DANIAL POULOSE"],
+  ["Emerald House Captain", "MOHAMMED AAZIM"],
+  ["Emerald House Vice Captain", "SHAZ MOHAMMED"],
+  ["Sapphire House Captain", "ZAYAN MUHAMMED RIZAM"],
+  ["Sapphire House Vice Captain", "SALAH MAHARUS NISAN"],
+  ["Topaz House Captain", "MOHAMMED IHSAN"],
+  ["Topaz House Vice Captain", "STEPHEN MASCARENHAS"],
+  ["Wellness Captain", "MOHAMMED BILAL TARIQ"],
+  ["Wellness Vice Captain", "NUAMAAN SHAIKH"],
+  ["Discipline Captain", "PRANET PAUL"],
+  ["Discipline Vice Captain", "HISHAM HASHEEF"],
+  ["Linguistic Captain", "PRANEET SATHISH"],
+  ["Linguistic Vice Captain", "ISSAM ISMAIL"],
+  ["Eco-Innovator Captain", "SUMITH CHANDRA"],
+  ["Eco-Innovator Vice Captain", "RISHIT RENOJ"],
+  ["Council Secretary", "MOHAMMED SHAYAAN"],
+  ["Council Secretary Vice Captain", "SRIRAM MENON"],
+  ["Health & Nutrition Captain", "AKBAR ADHIL"],
+  ["Health And Nutrition Vice Captain", "JOSHUA EMMANUEL"],
+  ["Digital Defender Captain", "AHAMED BILAL"],
+  ["Digital Defender Vice Captain", "NITHISH BALAKRISHNAN"],
+  ["Inclusion Captain", "MUHAMMED MUSTHAFA"],
+  ["Inclusion Vice Captain", "ALVIN MANU"],
+  ["Community Outreach Captain", "GHIYAS ABUBACKER"],
+  ["Community Outreach Vice Captain", "MUHAMMAD AZHAR"],
+  ["Global Citizen Captain", "SAMEETH"],
+  ["Global Citizen Vice Captain", "ASWIN AJITHKUMAR"],
+  ["Young Entrepreneurship Captain", "GURU PRAKASH"],
+  ["Young Entrepreneurship Vice Captain", "ABHINAND VIMAL"],
+  ["Ethos Captain", "MOHAMMED ALI"],
+  ["Ethos Vice Captain", "UMER BILAL"],
+  ["Nex Gen Captain", "RITVIK SAI"],
+  ["Nex Gen Vice Captain", "ABHAY SIVANANDAN"],
+];
+
+function councilMember(index: number, role: string, name: string): CouncilMember {
+  return {
+    id: `31000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+    role,
+    name,
+    imageUrl: null,
+    imageAlt: null,
+    sortOrder: index,
+  };
+}
+
+export const seedCouncilYears: CouncilYear[] = [
+  {
+    id: "30000000-0000-4000-8000-000000000001",
+    label: "2026–27",
+    slug: "2026-27",
+    kind: "current",
+    summary: "Boys' student council for 2026–27.",
+    publicationStatus: "published",
+    sortOrder: 0,
+    isSample: false,
+    members: councilRoster.map(([role, name], index) => councilMember(index, role, name)),
+    photos: [],
+    posts: [],
+    createdAt: now,
+    updatedAt: now,
+    publishedAt: now,
+  },
+];
 
 export const seedCategories: Category[] = [
   {

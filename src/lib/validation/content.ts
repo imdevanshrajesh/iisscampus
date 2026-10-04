@@ -158,3 +158,133 @@ export const achievementInputSchema = z.object({
 });
 
 export type AchievementInput = z.infer<typeof achievementInputSchema>;
+
+const councilMemberSchema = z.object({
+  id: z.string().uuid().optional(),
+  role: z.string().trim().min(2).max(80),
+  name: z.string().trim().min(2).max(80),
+  imageUrl: optionalText(2048),
+  imageAlt: optionalText(200),
+});
+
+const councilPhotoSchema = z.object({
+  id: z.string().uuid().optional(),
+  url: z.string().trim().min(1).max(2048),
+  alt: z.string().trim().min(1).max(200),
+  caption: optionalText(240),
+});
+
+const councilPostSchema = z.object({
+  id: z.string().uuid().optional(),
+  title: z.string().trim().min(2).max(140),
+  body: z.string().trim().min(10).max(8000),
+  publishedOn: dateSchema,
+  imageUrl: optionalText(2048),
+  imageAlt: optionalText(200),
+});
+
+export const councilInputSchema = z.object({
+  label: z.string().trim().min(2).max(40),
+  slug: slugSchema,
+  kind: z.enum(["current", "upcoming", "past"]),
+  summary: z.string().trim().max(800).default(""),
+  sortOrder: z.coerce.number().int().min(0).max(999).default(0),
+  members: z.array(councilMemberSchema).max(80).default([]),
+  photos: z.array(councilPhotoSchema).max(40).default([]),
+  posts: z.array(councilPostSchema).max(40).default([]),
+});
+
+export type CouncilInput = z.infer<typeof councilInputSchema>;
+
+function indexed(formData: FormData, prefix: string) {
+  const indexes = new Set<string>();
+  for (const key of formData.keys()) {
+    const match = new RegExp(`^${prefix}\\.(\\d+)\\.`).exec(String(key));
+    if (match?.[1]) indexes.add(match[1]);
+  }
+  return [...indexes].sort((a, b) => Number(a) - Number(b));
+}
+
+function optionalId(value: string) {
+  return /^[0-9a-f-]{36}$/i.test(value) ? value : undefined;
+}
+
+export function councilInputFromForm(formData: FormData) {
+  const members = indexed(formData, "members").flatMap((index) => {
+    const role = String(formData.get(`members.${index}.role`) ?? "").trim();
+    const name = String(formData.get(`members.${index}.name`) ?? "").trim();
+    if (!role && !name) return [];
+    return [
+      {
+        id: optionalId(String(formData.get(`members.${index}.id`) ?? "")),
+        role,
+        name,
+        imageUrl: String(formData.get(`members.${index}.imageUrl`) ?? ""),
+        imageAlt: String(formData.get(`members.${index}.imageAlt`) ?? ""),
+      },
+    ];
+  });
+
+  const photos = indexed(formData, "photos").flatMap((index) => {
+    const url = String(formData.get(`photos.${index}.url`) ?? "").trim();
+    if (!url) return [];
+    return [
+      {
+        id: optionalId(String(formData.get(`photos.${index}.id`) ?? "")),
+        url,
+        alt: String(formData.get(`photos.${index}.alt`) ?? ""),
+        caption: String(formData.get(`photos.${index}.caption`) ?? ""),
+      },
+    ];
+  });
+
+  const posts = indexed(formData, "posts").flatMap((index) => {
+    const title = String(formData.get(`posts.${index}.title`) ?? "").trim();
+    const body = String(formData.get(`posts.${index}.body`) ?? "").trim();
+    if (!title && !body) return [];
+    return [
+      {
+        id: optionalId(String(formData.get(`posts.${index}.id`) ?? "")),
+        title,
+        body,
+        publishedOn: String(formData.get(`posts.${index}.publishedOn`) ?? ""),
+        imageUrl: String(formData.get(`posts.${index}.imageUrl`) ?? ""),
+        imageAlt: String(formData.get(`posts.${index}.imageAlt`) ?? ""),
+      },
+    ];
+  });
+
+  return councilInputSchema.safeParse({
+    label: formData.get("label"),
+    slug: formData.get("slug"),
+    kind: formData.get("kind"),
+    summary: formData.get("summary"),
+    sortOrder: formData.get("sortOrder") || 0,
+    members,
+    photos,
+    posts,
+  });
+}
+
+export function validateCouncilMedia(input: CouncilInput, allowedHosts: readonly string[]) {
+  for (const member of input.members) {
+    if (!member.imageUrl) continue;
+    const classified = classifyMediaUrl(member.imageUrl, allowedHosts);
+    if (!classified.ok) return classified.message;
+    if (!member.imageAlt) return "Add alternative text for each council photograph.";
+    member.imageUrl = classified.url;
+  }
+  for (const photo of input.photos) {
+    const classified = classifyMediaUrl(photo.url, allowedHosts);
+    if (!classified.ok) return classified.message;
+    photo.url = classified.url;
+  }
+  for (const post of input.posts) {
+    if (!post.imageUrl) continue;
+    const classified = classifyMediaUrl(post.imageUrl, allowedHosts);
+    if (!classified.ok) return classified.message;
+    if (!post.imageAlt) return "Add alternative text for each post photograph.";
+    post.imageUrl = classified.url;
+  }
+  return null;
+}

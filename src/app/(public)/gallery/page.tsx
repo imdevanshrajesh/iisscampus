@@ -26,8 +26,8 @@ export default async function GalleryPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-14 md:px-8 md:py-20">
-      <p className="text-xs font-medium uppercase tracking-[0.16em] text-accent">Photographs</p>
-      <h1 className="mt-3 text-4xl font-medium tracking-tight md:text-5xl">Gallery</h1>
+      <p className="text-sm text-accent">Photographs</p>
+      <h1 className="font-display mt-3 text-5xl text-ink md:text-6xl">Gallery</h1>
       <p className="mt-4 max-w-xl text-base leading-7 text-muted">
         Images are grouped by event. Placeholders stand in until an approved photograph is added.
       </p>

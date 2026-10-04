@@ -1,9 +1,9 @@
 import { contentMode, preferFileContent } from "@/lib/data/content-mode";
 import { readContentStore } from "@/lib/data/file-content";
-import { mapAchievement, mapCategory, mapEvent, mapImage } from "@/lib/data/map";
-import { seedAchievements, seedCategories, seedEvents } from "@/lib/data/seed";
+import { groupCouncilRows, mapAchievement, mapCategory, mapEvent, mapImage } from "@/lib/data/map";
+import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "@/lib/data/seed";
 import { createStaffClient } from "@/lib/supabase/server";
-import type { Achievement, CampusEvent, Category } from "@/lib/types";
+import type { Achievement, CampusEvent, Category, CouncilYear } from "@/lib/types";
 
 function workspaceFromStore() {
   const store = readContentStore();
@@ -11,6 +11,7 @@ function workspaceFromStore() {
     events: store.events,
     categories: store.categories,
     achievements: store.achievements,
+    councilYears: store.councilYears,
     mediaHosts: [] as string[],
   };
 }
@@ -20,6 +21,7 @@ function seedWorkspace() {
     events: seedEvents,
     categories: seedCategories,
     achievements: seedAchievements,
+    councilYears: seedCouncilYears,
     mediaHosts: [] as string[],
   };
 }
@@ -45,7 +47,7 @@ async function loadStaffWorkspace() {
   const supabase = await createStaffClient();
   if (!supabase) return null;
 
-  const [eventsResult, imagesResult, relationsResult, categoriesResult, achievementsResult, settingsResult] =
+  const [eventsResult, imagesResult, relationsResult, categoriesResult, achievementsResult, settingsResult, councilYearsResult, councilPhotosResult, councilPostsResult, councilMembersResult] =
     await Promise.all([
       supabase.from("campus_events").select("*").order("updated_at", { ascending: false }),
       supabase.from("campus_event_images").select("*"),
@@ -53,6 +55,10 @@ async function loadStaffWorkspace() {
       supabase.from("campus_categories").select("*").order("sort_order"),
       supabase.from("campus_achievements").select("*").order("updated_at", { ascending: false }),
       supabase.from("campus_settings").select("media_hosts").eq("id", true).maybeSingle(),
+      supabase.from("campus_council_years").select("*").order("sort_order"),
+      supabase.from("campus_council_photos").select("*"),
+      supabase.from("campus_council_posts").select("*"),
+      supabase.from("campus_council_members").select("*"),
     ]);
 
   if (
@@ -92,6 +98,14 @@ async function loadStaffWorkspace() {
   });
 
   const hosts = settingsResult.data?.media_hosts;
+  const councilYears: CouncilYear[] = councilYearsResult.error
+    ? readContentStore().councilYears
+    : groupCouncilRows(
+        (councilYearsResult.data ?? []) as Record<string, unknown>[],
+        councilPhotosResult.error ? [] : ((councilPhotosResult.data ?? []) as Record<string, unknown>[]),
+        councilPostsResult.error ? [] : ((councilPostsResult.data ?? []) as Record<string, unknown>[]),
+        councilMembersResult.error ? [] : ((councilMembersResult.data ?? []) as Record<string, unknown>[]),
+      );
   return {
     events,
     categories: (categoriesResult.data ?? []).map((row) =>
@@ -100,6 +114,7 @@ async function loadStaffWorkspace() {
     achievements: (achievementsResult.data ?? []).map((row) =>
       mapAchievement(row as Record<string, unknown>),
     ),
+    councilYears,
     mediaHosts: Array.isArray(hosts) ? hosts.map(String) : [],
   };
 }

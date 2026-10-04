@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EventCard } from "@/components/events/event-card";
-import { filterPublishedEvents, publishedYears } from "@/lib/data/catalog";
+import { filterPublishedEvents, formatEventDate, publishedYears } from "@/lib/data/catalog";
 import { getPublicCatalog } from "@/lib/data/queries";
 
 export const metadata: Metadata = {
@@ -31,14 +31,33 @@ export default async function EventsPage({
   const visible = filtered.slice((current - 1) * pageSize, current * pageSize);
   const years = publishedYears(catalog.events);
   const active = Boolean(filters.query || filters.category || filters.year || filters.status);
+  const ongoing = catalog.events.filter((event) => event.eventStatus === "ongoing" && !event.isSample);
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-14 md:px-8 md:py-20">
-      <p className="text-xs font-medium uppercase tracking-[0.16em] text-accent">Archive</p>
-      <h1 className="mt-3 text-4xl font-medium tracking-tight md:text-5xl">Events & Activities</h1>
+    <div className="mx-auto max-w-6xl px-5 py-10 md:px-8 md:py-14">
+      <p className="text-sm text-accent">Events</p>
+      <h1 className="font-display mt-3 text-5xl text-ink md:text-6xl">What&apos;s happening, and what happened.</h1>
       <p className="mt-4 max-w-xl text-base leading-7 text-muted">
-        Search published activities by name, category, year, or status. Unpublished records stay off this page.
+        Search published activities by name, category, year, or status. Drafts stay off this page.
       </p>
+
+      {ongoing.length ? (
+        <section className="mt-8 rounded-[1.5rem] bg-navy px-5 py-5 text-white md:px-6">
+          <p className="text-sm text-white/60">On now</p>
+          <ul className="mt-3 divide-y divide-white/15">
+            {ongoing.map((event) => (
+              <li key={event.id} className="flex flex-wrap items-baseline justify-between gap-3 py-3">
+                <Link href={`/events/${event.slug}`} className="font-display text-2xl">
+                  {event.title}
+                </Link>
+                <span className="text-sm text-white/60">{formatEventDate(event.eventDate) ?? "Dates open"}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : (
+        <p className="mt-8 text-sm text-muted">No event is marked as happening right now.</p>
+      )}
 
       <form method="get" className="mt-10 grid gap-4 border-y border-line py-6 md:grid-cols-4" action="/events">
         <label className="grid gap-1.5 text-sm">

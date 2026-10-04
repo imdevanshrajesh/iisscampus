@@ -14,6 +14,7 @@ export type PrivilegedAction =
   | "manage_images"
   | "manage_categories"
   | "manage_achievements"
+  | "manage_council"
   | "manage_roles"
   | "manage_settings"
   | "read_audit"
@@ -28,6 +29,7 @@ const editorActions = new Set<PrivilegedAction>([
   "manage_images",
   "manage_categories",
   "manage_achievements",
+  "manage_council",
   "delete_draft",
 ]);
 

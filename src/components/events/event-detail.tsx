@@ -69,7 +69,7 @@ export function EventDetail({
               .filter(Boolean)
               .join(" · ")}
           </p>
-          <h1 className="mt-4 text-4xl font-medium tracking-tight text-balance md:text-6xl">{event.title}</h1>
+          <h1 className="font-display mt-4 text-balance text-4xl text-ink md:text-6xl">{event.title}</h1>
           {date ? (
             <p className="mt-5 text-sm text-muted">
               {date}

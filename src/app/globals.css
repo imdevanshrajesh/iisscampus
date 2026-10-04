@@ -23,6 +23,7 @@
   --color-line: var(--line);
   --color-wash: var(--wash);
   --font-sans: var(--font-geist-sans);
+  --font-display: var(--font-fraunces);
 }
 
 html {
@@ -35,6 +36,12 @@ body {
   font-family: var(--font-sans), sans-serif;
 }
 
+.font-display {
+  font-family: var(--font-display), Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
 ::selection {
   background: #f8c89a;
   color: #141b38;
@@ -43,6 +50,28 @@ body {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
+}
+
+.nav-island {
+  width: min(100%, 18.5rem);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(20, 27, 56, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 14px 40px rgba(20, 27, 56, 0.22);
+  transition:
+    width 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nav-island[data-open="true"] {
+  width: min(100%, 40rem);
+  border-radius: 1.6rem;
+}
+
+.phone-dock {
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .menu-dialog {

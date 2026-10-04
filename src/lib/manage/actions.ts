@@ -12,15 +12,19 @@ import {
   addCategoryToStore,
   deleteFromStore,
   saveAchievementToStore,
+  saveCouncilToStore,
   saveEventToStore,
 } from "@/lib/data/file-content";
 import { classifyMediaUrl, classifyNavigationUrl, parseMediaHostList } from "@/lib/media/url";
 import { createStaffClient } from "@/lib/supabase/server";
 import {
   achievementInputSchema,
+  councilInputFromForm,
   eventInputSchema,
+  validateCouncilMedia,
   validateEventMedia,
   type AchievementInput,
+  type CouncilInput,
   type EventInput,
 } from "@/lib/validation/content";
 import type { PublicationStatus } from "@/lib/types";
@@ -641,4 +645,187 @@ export async function deleteAchievement(_state: ActionState, formData: FormData)
   revalidatePath("/achievements");
   revalidatePath("/manage/achievements");
   return {};
+}
+
+function revalidateCouncil(slug?: string) {
+  revalidatePath("/");
+  revalidatePath("/council");
+  revalidatePath("/manage");
+  revalidatePath("/manage/council");
+  if (slug) revalidatePath(`/council/${slug}`);
+}
+
+async function replaceCouncilChildren(
+  supabase: NonNullable<Awaited<ReturnType<typeof createStaffClient>>>,
+  yearId: string,
+  input: CouncilInput,
+) {
+  const removedMembers = await supabase.from("campus_council_members").delete().eq("year_id", yearId);
+  if (removedMembers.error) throw new Error("The council list could not be saved.");
+  if (input.members.length) {
+    const inserted = await supabase.from("campus_council_members").insert(
+      input.members.map((member, index) => ({
+        year_id: yearId,
+        role: member.role,
+        name: member.name,
+        image_url: member.imageUrl,
+        image_alt: member.imageAlt,
+        sort_order: index,
+      })),
+    );
+    if (inserted.error) throw new Error("The council list could not be saved.");
+  }
+
+  const removedPhotos = await supabase.from("campus_council_photos").delete().eq("year_id", yearId);
+  if (removedPhotos.error) throw new Error("The photographs could not be saved.");
+  if (input.photos.length) {
+    const inserted = await supabase.from("campus_council_photos").insert(
+      input.photos.map((photo, index) => ({
+        year_id: yearId,
+        url: photo.url,
+        alt: photo.alt,
+        caption: photo.caption,
+        sort_order: index,
+      })),
+    );
+    if (inserted.error) throw new Error("The photographs could not be saved.");
+  }
+
+  const removedPosts = await supabase.from("campus_council_posts").delete().eq("year_id", yearId);
+  if (removedPosts.error) throw new Error("The posts could not be saved.");
+  if (input.posts.length) {
+    const inserted = await supabase.from("campus_council_posts").insert(
+      input.posts.map((post, index) => ({
+        year_id: yearId,
+        title: post.title,
+        body: post.body,
+        published_on: post.publishedOn,
+        image_url: post.imageUrl,
+        image_alt: post.imageAlt,
+        sort_order: index,
+      })),
+    );
+    if (inserted.error) throw new Error("The posts could not be saved.");
+  }
+}
+
+export async function saveCouncilYear(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = councilInputFromForm(formData);
+  if (!parsed.success) return { error: issueMessage(parsed.error) };
+  const intent = String(formData.get("intent") ?? "save");
+  const id = String(formData.get("id") ?? "");
+
+  if ((await contentMode()) === "file") {
+    const actor = await getCampusActor();
+    if (!actor || !can(actor, "manage_council")) return { error: genericDenial };
+    const saved = saveCouncilToStore(actor, parsed.data, intent, id);
+    if ("error" in saved) return { error: saved.error };
+    revalidateCouncil(saved.slug);
+    if (!id) redirect(`/manage/council/${saved.id}/edit`);
+    return { ok: saved.status === "published" ? "Published." : "Saved." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_council")) return { error: genericDenial };
+
+  const settings = await context.supabase.from("campus_settings").select("media_hosts").eq("id", true).maybeSingle();
+  const allowedHosts = Array.isArray(settings.data?.media_hosts) ? settings.data.media_hosts.map(String) : [];
+  const mediaError = validateCouncilMedia(parsed.data, allowedHosts);
+  if (mediaError) return { error: mediaError };
+
+  let status: PublicationStatus = "draft";
+  let publishedAt: string | null = null;
+  if (id) {
+    const existing = await context.supabase
+      .from("campus_council_years")
+      .select("publication_status, published_at")
+      .eq("id", id)
+      .maybeSingle();
+    if (existing.error || !existing.data) return { error: "That council year could not be found." };
+    const current = existing.data.publication_status as PublicationStatus;
+    publishedAt = existing.data.published_at ? String(existing.data.published_at) : null;
+    status = current;
+    if (intent === "submit" && canTransition(context.actor, current, "in_review")) status = "in_review";
+    else if (intent === "publish" && canTransition(context.actor, current, "published")) {
+      status = "published";
+      publishedAt = publishedAt ?? new Date().toISOString();
+    } else if (intent === "unpublish" && canTransition(context.actor, current, "draft")) status = "draft";
+    else if (intent === "archive") {
+      if (formData.get("confirmArchive") !== "yes") return { error: "Confirm archiving before continuing." };
+      if (!canTransition(context.actor, current, "archived")) return { error: genericDenial };
+      status = "archived";
+    } else if (intent === "save" && !canEditPublication(context.actor, current)) return { error: genericDenial };
+    else if (intent !== "save") return { error: genericDenial };
+  } else if (intent !== "save") {
+    return { error: "Save the draft before changing its status." };
+  }
+
+  const record = {
+    label: parsed.data.label,
+    slug: parsed.data.slug,
+    kind: parsed.data.kind,
+    summary: parsed.data.summary,
+    sort_order: parsed.data.sortOrder,
+    publication_status: status,
+    published_at: publishedAt,
+    is_sample: false,
+  };
+
+  const saved = id
+    ? await context.supabase.from("campus_council_years").update(record).eq("id", id).select("id").maybeSingle()
+    : await context.supabase.from("campus_council_years").insert(record).select("id").maybeSingle();
+  if (saved.error || !saved.data) {
+    if (saved.error?.code === "42P01") {
+      return { error: "Student council tables are not in the database yet. Apply the latest campus migration, then try again." };
+    }
+    if (saved.error?.code === "23505") return { error: "That address is already in use." };
+    return { error: "The council year could not be saved." };
+  }
+
+  try {
+    await replaceCouncilChildren(context.supabase, saved.data.id, parsed.data);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "The council year could not be saved." };
+  }
+
+  if (intent !== "save") {
+    await writeAudit(context.supabase, context.actor.userId, intent, "campus_council_years", saved.data.id);
+  }
+
+  revalidateCouncil(parsed.data.slug);
+  if (!id) redirect(`/manage/council/${saved.data.id}/edit`);
+  return { ok: status === "published" ? "Published." : "Saved." };
+}
+
+export async function deleteCouncilYear(_state: ActionState, formData: FormData): Promise<ActionState> {
+  if (formData.get("confirm") !== "yes") return { error: "Confirm the delete, then try again." };
+
+  if ((await contentMode()) === "file") {
+    const actor = await getCampusActor();
+    if (!actor) return { error: "Sign in is required." };
+    if (!deleteFromStore(actor, "council", String(formData.get("id") ?? ""))) return { error: deleteFailed };
+    revalidateCouncil();
+    redirect("/manage/council");
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+
+  const id = String(formData.get("id") ?? "");
+  const existing = await context.supabase
+    .from("campus_council_years")
+    .select("publication_status, slug")
+    .eq("id", id)
+    .maybeSingle();
+  if (existing.error || !existing.data) return { error: deleteFailed };
+  const status = existing.data.publication_status as PublicationStatus;
+  if (!canDelete(context.actor, status)) return { error: genericDenial };
+
+  const removed = await context.supabase.from("campus_council_years").delete().eq("id", id).select("id");
+  if (removed.error || !removed.data?.length) return { error: deleteFailed };
+
+  await writeAudit(context.supabase, context.actor.userId, "delete", "campus_council_years", id);
+  revalidateCouncil(String(existing.data.slug));
+  redirect("/manage/council");
 }

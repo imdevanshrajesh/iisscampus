@@ -1,13 +1,7 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/brand/wordmark";
 import { siteConfig } from "@/lib/config";
-
-const explore = [
-  { href: "/events", label: "Events & Activities" },
-  { href: "/achievements", label: "Achievements" },
-  { href: "/gallery", label: "Gallery" },
-  { href: "/about", label: "About" },
-];
+import { primaryNav } from "@/lib/nav";
 
 export function SiteFooter({ showSampleNote }: { showSampleNote: boolean }) {
   return (
@@ -16,7 +10,7 @@ export function SiteFooter({ showSampleNote }: { showSampleNote: boolean }) {
         <div className="md:col-span-5">
           <Wordmark />
           <p className="mt-3 max-w-sm text-sm leading-6 text-muted">
-            An independent archive of campus activities, student initiatives, and achievements.
+            A running record of campus events, the boys&apos; student council, and published achievements.
             It is not the official website of India International School.
           </p>
           {showSampleNote ? (
@@ -28,7 +22,7 @@ export function SiteFooter({ showSampleNote }: { showSampleNote: boolean }) {
         <nav className="md:col-span-3" aria-label="Footer">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Explore</p>
           <ul className="mt-4 space-y-2 text-sm">
-            {explore.map((link) => (
+            {primaryNav.map((link) => (
               <li key={link.href}>
                 <Link href={link.href} className="text-ink">
                   {link.label}
