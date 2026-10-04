@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { DeleteRecord } from "@/components/manage/delete-record";
 import { ManageUnavailable } from "@/components/manage/unavailable";
+import { canDelete } from "@/lib/auth/permissions";
+import { deleteEvent } from "@/lib/manage/actions";
 import { requireWorkspace } from "@/lib/manage/access";
 
 export default async function ManageGalleryPage() {
@@ -19,9 +22,17 @@ export default async function ManageGalleryPage() {
               <p className="font-medium">{event.title}</p>
               <p className="text-sm text-muted">{event.images.length} image{event.images.length === 1 ? "" : "s"}</p>
             </div>
-            <Link href={`/manage/events/${event.id}/edit`} className="text-sm text-accent">Edit images</Link>
+            <div className="flex flex-wrap items-center gap-4">
+              <Link href={`/manage/events/${event.id}/edit`} className="text-sm text-accent">Edit images</Link>
+              {canDelete({ userId: "staff", role: access.role }, event.publicationStatus) ? (
+                <DeleteRecord action={deleteEvent} id={event.id} label="Delete" next="/manage/gallery" />
+              ) : null}
+            </div>
           </li>
         ))}
+        {access.workspace.events.length === 0 ? (
+          <li className="px-4 py-8 text-sm text-muted">No events yet.</li>
+        ) : null}
       </ul>
     </div>
   );

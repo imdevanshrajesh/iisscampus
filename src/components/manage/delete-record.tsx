@@ -7,10 +7,12 @@ export function DeleteRecord({
   action,
   id,
   label,
+  next,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
   id: string;
   label: string;
+  next?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, {} as ActionState);
   const [confirming, setConfirming] = useState(false);
@@ -18,7 +20,7 @@ export function DeleteRecord({
   return (
     <form action={formAction} className="flex flex-wrap items-center gap-3">
       <input type="hidden" name="id" value={id} />
-      {confirming ? <input type="hidden" name="confirm" value="yes" /> : null}
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       {state.error ? <p className="text-sm">{state.error}</p> : null}
       {confirming ? (
         <button type="button" className="text-sm text-muted" onClick={() => setConfirming(false)} disabled={pending}>
@@ -26,7 +28,7 @@ export function DeleteRecord({
         </button>
       ) : null}
       {confirming ? (
-        <button type="submit" disabled={pending} className="rounded-md border border-line bg-background px-3 py-2 text-sm text-ink disabled:opacity-60">
+        <button type="submit" name="confirm" value="yes" disabled={pending} className="rounded-md border border-line bg-background px-3 py-2 text-sm text-ink disabled:opacity-60">
           {pending ? "Deleting" : "Confirm delete"}
         </button>
       ) : (

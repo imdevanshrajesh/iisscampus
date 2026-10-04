@@ -18,13 +18,9 @@ export async function contentMode() {
 
   try {
     const probe = await supabase.from("campus_events").select("id").limit(1);
-    mode = probe.error || !probe.data?.length ? "file" : "supabase";
+    mode = probe.error ? "file" : "supabase";
   } catch {
     mode = "file";
   }
   return mode;
-}
-
-export function preferFileContent() {
-  mode = "file";
 }

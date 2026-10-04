@@ -11,17 +11,16 @@ export const metadata: Metadata = {
 
 export default async function GalleryPage() {
   const catalog = await getPublicCatalog();
-  const groups = catalog.events.map((event) => {
+  const groups = catalog.events.flatMap((event) => {
+    if (!event.images.length) return [];
     const images = event.images.filter((image) => classifyMediaUrl(image.url, catalog.mediaHosts).ok);
-    return {
-      event,
-      images,
-      placeholder: images.length
-        ? null
-        : event.isSample
-          ? "Demonstration placeholder. Replace with an approved photograph."
-          : "Photograph not available yet.",
-    };
+    return [
+      {
+        event,
+        images,
+        placeholder: images.length ? null : "Photograph not available yet.",
+      },
+    ];
   });
 
   return (
@@ -29,7 +28,7 @@ export default async function GalleryPage() {
       <p className="text-sm text-accent">Photographs</p>
       <h1 className="font-display mt-3 text-5xl text-ink md:text-6xl">Gallery</h1>
       <p className="mt-4 max-w-xl text-base leading-7 text-muted">
-        Images are grouped by event. Placeholders stand in until an approved photograph is added.
+        Images are grouped by event. An event leaves this page when its photographs are removed.
       </p>
       <div className="mt-12">
         {groups.length ? (

@@ -122,8 +122,10 @@ export default async function EventsPage({
         </div>
       ) : (
         <div className="mt-10 rounded-xl border border-line px-6 py-12">
-          <p className="text-lg font-medium">No activities match those filters.</p>
-          <p className="mt-2 text-sm text-muted">Try another category, or clear the search.</p>
+          <p className="text-lg font-medium">{active ? "No activities match those filters." : "No published events yet."}</p>
+          <p className="mt-2 text-sm text-muted">
+            {active ? "Try another category, or clear the search." : "Published events will be listed here."}
+          </p>
         </div>
       )}
 

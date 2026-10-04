@@ -40,7 +40,7 @@ export const galleryImageSchema = z.object({
   alt: z.string().trim().min(1).max(200),
   caption: z.string().trim().max(240).optional().or(z.literal("")).transform((value) => value || null),
   attribution: z.string().trim().max(160).optional().or(z.literal("")).transform((value) => value || null),
-  sortOrder: z.number().int().min(0).max(500),
+  sortOrder: z.number().int().min(0).max(500).optional().default(0),
 });
 
 export const scheduleItemSchema = z.object({

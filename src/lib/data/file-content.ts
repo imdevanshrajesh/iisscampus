@@ -48,8 +48,9 @@ function writeContentStore(store: Store) {
   try {
     mkdirSync(path.dirname(filePath), { recursive: true });
     writeFileSync(filePath, JSON.stringify(store, null, 2));
+    return true;
   } catch {
-    // Vercel cannot write this file. The in-memory records still render.
+    return false;
   }
 }
 
@@ -321,8 +322,7 @@ export function deleteFromStore(actor: Actor, kind: "events" | "achievements" | 
     if (!existing || !canDelete(actor, existing.publicationStatus)) return false;
     store.councilYears = store.councilYears.filter((year) => year.id !== id);
   }
-  writeContentStore(store);
-  return true;
+  return writeContentStore(store);
 }
 
 export function addCategoryToStore(name: string, slug: string, description: string) {

@@ -574,6 +574,32 @@ export async function grantRole(_state: ActionState, formData: FormData): Promis
 
 const deleteFailed = "This record could not be deleted.";
 
+async function finishDelete(
+  removed: { data: { id: string }[] | null; error: { message?: string } | null },
+  lookup: () => PromiseLike<{ data: { id: string } | null }>,
+) {
+  if (removed.error) {
+    console.error(removed.error.message);
+    return false;
+  }
+  if (removed.data?.length) return true;
+  const check = await lookup();
+  return !check.data;
+}
+
+function manageDestination(formData: FormData, fallback: string) {
+  const next = String(formData.get("next") ?? "");
+  if (
+    next === "/manage/events" ||
+    next === "/manage/achievements" ||
+    next === "/manage/gallery" ||
+    next === "/manage/council"
+  ) {
+    return next;
+  }
+  return fallback;
+}
+
 export async function deleteEvent(_state: ActionState, formData: FormData): Promise<ActionState> {
   if (formData.get("confirm") !== "yes") return { error: "Confirm the delete, then try again." };
 
@@ -585,7 +611,8 @@ export async function deleteEvent(_state: ActionState, formData: FormData): Prom
     revalidatePath("/events");
     revalidatePath("/gallery");
     revalidatePath("/manage/events");
-    redirect("/manage/events");
+    revalidatePath("/manage/gallery");
+    redirect(manageDestination(formData, "/manage/events"));
   }
 
   const context = await staffContext();
@@ -602,7 +629,10 @@ export async function deleteEvent(_state: ActionState, formData: FormData): Prom
   if (!canDelete(context.actor, status)) return { error: genericDenial };
 
   const removed = await context.supabase.from("campus_events").delete().eq("id", id).select("id");
-  if (removed.error || !removed.data?.length) return { error: deleteFailed };
+  const gone = await finishDelete(removed, () =>
+    context.supabase.from("campus_events").select("id").eq("id", id).maybeSingle(),
+  );
+  if (!gone) return { error: deleteFailed };
 
   await writeAudit(context.supabase, context.actor.userId, "delete", "campus_events", id);
   revalidatePath("/");
@@ -610,7 +640,8 @@ export async function deleteEvent(_state: ActionState, formData: FormData): Prom
   revalidatePath(`/events/${existing.data.slug}`);
   revalidatePath("/gallery");
   revalidatePath("/manage/events");
-  redirect("/manage/events");
+  revalidatePath("/manage/gallery");
+  redirect(manageDestination(formData, "/manage/events"));
 }
 
 export async function deleteAchievement(_state: ActionState, formData: FormData): Promise<ActionState> {
@@ -622,7 +653,7 @@ export async function deleteAchievement(_state: ActionState, formData: FormData)
     if (!deleteFromStore(actor, "achievements", String(formData.get("id") ?? ""))) return { error: deleteFailed };
     revalidatePath("/achievements");
     revalidatePath("/manage/achievements");
-    return {};
+    redirect(manageDestination(formData, "/manage/achievements"));
   }
 
   const context = await staffContext();
@@ -639,12 +670,15 @@ export async function deleteAchievement(_state: ActionState, formData: FormData)
   if (!canDelete(context.actor, status)) return { error: genericDenial };
 
   const removed = await context.supabase.from("campus_achievements").delete().eq("id", id).select("id");
-  if (removed.error || !removed.data?.length) return { error: deleteFailed };
+  const gone = await finishDelete(removed, () =>
+    context.supabase.from("campus_achievements").select("id").eq("id", id).maybeSingle(),
+  );
+  if (!gone) return { error: deleteFailed };
 
   await writeAudit(context.supabase, context.actor.userId, "delete", "campus_achievements", id);
   revalidatePath("/achievements");
   revalidatePath("/manage/achievements");
-  return {};
+  redirect(manageDestination(formData, "/manage/achievements"));
 }
 
 function revalidateCouncil(slug?: string) {

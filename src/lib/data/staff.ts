@@ -1,4 +1,4 @@
-import { contentMode, preferFileContent } from "@/lib/data/content-mode";
+import { contentMode } from "@/lib/data/content-mode";
 import { readContentStore } from "@/lib/data/file-content";
 import { groupCouncilRows, mapAchievement, mapCategory, mapEvent, mapImage } from "@/lib/data/map";
 import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "@/lib/data/seed";
@@ -61,20 +61,19 @@ async function loadStaffWorkspace() {
       supabase.from("campus_council_members").select("*"),
     ]);
 
-  if (
-    eventsResult.error ||
-    imagesResult.error ||
-    relationsResult.error ||
-    categoriesResult.error ||
-    achievementsResult.error ||
-    settingsResult.error
-  ) {
-    preferFileContent();
-    return seedWorkspace();
+  if (eventsResult.error || categoriesResult.error || achievementsResult.error) {
+    console.error(eventsResult.error ?? categoriesResult.error ?? achievementsResult.error);
+    return {
+      events: [],
+      categories: [],
+      achievements: [],
+      councilYears: readContentStore().councilYears,
+      mediaHosts: [],
+    };
   }
 
   const imagesByEvent = new Map<string, ReturnType<typeof mapImage>[]>();
-  for (const row of imagesResult.data ?? []) {
+  for (const row of imagesResult.error ? [] : (imagesResult.data ?? [])) {
     const record = row as Record<string, unknown>;
     const image = mapImage(record);
     const eventId = String(record.event_id);
@@ -84,7 +83,7 @@ async function loadStaffWorkspace() {
   }
 
   const relatedByEvent = new Map<string, string[]>();
-  for (const row of relationsResult.data ?? []) {
+  for (const row of relationsResult.error ? [] : (relationsResult.data ?? [])) {
     const record = row as { event_id: string; related_event_id: string };
     const list = relatedByEvent.get(record.event_id) ?? [];
     list.push(record.related_event_id);
