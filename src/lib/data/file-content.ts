@@ -149,7 +149,7 @@ export function saveEventToStore(
   store.events = existing
     ? store.events.map((event) => (event.id === existing.id ? record : event))
     : [record, ...store.events];
-  writeContentStore(store);
+  if (!writeContentStore(store)) return { error: "The event could not be saved." };
   return { id: record.id, slug: record.slug, status };
 }
 
@@ -203,7 +203,7 @@ export function saveAchievementToStore(actor: Actor, input: AchievementInput, in
   store.achievements = existing
     ? store.achievements.map((item) => (item.id === existing.id ? record : item))
     : [record, ...store.achievements];
-  writeContentStore(store);
+  if (!writeContentStore(store)) return { error: "The achievement could not be saved." };
   return { ok: true };
 }
 
@@ -300,7 +300,7 @@ export function saveCouncilToStore(actor: Actor, input: CouncilInput, intent: st
   store.councilYears = existing
     ? store.councilYears.map((year) => (year.id === existing.id ? record : year))
     : [record, ...store.councilYears];
-  writeContentStore(store);
+  if (!writeContentStore(store)) return { error: "The council year could not be saved." };
   return { id: record.id, slug: record.slug, status: record.publicationStatus };
 }
 
@@ -335,6 +335,5 @@ export function addCategoryToStore(name: string, slug: string, description: stri
     description,
     sortOrder: store.categories.length + 1,
   });
-  writeContentStore(store);
-  return true;
+  return writeContentStore(store);
 }

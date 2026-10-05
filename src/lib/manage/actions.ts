@@ -36,6 +36,14 @@ export type ActionState = {
 
 const genericDenial = "You do not have permission to do that.";
 const unavailable = "Content management is not connected yet.";
+const writeDenied = "The signed-in account is not allowed to write that record.";
+
+type DatabaseError = {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+};
 
 async function clientAddress() {
   const headerStore = await headers();
@@ -64,6 +72,49 @@ function httpsOrNull(value: string | null) {
   if (!value) return null;
   const classified = classifyNavigationUrl(value);
   return classified.ok ? classified.url : null;
+}
+
+function databaseError(error: DatabaseError | null | undefined, fallback: string) {
+  if (!error) return fallback;
+  console.error(error);
+
+  const code = error.code ?? "";
+  const message = error.message ?? "";
+  const details = error.details ?? "";
+  const combined = `${message} ${details}`.toLowerCase();
+
+  if (code === "23505" || combined.includes("duplicate key") || combined.includes("unique constraint")) {
+    return "That address is already in use.";
+  }
+  if (code === "23503") {
+    return "That category does not exist.";
+  }
+  if (
+    code === "23514" ||
+    code === "P0001" ||
+    combined.includes("image url is not allowed") ||
+    combined.includes("check constraint")
+  ) {
+    if (combined.includes("image url is not allowed")) {
+      return "This image URL is not allowed. An administrator can add the host in content settings.";
+    }
+    return "One of the fields failed a database check. Review the form and try again.";
+  }
+  if (code === "42P01") {
+    return "Campus tables are not in the database yet. Apply the latest campus migration, then try again.";
+  }
+  if (code === "PGRST204") {
+    return "A required campus column is missing. Apply the latest campus migration, then try again.";
+  }
+  if (
+    code === "42501" ||
+    combined.includes("row-level security") ||
+    combined.includes("permission denied") ||
+    combined.includes("violates row-level security")
+  ) {
+    return writeDenied;
+  }
+  return fallback;
 }
 
 function eventRecord(input: EventInput, status: PublicationStatus, featured: boolean) {
@@ -116,23 +167,31 @@ async function replaceChildren(
   });
 
   const removedImages = await supabase.from("campus_event_images").delete().eq("event_id", eventId);
-  if (removedImages.error) throw new Error("The gallery could not be saved.");
+  if (removedImages.error) {
+    throw new Error(databaseError(removedImages.error, "The gallery could not be saved."));
+  }
   if (images.length) {
     const inserted = await supabase.from("campus_event_images").insert(images);
-    if (inserted.error) throw new Error("The gallery could not be saved.");
+    if (inserted.error) {
+      throw new Error(databaseError(inserted.error, "The gallery could not be saved."));
+    }
   }
 
   const removedRelations = await supabase
     .from("campus_event_relations")
     .delete()
     .eq("event_id", eventId);
-  if (removedRelations.error) throw new Error("Related events could not be saved.");
+  if (removedRelations.error) {
+    throw new Error(databaseError(removedRelations.error, "Related events could not be saved."));
+  }
   const relations = input.relatedIds
     .filter((id) => id !== eventId)
     .map((relatedId) => ({ event_id: eventId, related_event_id: relatedId }));
   if (relations.length) {
     const inserted = await supabase.from("campus_event_relations").insert(relations);
-    if (inserted.error) throw new Error("Related events could not be saved.");
+    if (inserted.error) {
+      throw new Error(databaseError(inserted.error, "Related events could not be saved."));
+    }
   }
 }
 
@@ -353,16 +412,34 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
         .select("id")
         .maybeSingle();
 
-  if (saved.error || !saved.data) return { error: "The event could not be saved." };
+  if (saved.error) {
+    return { error: databaseError(saved.error, "The event could not be saved.") };
+  }
+
+  let eventId = saved.data?.id ?? null;
+  if (!eventId) {
+    const lookup = id
+      ? await context.supabase.from("campus_events").select("id").eq("id", id).maybeSingle()
+      : await context.supabase
+          .from("campus_events")
+          .select("id")
+          .eq("slug", parsed.input.slug)
+          .maybeSingle();
+    if (lookup.error) {
+      return { error: databaseError(lookup.error, "The event could not be saved.") };
+    }
+    eventId = lookup.data?.id ?? null;
+  }
+  if (!eventId) return { error: writeDenied };
 
   try {
-    await replaceChildren(context.supabase, saved.data.id, parsed.input, allowedHosts);
+    await replaceChildren(context.supabase, eventId, parsed.input, allowedHosts);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "The event details could not be saved." };
   }
 
   if (intent !== "save") {
-    await writeAudit(context.supabase, context.actor.userId, intent, "campus_events", saved.data.id);
+    await writeAudit(context.supabase, context.actor.userId, intent, "campus_events", eventId);
   }
 
   revalidatePath("/");
@@ -372,7 +449,7 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
   revalidatePath("/manage");
   revalidatePath("/manage/events");
 
-  if (!id) redirect(`/manage/events/${saved.data.id}/edit`);
+  if (!id) redirect(`/manage/events/${eventId}/edit`);
   return { ok: status === "published" ? "Published." : "Saved." };
 }
 
@@ -486,7 +563,9 @@ export async function saveAchievement(_state: ActionState, formData: FormData): 
   const saved = id
     ? await context.supabase.from("campus_achievements").update(record).eq("id", id)
     : await context.supabase.from("campus_achievements").insert(record);
-  if (saved.error) return { error: "The achievement could not be saved." };
+  if (saved.error) {
+    return { error: databaseError(saved.error, "The achievement could not be saved.") };
+  }
 
   revalidatePath("/achievements");
   revalidatePath("/manage/achievements");
@@ -524,7 +603,9 @@ export async function saveCategory(_state: ActionState, formData: FormData): Pro
     slug,
     description: description || null,
   });
-  if (saved.error) return { error: "The category could not be saved." };
+  if (saved.error) {
+    return { error: databaseError(saved.error, "The category could not be saved.") };
+  }
   revalidatePath("/events");
   revalidatePath("/manage/events");
   return { ok: "Category added." };
@@ -542,7 +623,9 @@ export async function saveSettings(_state: ActionState, formData: FormData): Pro
     .from("campus_settings")
     .update({ media_hosts: parsed.hosts })
     .eq("id", true);
-  if (saved.error) return { error: "Image hosts could not be saved." };
+  if (saved.error) {
+    return { error: databaseError(saved.error, "Image hosts could not be saved.") };
+  }
 
   await writeAudit(context.supabase, context.actor.userId, "update_media_hosts", "campus_settings", null);
   revalidatePath("/");
@@ -575,16 +658,19 @@ export async function grantRole(_state: ActionState, formData: FormData): Promis
 const deleteFailed = "This record could not be deleted.";
 
 async function finishDelete(
-  removed: { data: { id: string }[] | null; error: { message?: string } | null },
-  lookup: () => PromiseLike<{ data: { id: string } | null }>,
-) {
+  removed: { data: { id: string }[] | null; error: DatabaseError | null },
+  lookup: () => PromiseLike<{ data: { id: string } | null; error: DatabaseError | null }>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
   if (removed.error) {
-    console.error(removed.error.message);
-    return false;
+    return { ok: false, error: databaseError(removed.error, deleteFailed) };
   }
-  if (removed.data?.length) return true;
+  if (removed.data?.length) return { ok: true };
   const check = await lookup();
-  return !check.data;
+  if (check.error) {
+    return { ok: false, error: databaseError(check.error, deleteFailed) };
+  }
+  if (check.data) return { ok: false, error: writeDenied };
+  return { ok: true };
 }
 
 function manageDestination(formData: FormData, fallback: string) {
@@ -632,7 +718,7 @@ export async function deleteEvent(_state: ActionState, formData: FormData): Prom
   const gone = await finishDelete(removed, () =>
     context.supabase.from("campus_events").select("id").eq("id", id).maybeSingle(),
   );
-  if (!gone) return { error: deleteFailed };
+  if (!gone.ok) return { error: gone.error };
 
   await writeAudit(context.supabase, context.actor.userId, "delete", "campus_events", id);
   revalidatePath("/");
@@ -673,7 +759,7 @@ export async function deleteAchievement(_state: ActionState, formData: FormData)
   const gone = await finishDelete(removed, () =>
     context.supabase.from("campus_achievements").select("id").eq("id", id).maybeSingle(),
   );
-  if (!gone) return { error: deleteFailed };
+  if (!gone.ok) return { error: gone.error };
 
   await writeAudit(context.supabase, context.actor.userId, "delete", "campus_achievements", id);
   revalidatePath("/achievements");
@@ -695,7 +781,9 @@ async function replaceCouncilChildren(
   input: CouncilInput,
 ) {
   const removedMembers = await supabase.from("campus_council_members").delete().eq("year_id", yearId);
-  if (removedMembers.error) throw new Error("The council list could not be saved.");
+  if (removedMembers.error) {
+    throw new Error(databaseError(removedMembers.error, "The council list could not be saved."));
+  }
   if (input.members.length) {
     const inserted = await supabase.from("campus_council_members").insert(
       input.members.map((member, index) => ({
@@ -707,11 +795,15 @@ async function replaceCouncilChildren(
         sort_order: index,
       })),
     );
-    if (inserted.error) throw new Error("The council list could not be saved.");
+    if (inserted.error) {
+      throw new Error(databaseError(inserted.error, "The council list could not be saved."));
+    }
   }
 
   const removedPhotos = await supabase.from("campus_council_photos").delete().eq("year_id", yearId);
-  if (removedPhotos.error) throw new Error("The photographs could not be saved.");
+  if (removedPhotos.error) {
+    throw new Error(databaseError(removedPhotos.error, "The photographs could not be saved."));
+  }
   if (input.photos.length) {
     const inserted = await supabase.from("campus_council_photos").insert(
       input.photos.map((photo, index) => ({
@@ -722,11 +814,15 @@ async function replaceCouncilChildren(
         sort_order: index,
       })),
     );
-    if (inserted.error) throw new Error("The photographs could not be saved.");
+    if (inserted.error) {
+      throw new Error(databaseError(inserted.error, "The photographs could not be saved."));
+    }
   }
 
   const removedPosts = await supabase.from("campus_council_posts").delete().eq("year_id", yearId);
-  if (removedPosts.error) throw new Error("The posts could not be saved.");
+  if (removedPosts.error) {
+    throw new Error(databaseError(removedPosts.error, "The posts could not be saved."));
+  }
   if (input.posts.length) {
     const inserted = await supabase.from("campus_council_posts").insert(
       input.posts.map((post, index) => ({
@@ -739,7 +835,9 @@ async function replaceCouncilChildren(
         sort_order: index,
       })),
     );
-    if (inserted.error) throw new Error("The posts could not be saved.");
+    if (inserted.error) {
+      throw new Error(databaseError(inserted.error, "The posts could not be saved."));
+    }
   }
 }
 
@@ -809,26 +907,38 @@ export async function saveCouncilYear(_state: ActionState, formData: FormData): 
   const saved = id
     ? await context.supabase.from("campus_council_years").update(record).eq("id", id).select("id").maybeSingle()
     : await context.supabase.from("campus_council_years").insert(record).select("id").maybeSingle();
-  if (saved.error || !saved.data) {
-    if (saved.error?.code === "42P01") {
-      return { error: "Student council tables are not in the database yet. Apply the latest campus migration, then try again." };
-    }
-    if (saved.error?.code === "23505") return { error: "That address is already in use." };
-    return { error: "The council year could not be saved." };
+  if (saved.error) {
+    return { error: databaseError(saved.error, "The council year could not be saved.") };
   }
 
+  let yearId = saved.data?.id ?? null;
+  if (!yearId) {
+    const lookup = id
+      ? await context.supabase.from("campus_council_years").select("id").eq("id", id).maybeSingle()
+      : await context.supabase
+          .from("campus_council_years")
+          .select("id")
+          .eq("slug", parsed.data.slug)
+          .maybeSingle();
+    if (lookup.error) {
+      return { error: databaseError(lookup.error, "The council year could not be saved.") };
+    }
+    yearId = lookup.data?.id ?? null;
+  }
+  if (!yearId) return { error: writeDenied };
+
   try {
-    await replaceCouncilChildren(context.supabase, saved.data.id, parsed.data);
+    await replaceCouncilChildren(context.supabase, yearId, parsed.data);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "The council year could not be saved." };
   }
 
   if (intent !== "save") {
-    await writeAudit(context.supabase, context.actor.userId, intent, "campus_council_years", saved.data.id);
+    await writeAudit(context.supabase, context.actor.userId, intent, "campus_council_years", yearId);
   }
 
   revalidateCouncil(parsed.data.slug);
-  if (!id) redirect(`/manage/council/${saved.data.id}/edit`);
+  if (!id) redirect(`/manage/council/${yearId}/edit`);
   return { ok: status === "published" ? "Published." : "Saved." };
 }
 
@@ -857,7 +967,10 @@ export async function deleteCouncilYear(_state: ActionState, formData: FormData)
   if (!canDelete(context.actor, status)) return { error: genericDenial };
 
   const removed = await context.supabase.from("campus_council_years").delete().eq("id", id).select("id");
-  if (removed.error || !removed.data?.length) return { error: deleteFailed };
+  const gone = await finishDelete(removed, () =>
+    context.supabase.from("campus_council_years").select("id").eq("id", id).maybeSingle(),
+  );
+  if (!gone.ok) return { error: gone.error };
 
   await writeAudit(context.supabase, context.actor.userId, "delete", "campus_council_years", id);
   revalidateCouncil(String(existing.data.slug));

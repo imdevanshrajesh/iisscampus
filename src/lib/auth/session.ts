@@ -21,9 +21,7 @@ export async function getCampusActor(): Promise<Actor> {
       .maybeSingle();
 
     if (roleResult.error) {
-      if (process.env.NODE_ENV === "development") {
-        return { userId: data.user.id, role: "administrator" as const };
-      }
+      console.error(roleResult.error);
       return null;
     }
     if (!isRole(roleResult.data?.role)) return null;

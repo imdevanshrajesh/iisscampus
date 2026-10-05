@@ -113,12 +113,14 @@ export function validateEventMedia(input: EventInput, allowedHosts: readonly str
   if (input.coverImageUrl) {
     const cover = classifyMediaUrl(input.coverImageUrl, allowedHosts);
     if (!cover.ok) errors.coverImageUrl = cover.message;
+    else input.coverImageUrl = cover.url;
     if (!input.coverAlt) errors.coverAlt = "Add alternative text for the cover image.";
   }
 
   input.images.forEach((image, index) => {
     const classified = classifyMediaUrl(image.url, allowedHosts);
     if (!classified.ok) errors[`images.${index}.url`] = classified.message;
+    else image.url = classified.url;
   });
 
   try {
