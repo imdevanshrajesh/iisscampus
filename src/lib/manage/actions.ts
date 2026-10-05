@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { can, canDelete, canEditPublication, canTransition } from "@/lib/auth/permissions";
 import { consumeRateLimit } from "@/lib/auth/rate-limit";
-import { getCampusActor } from "@/lib/auth/session";
+import { getCampusActor, getCampusSession, sessionActionError } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/config";
 import { contentMode } from "@/lib/data/content-mode";
 import {
@@ -16,6 +16,7 @@ import {
   saveEventToStore,
 } from "@/lib/data/file-content";
 import { classifyMediaUrl, classifyNavigationUrl, parseMediaHostList } from "@/lib/media/url";
+import { isMissingTableError, missingCouncilTablesMessage } from "@/lib/supabase/errors";
 import { createStaffClient } from "@/lib/supabase/server";
 import {
   achievementInputSchema,
@@ -59,9 +60,11 @@ async function staffContext(): Promise<
 > {
   if (!isSupabaseConfigured()) return { error: unavailable };
   const supabase = await createStaffClient();
-  const actor = await getCampusActor();
-  if (!supabase || !actor) return { error: "Sign in is required." };
-  return { supabase, actor };
+  if (!supabase) return { error: "Sign in is required." };
+  const session = await getCampusSession();
+  const denied = sessionActionError(session);
+  if (denied || session.status !== "ok") return { error: denied ?? "Sign in is required." };
+  return { supabase, actor: session.actor };
 }
 
 function issueMessage(error: { issues: { message: string }[] }) {
@@ -79,15 +82,22 @@ function databaseError(error: DatabaseError | null | undefined, fallback: string
   console.error(error);
 
   const code = error.code ?? "";
-  const message = error.message ?? "";
-  const details = error.details ?? "";
+  const message = (error.message ?? "").trim();
+  const details = (error.details ?? "").trim();
   const combined = `${message} ${details}`.toLowerCase();
 
   if (code === "23505" || combined.includes("duplicate key") || combined.includes("unique constraint")) {
     return "That address is already in use.";
   }
   if (code === "23503") {
-    return "That category does not exist.";
+    if (combined.includes("category")) return "That category does not exist.";
+    return "A related record is missing. Check the category and try again.";
+  }
+  if (code === "23502" || combined.includes("null value")) {
+    return "A required field is missing. Check the form and try again.";
+  }
+  if (code === "22P02" || combined.includes("invalid input syntax")) {
+    return "One of the fields has an invalid value. Check the form and try again.";
   }
   if (
     code === "23514" ||
@@ -100,21 +110,38 @@ function databaseError(error: DatabaseError | null | undefined, fallback: string
     }
     return "One of the fields failed a database check. Review the form and try again.";
   }
-  if (code === "42P01") {
+  if (combined.includes("has no field")) {
+    return "A database media trigger is out of date. Run supabase/FIX_MEDIA_URL_TRIGGER.sql in the Supabase SQL editor, then try again.";
+  }
+  if (code === "42P01" || code === "PGRST205" || combined.includes("could not find the table")) {
+    if (combined.includes("campus_council")) return missingCouncilTablesMessage();
     return "Campus tables are not in the database yet. Apply the latest campus migration, then try again.";
   }
   if (code === "PGRST204") {
     return "A required campus column is missing. Apply the latest campus migration, then try again.";
   }
+  if (combined.includes("permission denied")) {
+    return "Database privileges are missing for content writes. Run supabase/GRANTS_CAMPUS.sql in the Supabase SQL editor, then try again.";
+  }
   if (
     code === "42501" ||
     combined.includes("row-level security") ||
-    combined.includes("permission denied") ||
     combined.includes("violates row-level security")
   ) {
     return writeDenied;
   }
+  if (message) return `${fallback} ${message}`;
   return fallback;
+}
+
+async function fileActor(
+  allowed: (actor: NonNullable<Awaited<ReturnType<typeof getCampusActor>>>) => boolean,
+): Promise<{ error: string } | { actor: NonNullable<Awaited<ReturnType<typeof getCampusActor>>> }> {
+  const session = await getCampusSession();
+  const denied = sessionActionError(session);
+  if (denied || session.status !== "ok") return { error: denied ?? "Sign in is required." };
+  if (!allowed(session.actor)) return { error: genericDenial };
+  return { actor: session.actor };
 }
 
 function eventRecord(input: EventInput, status: PublicationStatus, featured: boolean) {
@@ -279,10 +306,18 @@ export async function signIn(_state: ActionState, formData: FormData): Promise<A
     return { error: "Sign-in failed. Check the email and password, or confirm this account has access." };
   }
 
-  const actor = await getCampusActor();
-  if (!actor) {
+  const session = await getCampusSession();
+  if (session.status === "no_role") {
     await supabase.auth.signOut();
-    return { error: "Sign-in failed. Check the email and password, or confirm this account has access." };
+    return {
+      error:
+        "This account signed in, but it has no campus role yet. Run supabase/BOOTSTRAP_CAMPUS_ADMIN.sql with your auth user id, then try again.",
+    };
+  }
+  const denied = sessionActionError(session);
+  if (denied || session.status !== "ok") {
+    await supabase.auth.signOut();
+    return { error: denied ?? "Sign-in failed. Check the email and password, or confirm this account has access." };
   }
 
   redirect("/manage");
@@ -296,16 +331,17 @@ export async function signOut() {
 
 export async function saveEvent(_state: ActionState, formData: FormData): Promise<ActionState> {
   if ((await contentMode()) === "file") {
-    const actor = await getCampusActor();
-    if (!actor) return { error: "Sign in is required." };
-    if (!can(actor, "create_draft")) return { error: genericDenial };
+    const session = await getCampusSession();
+    const denied = sessionActionError(session);
+    if (denied || session.status !== "ok") return { error: denied ?? "Sign in is required." };
+    if (!can(session.actor, "create_draft")) return { error: genericDenial };
     const parsed = readEventInput(formData);
     if ("error" in parsed) return parsed;
     const mediaErrors = validateEventMedia(parsed.input, []);
     const firstMediaError = Object.values(mediaErrors)[0];
     if (firstMediaError) return { error: firstMediaError };
     const saved = saveEventToStore(
-      actor,
+      session.actor,
       parsed.input,
       String(formData.get("intent") ?? "save"),
       String(formData.get("id") ?? ""),
@@ -455,8 +491,9 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
 
 export async function saveAchievement(_state: ActionState, formData: FormData): Promise<ActionState> {
   if ((await contentMode()) === "file") {
-    const actor = await getCampusActor();
-    if (!actor || !can(actor, "manage_achievements")) return { error: genericDenial };
+    const access = await fileActor((actor) => can(actor, "manage_achievements"));
+    if ("error" in access) return access;
+    const actor = access.actor;
     const parsed = achievementInputSchema.safeParse({
       title: formData.get("title"),
       competitionName: formData.get("competitionName"),
@@ -574,8 +611,8 @@ export async function saveAchievement(_state: ActionState, formData: FormData): 
 
 export async function saveCategory(_state: ActionState, formData: FormData): Promise<ActionState> {
   if ((await contentMode()) === "file") {
-    const actor = await getCampusActor();
-    if (!actor || !can(actor, "manage_categories")) return { error: genericDenial };
+    const access = await fileActor((actor) => can(actor, "manage_categories"));
+    if ("error" in access) return access;
     const name = String(formData.get("name") ?? "").trim();
     const slug = String(formData.get("slug") ?? "").trim();
     const description = String(formData.get("description") ?? "").trim();
@@ -649,7 +686,9 @@ export async function grantRole(_state: ActionState, formData: FormData): Promis
     target_role: role,
     note: note || null,
   });
-  if (granted.error) return { error: genericDenial };
+  if (granted.error) {
+    return { error: databaseError(granted.error, genericDenial) };
+  }
 
   revalidatePath("/manage/settings");
   return { ok: "Role updated." };
@@ -690,9 +729,9 @@ export async function deleteEvent(_state: ActionState, formData: FormData): Prom
   if (formData.get("confirm") !== "yes") return { error: "Confirm the delete, then try again." };
 
   if ((await contentMode()) === "file") {
-    const actor = await getCampusActor();
-    if (!actor) return { error: "Sign in is required." };
-    if (!deleteFromStore(actor, "events", String(formData.get("id") ?? ""))) return { error: deleteFailed };
+    const access = await fileActor(() => true);
+    if ("error" in access) return access;
+    if (!deleteFromStore(access.actor, "events", String(formData.get("id") ?? ""))) return { error: deleteFailed };
     revalidatePath("/");
     revalidatePath("/events");
     revalidatePath("/gallery");
@@ -710,7 +749,8 @@ export async function deleteEvent(_state: ActionState, formData: FormData): Prom
     .select("publication_status, slug")
     .eq("id", id)
     .maybeSingle();
-  if (existing.error || !existing.data) return { error: deleteFailed };
+  if (existing.error) return { error: databaseError(existing.error, deleteFailed) };
+  if (!existing.data) return { error: deleteFailed };
   const status = existing.data.publication_status as PublicationStatus;
   if (!canDelete(context.actor, status)) return { error: genericDenial };
 
@@ -734,9 +774,9 @@ export async function deleteAchievement(_state: ActionState, formData: FormData)
   if (formData.get("confirm") !== "yes") return { error: "Confirm the delete, then try again." };
 
   if ((await contentMode()) === "file") {
-    const actor = await getCampusActor();
-    if (!actor) return { error: "Sign in is required." };
-    if (!deleteFromStore(actor, "achievements", String(formData.get("id") ?? ""))) return { error: deleteFailed };
+    const access = await fileActor(() => true);
+    if ("error" in access) return access;
+    if (!deleteFromStore(access.actor, "achievements", String(formData.get("id") ?? ""))) return { error: deleteFailed };
     revalidatePath("/achievements");
     revalidatePath("/manage/achievements");
     redirect(manageDestination(formData, "/manage/achievements"));
@@ -751,7 +791,8 @@ export async function deleteAchievement(_state: ActionState, formData: FormData)
     .select("publication_status")
     .eq("id", id)
     .maybeSingle();
-  if (existing.error || !existing.data) return { error: deleteFailed };
+  if (existing.error) return { error: databaseError(existing.error, deleteFailed) };
+  if (!existing.data) return { error: deleteFailed };
   const status = existing.data.publication_status as PublicationStatus;
   if (!canDelete(context.actor, status)) return { error: genericDenial };
 
@@ -848,9 +889,9 @@ export async function saveCouncilYear(_state: ActionState, formData: FormData): 
   const id = String(formData.get("id") ?? "");
 
   if ((await contentMode()) === "file") {
-    const actor = await getCampusActor();
-    if (!actor || !can(actor, "manage_council")) return { error: genericDenial };
-    const saved = saveCouncilToStore(actor, parsed.data, intent, id);
+    const access = await fileActor((actor) => can(actor, "manage_council"));
+    if ("error" in access) return access;
+    const saved = saveCouncilToStore(access.actor, parsed.data, intent, id);
     if ("error" in saved) return { error: saved.error };
     revalidateCouncil(saved.slug);
     if (!id) redirect(`/manage/council/${saved.id}/edit`);
@@ -860,6 +901,11 @@ export async function saveCouncilYear(_state: ActionState, formData: FormData): 
   const context = await staffContext();
   if ("error" in context) return { error: context.error };
   if (!can(context.actor, "manage_council")) return { error: genericDenial };
+
+  const councilProbe = await context.supabase.from("campus_council_years").select("id").limit(1);
+  if (councilProbe.error && isMissingTableError(councilProbe.error)) {
+    return { error: missingCouncilTablesMessage() };
+  }
 
   const settings = await context.supabase.from("campus_settings").select("media_hosts").eq("id", true).maybeSingle();
   const allowedHosts = Array.isArray(settings.data?.media_hosts) ? settings.data.media_hosts.map(String) : [];
@@ -874,7 +920,10 @@ export async function saveCouncilYear(_state: ActionState, formData: FormData): 
       .select("publication_status, published_at")
       .eq("id", id)
       .maybeSingle();
-    if (existing.error || !existing.data) return { error: "That council year could not be found." };
+    if (existing.error) {
+      return { error: databaseError(existing.error, "That council year could not be found.") };
+    }
+    if (!existing.data) return { error: "That council year could not be found." };
     const current = existing.data.publication_status as PublicationStatus;
     publishedAt = existing.data.published_at ? String(existing.data.published_at) : null;
     status = current;
@@ -946,9 +995,9 @@ export async function deleteCouncilYear(_state: ActionState, formData: FormData)
   if (formData.get("confirm") !== "yes") return { error: "Confirm the delete, then try again." };
 
   if ((await contentMode()) === "file") {
-    const actor = await getCampusActor();
-    if (!actor) return { error: "Sign in is required." };
-    if (!deleteFromStore(actor, "council", String(formData.get("id") ?? ""))) return { error: deleteFailed };
+    const access = await fileActor(() => true);
+    if ("error" in access) return access;
+    if (!deleteFromStore(access.actor, "council", String(formData.get("id") ?? ""))) return { error: deleteFailed };
     revalidateCouncil();
     redirect("/manage/council");
   }
@@ -962,7 +1011,8 @@ export async function deleteCouncilYear(_state: ActionState, formData: FormData)
     .select("publication_status, slug")
     .eq("id", id)
     .maybeSingle();
-  if (existing.error || !existing.data) return { error: deleteFailed };
+  if (existing.error) return { error: databaseError(existing.error, deleteFailed) };
+  if (!existing.data) return { error: deleteFailed };
   const status = existing.data.publication_status as PublicationStatus;
   if (!canDelete(context.actor, status)) return { error: genericDenial };
 

@@ -2,6 +2,7 @@ import { contentMode } from "@/lib/data/content-mode";
 import { readContentStore } from "@/lib/data/file-content";
 import { groupCouncilRows, mapAchievement, mapCategory, mapEvent, mapImage } from "@/lib/data/map";
 import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "@/lib/data/seed";
+import { logPostgrestUnlessMissing } from "@/lib/supabase/errors";
 import { createStaffClient } from "@/lib/supabase/server";
 import type { Achievement, CampusEvent, Category, CouncilYear } from "@/lib/types";
 
@@ -61,16 +62,13 @@ async function loadStaffWorkspace() {
       supabase.from("campus_council_members").select("*"),
     ]);
 
-  if (eventsResult.error || categoriesResult.error || achievementsResult.error) {
-    console.error(eventsResult.error ?? categoriesResult.error ?? achievementsResult.error);
-    return {
-      events: [],
-      categories: [],
-      achievements: [],
-      councilYears: readContentStore().councilYears,
-      mediaHosts: [],
-    };
-  }
+  logPostgrestUnlessMissing(eventsResult.error);
+  logPostgrestUnlessMissing(categoriesResult.error);
+  logPostgrestUnlessMissing(achievementsResult.error);
+  logPostgrestUnlessMissing(councilYearsResult.error);
+  logPostgrestUnlessMissing(imagesResult.error);
+  logPostgrestUnlessMissing(relationsResult.error);
+  logPostgrestUnlessMissing(settingsResult.error);
 
   const imagesByEvent = new Map<string, ReturnType<typeof mapImage>[]>();
   for (const row of imagesResult.error ? [] : (imagesResult.data ?? [])) {
@@ -90,11 +88,13 @@ async function loadStaffWorkspace() {
     relatedByEvent.set(record.event_id, list);
   }
 
-  const events = (eventsResult.data ?? []).map((row) => {
-    const record = row as Record<string, unknown>;
-    const id = String(record.id);
-    return mapEvent(record, imagesByEvent.get(id) ?? [], relatedByEvent.get(id) ?? []);
-  });
+  const events = eventsResult.error
+    ? []
+    : (eventsResult.data ?? []).map((row) => {
+        const record = row as Record<string, unknown>;
+        const id = String(record.id);
+        return mapEvent(record, imagesByEvent.get(id) ?? [], relatedByEvent.get(id) ?? []);
+      });
 
   const hosts = settingsResult.data?.media_hosts;
   const councilYears: CouncilYear[] = councilYearsResult.error
@@ -107,12 +107,12 @@ async function loadStaffWorkspace() {
       );
   return {
     events,
-    categories: (categoriesResult.data ?? []).map((row) =>
-      mapCategory(row as Record<string, unknown>),
-    ),
-    achievements: (achievementsResult.data ?? []).map((row) =>
-      mapAchievement(row as Record<string, unknown>),
-    ),
+    categories: categoriesResult.error
+      ? readContentStore().categories
+      : (categoriesResult.data ?? []).map((row) => mapCategory(row as Record<string, unknown>)),
+    achievements: achievementsResult.error
+      ? []
+      : (achievementsResult.data ?? []).map((row) => mapAchievement(row as Record<string, unknown>)),
     councilYears,
     mediaHosts: Array.isArray(hosts) ? hosts.map(String) : [],
   };

@@ -12,7 +12,9 @@ type Store = {
   councilYears: CouncilYear[];
 };
 
-const filePath = path.join(process.cwd(), "data", "campus.json");
+function contentFilePath() {
+  return path.join(process.cwd(), "data", "campus.json");
+}
 
 function initialStore(): Store {
   return {
@@ -25,7 +27,7 @@ function initialStore(): Store {
 
 export function readContentStore(): Store {
   try {
-    const parsed = JSON.parse(readFileSync(filePath, "utf8")) as Partial<Store>;
+    const parsed = JSON.parse(readFileSync(contentFilePath(), "utf8")) as Partial<Store>;
     return {
       events: Array.isArray(parsed.events) ? parsed.events : seedEvents,
       achievements: Array.isArray(parsed.achievements) ? parsed.achievements : seedAchievements,
@@ -46,6 +48,7 @@ export function readContentStore(): Store {
 
 function writeContentStore(store: Store) {
   try {
+    const filePath = contentFilePath();
     mkdirSync(path.dirname(filePath), { recursive: true });
     writeFileSync(filePath, JSON.stringify(store, null, 2));
     return true;

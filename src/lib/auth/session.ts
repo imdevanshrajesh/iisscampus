@@ -6,13 +6,46 @@ function isRole(value: unknown): value is CampusRole {
   return value === "editor" || value === "administrator";
 }
 
-export async function getCampusActor(): Promise<Actor> {
+export type CampusSession =
+  | { status: "anonymous" }
+  | { status: "no_role"; userId: string }
+  | { status: "error"; message: string }
+  | { status: "ok"; actor: NonNullable<Actor> };
+
+function authFailureMessage(error: { message?: string; code?: string } | null | undefined) {
+  const code = error?.code ?? "";
+  const message = (error?.message ?? "").toLowerCase();
+  if (
+    code === "refresh_token_not_found" ||
+    message.includes("refresh token") ||
+    (message.includes("session") && message.includes("missing"))
+  ) {
+    return "Your session expired. Sign in again at /manage/login.";
+  }
+  return "Sign in is required.";
+}
+
+export async function getCampusSession(): Promise<CampusSession> {
   try {
     const supabase = await createStaffClient();
-    if (!supabase) return null;
+    if (!supabase) return { status: "anonymous" };
 
     const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) return null;
+    if (error || !data.user) {
+      if (error) {
+        console.error(error);
+        const code = "code" in error ? String(error.code ?? "") : "";
+        if (code === "refresh_token_not_found" || error.message.toLowerCase().includes("refresh token")) {
+          try {
+            await supabase.auth.signOut();
+          } catch {
+            // Best-effort cookie clear.
+          }
+          return { status: "error", message: authFailureMessage(error) };
+        }
+      }
+      return { status: "anonymous" };
+    }
 
     const roleResult = await supabase
       .from("campus_staff")
@@ -22,12 +55,42 @@ export async function getCampusActor(): Promise<Actor> {
 
     if (roleResult.error) {
       console.error(roleResult.error);
-      return null;
+      const code = roleResult.error.code ?? "";
+      const message = (roleResult.error.message ?? "").toLowerCase();
+      if (code === "42501" || message.includes("permission denied")) {
+        return {
+          status: "error",
+          message:
+            "Campus staff privileges are missing. Run supabase/GRANTS_CAMPUS.sql in the Supabase SQL editor, then sign in again.",
+        };
+      }
+      return {
+        status: "error",
+        message: "Campus access could not be verified. Sign in again, or confirm this account has a campus role.",
+      };
     }
-    if (!isRole(roleResult.data?.role)) return null;
-    return { userId: data.user.id, role: roleResult.data.role };
+
+    if (!isRole(roleResult.data?.role)) {
+      return { status: "no_role", userId: data.user.id };
+    }
+
+    return { status: "ok", actor: { userId: data.user.id, role: roleResult.data.role } };
   } catch (error) {
     console.error(error);
-    return null;
+    return { status: "anonymous" };
   }
+}
+
+export async function getCampusActor(): Promise<Actor> {
+  const session = await getCampusSession();
+  return session.status === "ok" ? session.actor : null;
+}
+
+export function sessionActionError(session: CampusSession) {
+  if (session.status === "ok") return null;
+  if (session.status === "no_role") {
+    return "This account is signed in but has no campus role. An administrator must grant access first.";
+  }
+  if (session.status === "error") return session.message;
+  return "Sign in is required.";
 }

@@ -4,6 +4,7 @@ import { readContentStore } from "@/lib/data/file-content";
 import { groupCouncilRows, mapAchievement, mapCategory, mapEvent, mapImage } from "@/lib/data/map";
 import { contentMode } from "@/lib/data/content-mode";
 import { seedMediaHosts } from "@/lib/data/seed";
+import { logPostgrestUnlessMissing } from "@/lib/supabase/errors";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { Achievement, CampusEvent, Category, CouncilYear, PublicCatalog } from "@/lib/types";
 
@@ -46,6 +47,11 @@ async function supabaseCatalog(): Promise<PublicCatalog> {
       supabase.from("campus_council_posts").select("*"),
       supabase.from("campus_council_members").select("*"),
     ]);
+
+  logPostgrestUnlessMissing(eventsResult.error);
+  logPostgrestUnlessMissing(categoriesResult.error);
+  logPostgrestUnlessMissing(achievementsResult.error);
+  logPostgrestUnlessMissing(councilYearsResult.error);
 
   if (eventsResult.error || categoriesResult.error || achievementsResult.error) {
     return localCatalog();

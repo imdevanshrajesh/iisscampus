@@ -221,11 +221,14 @@ set search_path = public
 as $$
 declare
   target text;
+  row_json jsonb := to_jsonb(new);
 begin
-  target := case
-    when tg_table_name = 'campus_event_images' then new.url
-    when tg_table_name = 'campus_achievements' then new.image_url
-    else new.cover_image_url
+  -- Read fields via jsonb so the same function can fire on tables that do not
+  -- all share url / image_url / cover_image_url columns.
+  target := case tg_table_name
+    when 'campus_event_images' then row_json ->> 'url'
+    when 'campus_achievements' then row_json ->> 'image_url'
+    else row_json ->> 'cover_image_url'
   end;
   if not public.campus_media_url_allowed(target) then
     raise exception 'Image URL is not allowed';

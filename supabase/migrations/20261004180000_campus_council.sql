@@ -62,14 +62,15 @@ set search_path = public
 as $$
 declare
   target text;
+  row_json jsonb := to_jsonb(new);
 begin
-  target := case
-    when tg_table_name = 'campus_event_images' then new.url
-    when tg_table_name = 'campus_council_photos' then new.url
-    when tg_table_name = 'campus_achievements' then new.image_url
-    when tg_table_name = 'campus_council_posts' then new.image_url
-    when tg_table_name = 'campus_council_members' then new.image_url
-    else new.cover_image_url
+  target := case tg_table_name
+    when 'campus_event_images' then row_json ->> 'url'
+    when 'campus_council_photos' then row_json ->> 'url'
+    when 'campus_achievements' then row_json ->> 'image_url'
+    when 'campus_council_posts' then row_json ->> 'image_url'
+    when 'campus_council_members' then row_json ->> 'image_url'
+    else row_json ->> 'cover_image_url'
   end;
   if not public.campus_media_url_allowed(target) then
     raise exception 'Image URL is not allowed';

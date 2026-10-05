@@ -1,5 +1,5 @@
 import { forbidden, redirect, unstable_rethrow } from "next/navigation";
-import { getCampusActor } from "@/lib/auth/session";
+import { getCampusSession } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/config";
 import { getStaffWorkspace, type StaffWorkspace } from "@/lib/data/staff";
 import type { CampusRole } from "@/lib/types";
@@ -10,11 +10,11 @@ export async function requireWorkspace(): Promise<
 > {
   try {
     if (!isSupabaseConfigured()) return { ready: false };
-    const actor = await getCampusActor();
-    if (!actor) redirect("/manage/login");
+    const session = await getCampusSession();
+    if (session.status !== "ok") redirect("/manage/login");
     const workspace = await getStaffWorkspace();
     if (!workspace) redirect("/manage/login");
-    return { ready: true, role: actor.role, workspace };
+    return { ready: true, role: session.actor.role, workspace };
   } catch (error) {
     unstable_rethrow(error);
     console.error(error);

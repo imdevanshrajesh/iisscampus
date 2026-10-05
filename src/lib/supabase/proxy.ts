@@ -29,7 +29,14 @@ export async function refreshStaffSession(request: NextRequest) {
         },
       },
     });
-    await supabase.auth.getUser();
+    const { error } = await supabase.auth.getUser();
+    if (
+      error &&
+      (error.code === "refresh_token_not_found" ||
+        error.message.toLowerCase().includes("refresh token"))
+    ) {
+      await supabase.auth.signOut();
+    }
     return response;
   } catch {
     return passThrough;
