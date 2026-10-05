@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { campusPulse, filterPublishedEvents, pairCouncilMembers, selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "../src/lib/data/catalog.ts";
+import { campusPulse, filterPublishedEvents, isCouncilStaffRole, pairCouncilMembers, selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "../src/lib/data/catalog.ts";
 import type { CouncilYear } from "../src/lib/types.ts";
 import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "../src/lib/data/seed.ts";
 import type { CampusEvent } from "../src/lib/types.ts";
@@ -83,5 +83,18 @@ describe("public catalog", () => {
     assert.ok(head >= 0 && secretary === head + 1 && activity === secretary + 1);
     assert.equal(pairs[secretary]?.deputy?.role, "Council Secretary Vice Captain");
     assert.equal(pairs[head]?.deputy?.role, "Deputy Head Boy");
+  });
+
+  it("keeps the CCA coordinator out of the student roster pairs", () => {
+    assert.equal(isCouncilStaffRole("CCA Coordinator"), true);
+    assert.equal(isCouncilStaffRole("Teacher in charge"), true);
+    assert.equal(isCouncilStaffRole("Head Boy"), false);
+    const pairs = pairCouncilMembers(seedCouncilYears[0].members);
+    assert.equal(
+      pairs.some((pair) => isCouncilStaffRole(pair.lead.role) || (pair.deputy && isCouncilStaffRole(pair.deputy.role))),
+      false,
+    );
+    assert.equal(seedCouncilYears[0].members[0]?.role, "CCA Coordinator");
+    assert.equal(seedCouncilYears[0].members[0]?.name, "JANATHUL FIRTHOSE");
   });
 });

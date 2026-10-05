@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
-import { formatEventDate, pairCouncilMembers, paragraphs } from "@/lib/data/catalog";
+import { formatEventDate, isCouncilStaffRole, pairCouncilMembers, paragraphs } from "@/lib/data/catalog";
 import { classifyMediaUrl } from "@/lib/media/url";
 import type { CouncilKind, CouncilMember, CouncilYear } from "@/lib/types";
 
@@ -85,8 +85,11 @@ function CouncilYearSection({
   delay: number;
 }) {
   const photos = year.photos.filter((photo) => classifyMediaUrl(photo.url, hosts).ok);
-  const teachers = (year.members ?? []).filter((member) => /^teacher\b/i.test(member.role.trim()));
-  const pairs = pairCouncilMembers((year.members ?? []).filter((member) => !/^teacher\b/i.test(member.role.trim())));
+  const staff = (year.members ?? [])
+    .filter((member) => isCouncilStaffRole(member.role))
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const pairs = pairCouncilMembers(year.members ?? []);
 
   return (
     <section id={year.slug} className="council-year-block border-t border-line">
@@ -97,13 +100,14 @@ function CouncilYearSection({
           {year.summary ? <p className="mt-4 max-w-2xl text-base leading-7 text-muted">{year.summary}</p> : null}
         </RevealOnScroll>
 
-        {teachers.length ? (
+        {staff.length ? (
           <div className="mt-8">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Teachers</p>
-            <ul className="mt-3 flex flex-wrap gap-2">
-              {teachers.map((teacher) => (
-                <li key={teacher.id} className="rounded-full border border-line px-3 py-1.5 text-sm text-ink">
-                  {teacher.name}
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Teacher in charge</p>
+            <ul className="mt-3 flex flex-wrap gap-3">
+              {staff.map((person) => (
+                <li key={person.id} className="rounded-2xl border border-line px-4 py-3">
+                  <p className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-muted">{person.role}</p>
+                  <p className="mt-1 text-sm font-medium text-ink">{person.name}</p>
                 </li>
               ))}
             </ul>

@@ -40,8 +40,22 @@ function isVicePost(role: string) {
   return /\b(vice|deputy)\b/i.test(role);
 }
 
+export function isCouncilStaffRole(role: string) {
+  const value = role.trim().toLowerCase();
+  return (
+    /^teacher\b/.test(value) ||
+    /\bteacher in charge\b/.test(value) ||
+    /\bcca\b/.test(value) ||
+    /\bcoordinator\b/.test(value) ||
+    /\bco-ordinator\b/.test(value)
+  );
+}
+
 export function pairCouncilMembers(members: CouncilMember[]) {
-  const ordered = members.slice().sort((a, b) => a.sortOrder - b.sortOrder);
+  const ordered = members
+    .filter((member) => !isCouncilStaffRole(member.role))
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder);
   const vices = new Map<string, CouncilMember>();
   for (const member of ordered) {
     if (isVicePost(member.role)) vices.set(councilPostKey(member.role), member);

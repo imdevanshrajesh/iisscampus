@@ -1,4 +1,4 @@
-import { formatEventDate, pairCouncilMembers, paragraphs } from "@/lib/data/catalog";
+import { formatEventDate, isCouncilStaffRole, pairCouncilMembers, paragraphs } from "@/lib/data/catalog";
 import { classifyMediaUrl } from "@/lib/media/url";
 import type { CouncilKind, CouncilMember, CouncilYear } from "@/lib/types";
 
@@ -37,15 +37,34 @@ export function CouncilYearBlock({
 }) {
   const photos = year.photos.filter((photo) => classifyMediaUrl(photo.url, hosts).ok);
   const members = year.members ?? [];
+  const staff = members
+    .filter((member) => isCouncilStaffRole(member.role))
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const pairs = pairCouncilMembers(members);
 
   return (
     <article id={year.slug} className="border-t border-line py-12">
       <h2 className="font-display text-4xl text-ink md:text-5xl">{year.label}</h2>
       {year.summary ? <p className="mt-4 max-w-2xl text-base leading-7 text-muted">{year.summary}</p> : null}
 
-      {members.length ? (
+      {staff.length ? (
+        <div className="mt-8">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Teacher in charge</p>
+          <ul className="mt-3 flex flex-wrap gap-3">
+            {staff.map((person) => (
+              <li key={person.id} className="rounded-2xl border border-line px-4 py-3">
+                <p className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-muted">{person.role}</p>
+                <p className="mt-1 text-sm font-medium text-ink">{person.name}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {pairs.length ? (
         <ul className="mt-8 divide-y divide-line border-y border-line">
-          {pairCouncilMembers(members).map((pair) => (
+          {pairs.map((pair) => (
             <li key={pair.lead.id} className="grid md:grid-cols-2">
               <CouncilSeat member={pair.lead} hosts={hosts} />
               {pair.deputy ? <CouncilSeat member={pair.deputy} hosts={hosts} /> : <div className="hidden md:block" />}

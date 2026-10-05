@@ -3,6 +3,7 @@ import type { Achievement, CampusEvent, Category, CouncilMember, CouncilYear } f
 const now = "2026-01-01T00:00:00.000Z";
 
 const councilRoster: [string, string][] = [
+  ["CCA Coordinator", "JANATHUL FIRTHOSE"],
   ["Head Boy", "MOHAMMED REHAAN"],
   ["Deputy Head Boy", "DEVANSH RAJESH SINGH"],
   ["Council Secretary", "MOHAMMED SHAYAAN"],

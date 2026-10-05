@@ -2,15 +2,14 @@
 
 import { useActionState, useState } from "react";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
+import { isCouncilStaffRole } from "@/lib/data/catalog";
 import { saveCouncilYear, type ActionState } from "@/lib/manage/actions";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import type { CampusRole, CouncilKind, CouncilYear } from "@/lib/types";
 
 const fieldClass = "w-full rounded-md border border-line bg-background px-3 py-2 text-sm";
 
-function isTeacher(role: string) {
-  return /^teacher\b/i.test(role.trim());
-}
+const staffRoleOptions = ["CCA Coordinator", "Teacher in charge", "Teacher"] as const;
 
 const kinds: { value: CouncilKind; label: string }[] = [
   { value: "current", label: "This year" },
@@ -157,7 +156,7 @@ export function CouncilForm({
           </button>
         </div>
         {members.map((member, index) =>
-          isTeacher(member.role) ? null : (
+          isCouncilStaffRole(member.role) ? null : (
           <div key={member.key} className="grid gap-3 rounded-xl border border-line bg-background p-4">
             <input type="hidden" name={`members.${index}.id`} value={member.key} />
             <div className="grid gap-3 md:grid-cols-2">
@@ -264,7 +263,10 @@ export function CouncilForm({
 
       <section className="grid gap-3">
         <div className="flex items-end justify-between gap-4">
-          <h2 className="text-lg font-medium">Teachers</h2>
+          <div>
+            <h2 className="text-lg font-medium">Teacher in charge</h2>
+            <p className="mt-1 text-sm text-muted">Shown above the student roster on the public council page.</p>
+          </div>
           <button
             type="button"
             className="text-sm text-accent"
@@ -272,23 +274,45 @@ export function CouncilForm({
             onClick={() =>
               setMembers((current) => [
                 ...current,
-                { key: crypto.randomUUID(), role: "Teacher", name: "", imageUrl: "", imageAlt: "" },
+                { key: crypto.randomUUID(), role: "CCA Coordinator", name: "", imageUrl: "", imageAlt: "" },
               ])
             }
           >
-            Add a teacher
+            Add teacher in charge
           </button>
         </div>
-        {members.some((member) => isTeacher(member.role)) ? null : (
-          <p className="text-sm text-muted">No teachers yet.</p>
+        {members.some((member) => isCouncilStaffRole(member.role)) ? null : (
+          <p className="text-sm text-muted">No teacher in charge yet.</p>
         )}
         {members.map((member, index) =>
-          isTeacher(member.role) ? (
-            <div key={member.key} className="grid gap-3 rounded-xl border border-line bg-background p-4 md:grid-cols-[1fr_auto]">
+          isCouncilStaffRole(member.role) ? (
+            <div key={member.key} className="grid gap-3 rounded-xl border border-line bg-background p-4 md:grid-cols-[1fr_1fr_auto]">
               <input type="hidden" name={`members.${index}.id`} value={member.key} />
-              <input type="hidden" name={`members.${index}.role`} value="Teacher" />
               <input type="hidden" name={`members.${index}.imageUrl`} value="" />
               <input type="hidden" name={`members.${index}.imageAlt`} value="" />
+              <label className="grid gap-1.5 text-sm">
+                Role
+                <select
+                  name={`members.${index}.role`}
+                  value={member.role}
+                  disabled={locked}
+                  className={fieldClass}
+                  onChange={(event) =>
+                    setMembers((current) =>
+                      current.map((item) => (item.key === member.key ? { ...item, role: event.target.value } : item)),
+                    )
+                  }
+                >
+                  {(staffRoleOptions as readonly string[]).includes(member.role)
+                    ? null
+                    : <option value={member.role}>{member.role}</option>}
+                  {staffRoleOptions.map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="grid gap-1.5 text-sm">
                 Name
                 <input
