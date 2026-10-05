@@ -12,14 +12,22 @@ export type CampusSession =
   | { status: "error"; message: string }
   | { status: "ok"; actor: NonNullable<Actor> };
 
+function isMissingAuthSession(error: { name?: string; message?: string; code?: string } | null | undefined) {
+  if (!error) return false;
+  if (error.name === "AuthSessionMissingError") return true;
+  const message = (error.message ?? "").toLowerCase();
+  return message.includes("auth session missing") || (message.includes("session") && message.includes("missing"));
+}
+
+function isExpiredRefreshToken(error: { message?: string; code?: string } | null | undefined) {
+  if (!error) return false;
+  const code = error.code ?? "";
+  const message = (error.message ?? "").toLowerCase();
+  return code === "refresh_token_not_found" || message.includes("refresh token");
+}
+
 function authFailureMessage(error: { message?: string; code?: string } | null | undefined) {
-  const code = error?.code ?? "";
-  const message = (error?.message ?? "").toLowerCase();
-  if (
-    code === "refresh_token_not_found" ||
-    message.includes("refresh token") ||
-    (message.includes("session") && message.includes("missing"))
-  ) {
+  if (isExpiredRefreshToken(error) || isMissingAuthSession(error)) {
     return "Your session expired. Sign in again at /manage/login.";
   }
   return "Sign in is required.";
@@ -32,17 +40,19 @@ export async function getCampusSession(): Promise<CampusSession> {
 
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
+      if (isMissingAuthSession(error)) {
+        return { status: "anonymous" };
+      }
+      if (isExpiredRefreshToken(error)) {
+        try {
+          await supabase.auth.signOut();
+        } catch {
+          // Best-effort cookie clear.
+        }
+        return { status: "error", message: authFailureMessage(error) };
+      }
       if (error) {
         console.error(error);
-        const code = "code" in error ? String(error.code ?? "") : "";
-        if (code === "refresh_token_not_found" || error.message.toLowerCase().includes("refresh token")) {
-          try {
-            await supabase.auth.signOut();
-          } catch {
-            // Best-effort cookie clear.
-          }
-          return { status: "error", message: authFailureMessage(error) };
-        }
       }
       return { status: "anonymous" };
     }
@@ -76,6 +86,9 @@ export async function getCampusSession(): Promise<CampusSession> {
 
     return { status: "ok", actor: { userId: data.user.id, role: roleResult.data.role } };
   } catch (error) {
+    if (isMissingAuthSession(error as { name?: string; message?: string })) {
+      return { status: "anonymous" };
+    }
     console.error(error);
     return { status: "anonymous" };
   }
