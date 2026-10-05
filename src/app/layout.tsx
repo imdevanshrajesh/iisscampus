@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   },
 };
 
-const introScript = `(function(){try{var q=new URLSearchParams(location.search);var force=q.has("intro");var seen=false;try{seen=localStorage.getItem("campus-intro-seen")==="1"||sessionStorage.getItem("campus-intro-seen")==="1"}catch(e){}if(location.pathname==="/"&&(force||!seen)){document.documentElement.dataset.intro="play";try{localStorage.setItem("campus-intro-seen","1");sessionStorage.setItem("campus-intro-seen","1")}catch(e){}if(force&&window.history&&window.history.replaceState){var clean=location.pathname+(location.hash||"");window.history.replaceState({},document.title,clean)}}}catch(e){}})();`;
+const introScript = `(function(){try{if(location.pathname==="/"){document.documentElement.dataset.intro="play"}}catch(e){}})();`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

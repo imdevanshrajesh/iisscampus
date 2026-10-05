@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { AchievementCards } from "@/components/home/achievement-cards";
@@ -50,7 +51,7 @@ export function HomePage({
             style={delay(0)}
           >
             <span>India International School, Sharjah</span>
-            <span className="hidden text-center md:block">Campus record</span>
+            <span className="hidden text-center md:block">IISIANS</span>
             <span className="text-right">
               <Today />
             </span>
@@ -69,6 +70,19 @@ export function HomePage({
                 </svg>
               </span>
             </h1>
+            <div className="rise hero-stamp hidden shrink-0 md:block" style={delay(360)} aria-hidden="true">
+              <svg viewBox="0 0 200 200" className="hero-stamp__ring">
+                <defs>
+                  <path id="hero-stamp-path" d="M100,100 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0" />
+                </defs>
+                <text>
+                  <textPath href="#hero-stamp-path">
+                    India International School · Sharjah · IISIANS ·
+                  </textPath>
+                </text>
+              </svg>
+              <Image src="/brand/iiss-mark.webp" alt="" width={88} height={88} className="hero-stamp__mark" />
+            </div>
           </div>
 
           <div className="mt-12 grid gap-10 md:mt-16 md:grid-cols-[1fr_auto] md:items-end">

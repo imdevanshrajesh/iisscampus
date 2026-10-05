@@ -55,7 +55,7 @@ body::before {
   pointer-events: none;
   background-color: #faf9ea;
   background-repeat: repeat;
-  background-size: 1000px 1000px;
+  background-size: 480px 480px;
   background-image: url("/textures/drift/paper-0.webp");
   animation: paper-drift 6s linear infinite;
 }
@@ -111,6 +111,9 @@ html[data-intro="play"] body {
   --line: rgba(141, 180, 214, 0.24);
   --wash: #0c335c;
   background-color: var(--council);
+  background-image: url("/textures/council-grain.webp");
+  background-repeat: repeat;
+  background-size: 280px 280px;
   color: #f4f8f7;
 }
 
@@ -379,9 +382,9 @@ html[data-intro="play"] body {
 
 .hero-stamp__ring text {
   fill: var(--ink);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
@@ -676,9 +679,9 @@ html[data-intro="play"] .hero-scribble path {
   background: #ffffff;
   overflow: hidden;
   transition:
-    background-color 0.9s cubic-bezier(0.65, 0, 0.35, 1),
-    opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
-    visibility 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    background-color 0.4s cubic-bezier(0.65, 0, 0.35, 1),
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 html[data-intro="play"] .intro-splash,
@@ -704,9 +707,9 @@ html[data-intro="play"] .intro-splash,
   align-items: center;
   will-change: transform, opacity, filter;
   transition:
-    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
-    filter 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    transform 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .intro-splash__school--active {
@@ -730,9 +733,9 @@ html[data-intro="play"] .intro-splash,
   align-items: center;
   will-change: transform, opacity, filter;
   transition:
-    transform 1s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
-    filter 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .intro-splash__council--idle {
@@ -879,10 +882,10 @@ html[data-intro="play"] .intro-splash,
 @keyframes council-logo-float {
   0%,
   100% {
-    transform: translateY(0) rotate(-1deg);
+    transform: translateY(0);
   }
   50% {
-    transform: translateY(-10px) rotate(1deg);
+    transform: translateY(-6px);
   }
 }
 

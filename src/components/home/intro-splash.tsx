@@ -4,9 +4,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const STORAGE_KEY = "campus-intro-seen";
-
-type Phase = "school" | "council" | "out" | "done";
+type Phase = "school" | "councilBg" | "council" | "out" | "done";
 
 export function IntroSplash() {
   const pathname = usePathname();
@@ -15,23 +13,24 @@ export function IntroSplash() {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (!onHome || root.dataset.intro !== "play") {
+
+    if (!onHome) {
+      delete root.dataset.intro;
+      setPhase("done");
       return;
     }
 
-    try {
-      localStorage.setItem(STORAGE_KEY, "1");
-      sessionStorage.setItem(STORAGE_KEY, "1");
-    } catch {
-      // Private browsing safeguard
-    }
+    root.dataset.intro = "play";
+    setPhase("school");
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const councilAt = reduced ? 1000 : 2100;
-    const outAt = reduced ? 2000 : 4500;
-    const doneAt = outAt + (reduced ? 400 : 800);
+    const councilBgAt = reduced ? 700 : 1500;
+    const councilAt = councilBgAt + (reduced ? 400 : 1000);
+    const outAt = reduced ? 2000 : 4000;
+    const doneAt = outAt + (reduced ? 350 : 650);
 
     const timers = [
+      window.setTimeout(() => setPhase("councilBg"), councilBgAt),
       window.setTimeout(() => setPhase("council"), councilAt),
       window.setTimeout(() => {
         setPhase("out");
@@ -52,13 +51,15 @@ export function IntroSplash() {
 
   if (!active) return null;
 
+  const showCouncilBg = phase !== "school";
+
   const schoolClass =
     phase === "school"
       ? "intro-splash__school intro-splash__school--active"
       : "intro-splash__school intro-splash__school--exit";
 
   const councilClass =
-    phase === "school"
+    phase === "school" || phase === "councilBg"
       ? "intro-splash__council intro-splash__council--idle"
       : phase === "council"
         ? "intro-splash__council intro-splash__council--active"
@@ -66,7 +67,7 @@ export function IntroSplash() {
 
   return (
     <div
-      className={`intro-splash ${phase === "school" ? "" : "intro-splash--council"} ${
+      className={`intro-splash ${showCouncilBg ? "intro-splash--council" : ""} ${
         phase === "out" ? "intro-splash--out" : ""
       }`}
       aria-hidden="true"
@@ -89,7 +90,8 @@ export function IntroSplash() {
           alt=""
           width={260}
           height={260}
-          className="h-44 w-44 object-contain md:h-56 md:w-56"
+          unoptimized
+          className="h-44 w-44 object-contain md:h-52 md:w-52"
           priority
         />
         <p className="intro-splash__label intro-splash__label--council">Student Council · Boys</p>

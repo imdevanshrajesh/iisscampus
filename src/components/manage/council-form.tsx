@@ -6,6 +6,10 @@ import type { CampusRole, CouncilKind, CouncilYear } from "@/lib/types";
 
 const fieldClass = "w-full rounded-md border border-line bg-background px-3 py-2 text-sm";
 
+function isTeacher(role: string) {
+  return /^teacher\b/i.test(role.trim());
+}
+
 const kinds: { value: CouncilKind; label: string }[] = [
   { value: "current", label: "This year" },
   { value: "upcoming", label: "Coming up" },
@@ -150,7 +154,8 @@ export function CouncilForm({
             Add a post
           </button>
         </div>
-        {members.map((member, index) => (
+        {members.map((member, index) =>
+          isTeacher(member.role) ? null : (
           <div key={member.key} className="grid gap-3 rounded-xl border border-line bg-background p-4">
             <input type="hidden" name={`members.${index}.id`} value={member.key} />
             <div className="grid gap-3 md:grid-cols-2">
@@ -252,6 +257,60 @@ export function CouncilForm({
             </div>
           </div>
         ))}
+      </section>
+
+      <section className="grid gap-3">
+        <div className="flex items-end justify-between gap-4">
+          <h2 className="text-lg font-medium">Teachers</h2>
+          <button
+            type="button"
+            className="text-sm text-accent"
+            disabled={locked}
+            onClick={() =>
+              setMembers((current) => [
+                ...current,
+                { key: crypto.randomUUID(), role: "Teacher", name: "", imageUrl: "", imageAlt: "" },
+              ])
+            }
+          >
+            Add a teacher
+          </button>
+        </div>
+        {members.some((member) => isTeacher(member.role)) ? null : (
+          <p className="text-sm text-muted">No teachers yet.</p>
+        )}
+        {members.map((member, index) =>
+          isTeacher(member.role) ? (
+            <div key={member.key} className="grid gap-3 rounded-xl border border-line bg-background p-4 md:grid-cols-[1fr_auto]">
+              <input type="hidden" name={`members.${index}.id`} value={member.key} />
+              <input type="hidden" name={`members.${index}.role`} value="Teacher" />
+              <input type="hidden" name={`members.${index}.imageUrl`} value="" />
+              <input type="hidden" name={`members.${index}.imageAlt`} value="" />
+              <label className="grid gap-1.5 text-sm">
+                Name
+                <input
+                  name={`members.${index}.name`}
+                  value={member.name}
+                  disabled={locked}
+                  className={fieldClass}
+                  onChange={(event) =>
+                    setMembers((current) =>
+                      current.map((item) => (item.key === member.key ? { ...item, name: event.target.value } : item)),
+                    )
+                  }
+                />
+              </label>
+              <button
+                type="button"
+                className="self-end text-sm text-muted"
+                disabled={locked}
+                onClick={() => setMembers((current) => current.filter((item) => item.key !== member.key))}
+              >
+                Remove
+              </button>
+            </div>
+          ) : null,
+        )}
       </section>
 
       <section className="grid gap-4">

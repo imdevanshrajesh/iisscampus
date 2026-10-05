@@ -55,7 +55,7 @@ export function LiveNow({
           </div>
         )}
         <Link href="/events" className="text-link text-sm text-white/80">
-          Full calendar
+          Events
         </Link>
       </div>
     </aside>

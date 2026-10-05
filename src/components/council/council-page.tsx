@@ -26,9 +26,10 @@ export function CouncilPageView({
           <Image
             src="/brand/student-council.png"
             alt="Seniors Student Council, Boys"
-            width={800}
-            height={800}
-            className="council-hero__logo mx-auto h-auto w-52 object-contain md:mx-0 md:w-full"
+            width={640}
+            height={640}
+            unoptimized
+            className="mx-auto h-auto w-full max-w-[16rem] object-contain md:mx-0"
             priority
           />
           <div>
@@ -84,7 +85,8 @@ function CouncilYearSection({
   delay: number;
 }) {
   const photos = year.photos.filter((photo) => classifyMediaUrl(photo.url, hosts).ok);
-  const pairs = pairCouncilMembers(year.members ?? []);
+  const teachers = (year.members ?? []).filter((member) => /^teacher\b/i.test(member.role.trim()));
+  const pairs = pairCouncilMembers((year.members ?? []).filter((member) => !/^teacher\b/i.test(member.role.trim())));
 
   return (
     <section id={year.slug} className="council-year-block border-t border-line">
@@ -94,6 +96,19 @@ function CouncilYearSection({
           <h2 className="font-display mt-2 text-4xl text-ink md:text-5xl">{year.label}</h2>
           {year.summary ? <p className="mt-4 max-w-2xl text-base leading-7 text-muted">{year.summary}</p> : null}
         </RevealOnScroll>
+
+        {teachers.length ? (
+          <div className="mt-8">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Teachers</p>
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {teachers.map((teacher) => (
+                <li key={teacher.id} className="rounded-full border border-line px-3 py-1.5 text-sm text-ink">
+                  {teacher.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         {pairs.length ? (
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

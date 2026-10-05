@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "@/lib/data/catalog";
 import { readContentStore, readNewsletter } from "@/lib/data/file-content";
 import { groupCouncilRows, mapAchievement, mapCategory, mapEvent, mapImage } from "@/lib/data/map";
@@ -156,17 +157,23 @@ export async function getEditableNewsletter(): Promise<Newsletter | null> {
   return readNewsletter();
 }
 
-export const getPublicCatalog = cache(async (): Promise<PublicCatalog> => {
-  try {
-    if ((await contentMode()) === "supabase") {
-      const remote = await supabaseCatalog();
-      if (remote.source === "supabase") return remote;
-    }
-  } catch (error) {
-    console.error(error);
-  }
-  return localCatalog();
-});
+export const getPublicCatalog = cache(
+  unstable_cache(
+    async (): Promise<PublicCatalog> => {
+      try {
+        if ((await contentMode()) === "supabase") {
+          const remote = await supabaseCatalog();
+          if (remote.source === "supabase") return remote;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+      return localCatalog();
+    },
+    ["public-catalog"],
+    { revalidate: 120 },
+  ),
+);
 
 export async function getPublicEvent(slug: string): Promise<{
   catalog: PublicCatalog;

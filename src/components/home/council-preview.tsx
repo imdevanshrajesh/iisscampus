@@ -13,7 +13,8 @@ export function CouncilPreview() {
               alt=""
               width={640}
               height={640}
-              className="council-hero__logo mx-auto h-auto w-48 object-contain md:w-full md:max-w-[17rem]"
+              unoptimized
+              className="mx-auto h-auto w-48 max-w-full object-contain md:w-full md:max-w-[17rem]"
             />
             <div>
               <p className="kicker text-[#9fc4e4]">Student council · Boys</p>

@@ -73,7 +73,7 @@ export function SiteFooter({ showSampleNote }: { showSampleNote: boolean }) {
           </div>
         </div>
         <div className="mt-16 flex flex-col justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/45 md:flex-row">
-          <p>© {new Date().getFullYear()} Campus archive</p>
+          <p>© {new Date().getFullYear()} IISS Archives</p>
         </div>
       </div>
     </footer>
