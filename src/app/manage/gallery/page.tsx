@@ -13,7 +13,12 @@ export default async function ManageGalleryPage() {
     <div className="mx-auto max-w-6xl px-5 py-12 md:px-8">
       <h1 className="text-3xl font-medium tracking-tight">Gallery</h1>
       <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
-        Photographs are external links. Add, reorder, and preview them on the event itself.
+        Photographs are external HTTPS links from an approved host. Upload to Cloudinary, approve{" "}
+        <span className="font-mono text-xs">res.cloudinary.com</span> in{" "}
+        <Link href="/manage/settings" className="text-accent underline-offset-2 hover:underline">
+          Settings
+        </Link>
+        , then add and preview images on each event.
       </p>
       <ul className="mt-8 divide-y divide-line rounded-xl border border-line bg-white">
         {access.workspace.events.map((event) => (

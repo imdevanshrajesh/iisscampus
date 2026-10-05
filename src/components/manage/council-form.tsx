@@ -1,7 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { ImageUrlHint } from "@/components/manage/image-url-hint";
 import { saveCouncilYear, type ActionState } from "@/lib/manage/actions";
+import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import type { CampusRole, CouncilKind, CouncilYear } from "@/lib/types";
 
 const fieldClass = "w-full rounded-md border border-line bg-background px-3 py-2 text-sm";
@@ -196,6 +198,7 @@ export function CouncilForm({
                   value={member.imageUrl}
                   disabled={locked}
                   className={fieldClass}
+                  placeholder={IMAGE_URL_EXAMPLE}
                   onChange={(event) =>
                     setMembers((current) =>
                       current.map((item) => (item.key === member.key ? { ...item, imageUrl: event.target.value } : item)),
@@ -328,6 +331,7 @@ export function CouncilForm({
           </button>
         </div>
         {photos.length === 0 ? <p className="text-sm text-muted">No photographs yet.</p> : null}
+        <ImageUrlHint />
         {photos.map((photo, index) => (
           <div key={photo.key} className="grid gap-3 rounded-xl border border-line bg-background p-4">
             <label className="grid gap-1.5 text-sm">
@@ -337,6 +341,7 @@ export function CouncilForm({
                 value={photo.url}
                 disabled={locked}
                 className={fieldClass}
+                placeholder={IMAGE_URL_EXAMPLE}
                 onChange={(event) =>
                   setPhotos((current) =>
                     current.map((item) => (item.key === photo.key ? { ...item, url: event.target.value } : item)),
@@ -455,6 +460,7 @@ export function CouncilForm({
                 value={post.imageUrl}
                 disabled={locked}
                 className={fieldClass}
+                placeholder={IMAGE_URL_EXAMPLE}
                 onChange={(event) =>
                   setPosts((current) =>
                     current.map((item) => (item.key === post.key ? { ...item, imageUrl: event.target.value } : item)),
@@ -462,6 +468,7 @@ export function CouncilForm({
                 }
               />
             </label>
+            <ImageUrlHint />
             <label className="grid gap-1.5 text-sm">
               Photograph description
               <input

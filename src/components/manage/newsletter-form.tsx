@@ -1,7 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
+import { ImageUrlHint } from "@/components/manage/image-url-hint";
 import { saveNewsletter } from "@/lib/manage/actions";
+import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import type { Newsletter } from "@/lib/types";
 
 const fieldClass = "mt-1 w-full rounded-md border border-line bg-white px-3 py-2 text-sm";
@@ -17,8 +19,15 @@ export function NewsletterForm({ newsletter }: { newsletter: Newsletter | null }
       </label>
       <label className="block text-sm">
         Image URL
-        <input name="imageUrl" defaultValue={newsletter?.imageUrl ?? ""} className={fieldClass} required />
+        <input
+          name="imageUrl"
+          defaultValue={newsletter?.imageUrl ?? ""}
+          className={fieldClass}
+          placeholder={IMAGE_URL_EXAMPLE}
+          required
+        />
       </label>
+      <ImageUrlHint />
       <label className="block text-sm">
         Link
         <input name="href" defaultValue={newsletter?.href ?? ""} placeholder="https://" className={fieldClass} required />

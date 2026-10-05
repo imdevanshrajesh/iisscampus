@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { grantRole, saveCategory, saveSettings, type ActionState } from "@/lib/manage/actions";
+import { RECOMMENDED_IMAGE_HOST } from "@/lib/media/guide";
 
 const fieldClass = "w-full rounded-md border border-line bg-white px-3 py-2 text-sm";
 
@@ -11,9 +12,19 @@ export function HostForm({ hosts }: { hosts: string[] }) {
     <form action={action} className="grid max-w-xl gap-3">
       <label className="grid gap-1.5 text-sm">
         Approved image hosts
-        <textarea name="mediaHosts" defaultValue={hosts.join("\n")} rows={6} className={fieldClass} placeholder="images.example.com" />
+        <textarea
+          name="mediaHosts"
+          defaultValue={hosts.join("\n")}
+          rows={6}
+          className={fieldClass}
+          placeholder={RECOMMENDED_IMAGE_HOST}
+        />
       </label>
-      <p className="text-xs leading-5 text-muted">One hostname per line. Google Drive sharing links stay blocked.</p>
+      <p className="text-xs leading-5 text-muted">
+        One hostname per line, without <span className="font-mono">https://</span> or paths. For Cloudinary, use{" "}
+        <span className="font-mono">{RECOMMENDED_IMAGE_HOST}</span>. Google Drive sharing links stay blocked even if
+        added here.
+      </p>
       {state.error ? <p className="text-sm">{state.error}</p> : null}
       {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
       <button type="submit" disabled={pending} className="justify-self-start rounded-md bg-ink px-4 py-2 text-sm text-white">Save hosts</button>

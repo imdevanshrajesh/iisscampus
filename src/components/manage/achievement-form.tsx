@@ -2,6 +2,8 @@
 
 import { useActionState, useState } from "react";
 import { saveAchievement, type ActionState } from "@/lib/manage/actions";
+import { ImageUrlHint } from "@/components/manage/image-url-hint";
+import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import { classifyMediaUrl } from "@/lib/media/url";
 import type { Achievement, CampusRole, Category, CampusEvent } from "@/lib/types";
 
@@ -53,8 +55,15 @@ export function AchievementForm({
         </label>
         <label className="grid gap-1.5 text-sm">
           Image URL
-          <input name="imageUrl" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} className={fieldClass} />
+          <input
+            name="imageUrl"
+            value={imageUrl}
+            onChange={(event) => setImageUrl(event.target.value)}
+            className={fieldClass}
+            placeholder={IMAGE_URL_EXAMPLE}
+          />
         </label>
+        <ImageUrlHint />
         {imageUrl && !image.ok ? <p className="text-sm text-muted">{image.message}</p> : null}
         {image.ok ? (
           // eslint-disable-next-line @next/next/no-img-element

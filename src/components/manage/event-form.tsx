@@ -3,6 +3,8 @@
 import { useActionState, useState } from "react";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { saveEvent, type ActionState } from "@/lib/manage/actions";
+import { ImageUrlHint } from "@/components/manage/image-url-hint";
+import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import { classifyMediaUrl } from "@/lib/media/url";
 import type { CampusEvent, CampusRole, Category, ParticipatingGroup, ScheduleItem } from "@/lib/types";
 
@@ -143,8 +145,9 @@ export function EventForm({
             <input name="coverImageUrl" value={coverUrl} onChange={(event) => {
               setCoverUrl(event.target.value);
               setCoverFailed(false);
-            }} className={fieldClass} placeholder="https://" />
+            }} className={fieldClass} placeholder={IMAGE_URL_EXAMPLE} />
           </label>
+          <ImageUrlHint />
           {coverUrl && !cover.ok ? <p className="text-sm text-muted">{cover.message}</p> : null}
           {cover.ok ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -181,8 +184,14 @@ export function EventForm({
               <div key={index} className="grid gap-3 rounded-xl border border-line p-4">
                 <label className="grid gap-1.5 text-sm">
                   Image URL
-                  <input value={image.url} onChange={(event) => updateImage(index, { url: event.target.value })} className={fieldClass} />
+                  <input
+                    value={image.url}
+                    onChange={(event) => updateImage(index, { url: event.target.value })}
+                    className={fieldClass}
+                    placeholder={IMAGE_URL_EXAMPLE}
+                  />
                 </label>
+                <ImageUrlHint />
                 {image.url && !classified.ok ? <p className="text-sm text-muted">{classified.message}</p> : null}
                 {classified.ok ? (
                   // eslint-disable-next-line @next/next/no-img-element

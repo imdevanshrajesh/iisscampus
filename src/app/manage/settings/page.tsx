@@ -1,6 +1,7 @@
 import { HostForm, RoleForm } from "@/components/manage/settings-forms";
 import { ManageUnavailable } from "@/components/manage/unavailable";
 import { requireAdministrator } from "@/lib/manage/access";
+import { IMAGE_HOSTS_GUIDE } from "@/lib/media/guide";
 import { createStaffClient } from "@/lib/supabase/server";
 
 export default async function SettingsPage() {
@@ -21,6 +22,22 @@ export default async function SettingsPage() {
       <h1 className="text-3xl font-medium tracking-tight">Settings</h1>
       <section className="mt-8">
         <h2 className="text-xl font-medium">Image hosts</h2>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
+          The site stores image addresses, not files. Visitors&apos; browsers load each photograph from the HTTPS URL you
+          paste in a form. Until a hostname is listed here, URLs on that host cannot be saved.
+        </p>
+        <ol className="mt-4 max-w-xl list-decimal space-y-2 pl-5 text-sm leading-6 text-muted">
+          {IMAGE_HOSTS_GUIDE.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+        <p className="mt-4 max-w-xl text-sm leading-6 text-muted">
+          Recommended host:{" "}
+          <a href="https://cloudinary.com" className="text-accent underline-offset-2 hover:underline">
+            Cloudinary
+          </a>{" "}
+          (free Media Library). Keep assets public so the preview and public pages can load them.
+        </p>
         <div className="mt-4">
           <HostForm hosts={access.workspace.mediaHosts} />
         </div>

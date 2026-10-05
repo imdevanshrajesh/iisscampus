@@ -36,7 +36,23 @@ Recovery uses the same SQL statement. It does not change Arigo's administrator l
 
 ### Photographs
 
-Paste an `https://` image address. The host must be on the list an administrator saves in Settings. Google Drive and Docs sharing links are rejected and are not rewritten into guessed download addresses. The browser loads the image. This server does not fetch it.
+The site stores HTTPS image addresses, not files. Each visitor's browser loads the photograph from that address. Google Drive and Docs sharing links are rejected and are not rewritten into guessed download addresses. This server does not fetch images.
+
+**Recommended host:** [Cloudinary](https://cloudinary.com) (free Media Library). Upload a photo, copy the secure delivery URL (for example `https://res.cloudinary.com/your-cloud-name/image/upload/v123/photo.jpg`), and keep the asset public.
+
+**Before editors can save URLs:**
+
+1. Sign in as an administrator and open `/manage/settings`.
+2. Under **Approved image hosts**, add one hostname per line. For Cloudinary, add `res.cloudinary.com` with no `https://` or path.
+3. Save hosts.
+
+**Adding a photograph to content:**
+
+1. Copy a direct `https://` image URL from Cloudinary (it should open the picture itself in a new tab).
+2. Paste it into the image field on the event (cover or gallery), achievement, council member or post, or newsletter form in `/manage`.
+3. Add alternative text. Save, then publish when ready.
+
+URLs must use `https://`, must not include credentials or a custom port, and must use a hostname on the approved list (up to 40 hosts).
 
 ### Registration
 
