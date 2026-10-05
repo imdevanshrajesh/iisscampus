@@ -1,12 +1,12 @@
 import { cache } from "react";
 import { selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "@/lib/data/catalog";
-import { readContentStore } from "@/lib/data/file-content";
+import { readContentStore, readNewsletter } from "@/lib/data/file-content";
 import { groupCouncilRows, mapAchievement, mapCategory, mapEvent, mapImage } from "@/lib/data/map";
 import { contentMode } from "@/lib/data/content-mode";
 import { seedMediaHosts } from "@/lib/data/seed";
 import { logPostgrestUnlessMissing } from "@/lib/supabase/errors";
 import { createPublicClient } from "@/lib/supabase/public";
-import type { Achievement, CampusEvent, Category, CouncilYear, PublicCatalog } from "@/lib/types";
+import type { Achievement, CampusEvent, Category, CouncilYear, Newsletter, PublicCatalog } from "@/lib/types";
 
 function localCatalog(): PublicCatalog {
   const store = readContentStore();
@@ -101,6 +101,59 @@ async function supabaseCatalog(): Promise<PublicCatalog> {
     councilYears,
     mediaHosts: Array.isArray(hosts) ? hosts.map(String) : [],
   };
+}
+
+export async function getPublicNewsletter(): Promise<Newsletter | null> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const row = await supabase
+          .from("campus_settings")
+          .select("newsletter_title, newsletter_image_url, newsletter_href, newsletter_published")
+          .eq("id", true)
+          .maybeSingle();
+        if (!row.error && row.data?.newsletter_published) {
+          const title = String(row.data.newsletter_title ?? "").trim();
+          const imageUrl = String(row.data.newsletter_image_url ?? "").trim();
+          const href = String(row.data.newsletter_href ?? "").trim();
+          if (title && imageUrl && href) return { title, imageUrl, href, published: true };
+        }
+        if (!row.error) return null;
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  const local = readNewsletter();
+  if (!local?.published || !local.title || !local.imageUrl || !local.href) return null;
+  return local;
+}
+
+export async function getEditableNewsletter(): Promise<Newsletter | null> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const row = await supabase
+          .from("campus_settings")
+          .select("newsletter_title, newsletter_image_url, newsletter_href, newsletter_published")
+          .eq("id", true)
+          .maybeSingle();
+        if (!row.error && row.data) {
+          return {
+            title: String(row.data.newsletter_title ?? ""),
+            imageUrl: String(row.data.newsletter_image_url ?? ""),
+            href: String(row.data.newsletter_href ?? ""),
+            published: Boolean(row.data.newsletter_published),
+          };
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return readNewsletter();
 }
 
 export const getPublicCatalog = cache(async (): Promise<PublicCatalog> => {

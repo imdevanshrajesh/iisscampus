@@ -1,9 +1,26 @@
 import Link from "next/link";
-import { EventCard } from "@/components/events/event-card";
-import { MediaFrame } from "@/components/media/media-frame";
-import { siteConfig } from "@/lib/config";
-import { formatEventDate } from "@/lib/data/catalog";
+import type { CSSProperties } from "react";
+import { AchievementCards } from "@/components/home/achievement-cards";
+import { BoardCard } from "@/components/home/board-card";
+import { ComingUp } from "@/components/home/coming-up";
+import { CouncilPreview } from "@/components/home/council-preview";
+import { GalleryMosaic } from "@/components/home/gallery-mosaic";
+import { LiveNow } from "@/components/home/live-now";
+import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
+import { RingLink } from "@/components/home/ring-link";
+import { Today } from "@/components/home/today";
 import type { Achievement, CampusEvent, Category } from "@/lib/types";
+
+const pageAnchors = [
+  { href: "/events", label: "Events" },
+  { href: "/council", label: "Council" },
+  { href: "/achievements", label: "Achievements" },
+  { href: "/gallery", label: "Gallery" },
+];
+
+function delay(ms: number) {
+  return { "--d": `${ms}ms` } as CSSProperties;
+}
 
 export function HomePage({
   events,
@@ -17,200 +34,151 @@ export function HomePage({
   hosts: readonly string[];
 }) {
   const featured = events.filter((event) => event.featured);
-  const lead = (featured.length ? featured : events).slice(0, 4);
+  const lead = (featured.length ? featured : events).slice(0, 5);
   const ongoing = events.filter((event) => event.eventStatus === "ongoing" && !event.isSample);
   const upcoming = events
     .filter((event) => event.eventStatus === "upcoming" && !event.isSample)
     .slice()
     .sort((a, b) => (a.eventDate ?? "9999").localeCompare(b.eventDate ?? "9999"));
-  const highlights = events.slice(0, 3);
 
   return (
     <>
-      <section className="mx-auto max-w-6xl px-5 pb-6 pt-4 md:px-8 md:pt-8">
-        <p className="text-sm text-accent">India International School, Sharjah</p>
-        <div className="mt-4 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-xl">
-            <h1 className="font-display text-5xl leading-[0.95] text-ink md:text-7xl">What&apos;s on around campus.</h1>
-            <p className="mt-5 max-w-md text-lg leading-8 text-muted">
-              Events that are happening, the ones still to come, and the boys&apos; student council, kept in one place.
-            </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link href="/events" className="rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-ink">
-                See the events
-              </Link>
-              <Link href="/council" className="rounded-full border border-line px-4 py-2.5 text-sm font-medium">
-                Student council
-              </Link>
-            </div>
+      <section className="home-hero">
+        <div className="mx-auto max-w-[90rem] px-5 pt-4 md:px-8 md:pt-8">
+          <div
+            className="rise kicker grid grid-cols-2 gap-3 border-y border-ink/80 py-3 text-ink/75 md:grid-cols-3"
+            style={delay(0)}
+          >
+            <span>India International School, Sharjah</span>
+            <span className="hidden text-center md:block">Campus record</span>
+            <span className="text-right">
+              <Today />
+            </span>
           </div>
-          {ongoing.length ? (
-            <aside className="w-full max-w-md rounded-3xl bg-navy px-5 py-5 text-white">
-              <p className="text-sm text-white/60">Right now</p>
-              <ul className="mt-3 divide-y divide-white/15">
-                {ongoing.slice(0, 3).map((event) => (
-                  <li key={event.id} className="py-3">
-                    <Link href={`/events/${event.slug}`} className="font-display text-2xl">
-                      {event.title}
+
+          <div className="mt-10 flex items-end justify-between gap-10 md:mt-14">
+            <h1 className="hero-title font-display text-ink">
+              <span className="rise block" style={delay(120)}>
+                What&apos;s
+              </span>
+              <span className="rise relative inline-block italic" style={delay(260)}>
+                going on
+                <span className="hero-title__question">?</span>
+                <svg className="hero-scribble" viewBox="0 0 400 30" preserveAspectRatio="none" aria-hidden="true">
+                  <path pathLength={1} d="M4 20 C 70 8, 140 26, 210 14 S 330 6, 396 18" />
+                </svg>
+              </span>
+            </h1>
+          </div>
+
+          <div className="mt-12 grid gap-10 md:mt-16 md:grid-cols-[1fr_auto] md:items-end">
+            <div className="rise max-w-xl" style={delay(420)}>
+              <p className="text-lg leading-8 text-ink/80 md:text-xl md:leading-9">
+                Live activity, what&apos;s next, and the boys&apos; student council.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <RingLink href="/events">See what&apos;s on</RingLink>
+                <RingLink href="/council" tone="quiet">
+                  Student council
+                </RingLink>
+              </div>
+            </div>
+            <nav className="rise" style={delay(540)} aria-label="On this page">
+              <p className="kicker text-muted">Inside</p>
+              <ul className="mt-3 space-y-1.5 border-l border-accent/50 pl-4">
+                {pageAnchors.map((link, index) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="group flex items-baseline gap-3 text-sm text-ink">
+                      <span className="font-display text-xs italic text-accent">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="text-link">{link.label}</span>
                     </Link>
-                    <p className="mt-1 text-sm text-white/65">{event.shortDescription}</p>
                   </li>
                 ))}
               </ul>
-            </aside>
-          ) : (
-            <p className="max-w-xs text-sm leading-6 text-muted lg:pb-2">
-              Nothing is marked as happening today.
-              {upcoming[0] ? (
-                <>
-                  {" "}
-                  Next is{" "}
-                  <Link href={`/events/${upcoming[0].slug}`} className="font-medium text-ink">
-                    {upcoming[0].title}
-                  </Link>
-                  {formatEventDate(upcoming[0].eventDate) ? ` on ${formatEventDate(upcoming[0].eventDate)}` : ""}.
-                </>
-              ) : null}
-            </p>
-          )}
+            </nav>
+          </div>
+
+          <div className="rise home-hero__stage mt-14 md:mt-20" style={delay(680)}>
+            <LiveNow ongoing={ongoing} upcoming={upcoming} />
+          </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-5 py-14 md:px-8">
-        <div className="flex items-end justify-between gap-6">
-          <h2 className="font-display text-4xl text-ink">On the board</h2>
-          <Link href="/events" className="text-sm text-accent">
-            All events
-          </Link>
-        </div>
+      <section id="board" className="mx-auto max-w-[90rem] px-5 py-20 md:px-8 md:py-28">
+        <RevealOnScroll>
+          <div className="flex items-end justify-between gap-6 border-b border-ink pb-4">
+            <h2 className="font-display text-[clamp(2.6rem,5vw,4.5rem)] leading-none text-ink">
+              On the <span className="italic">board</span>
+            </h2>
+            <Link href="/events" className="text-link text-sm text-ink">
+              All events
+            </Link>
+          </div>
+        </RevealOnScroll>
         {lead.length ? (
-          <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {lead.slice(0, 3).map((event, index) => (
-              <EventCard
+          <div className="board-grid mt-8">
+            {lead.slice(0, 5).map((event, index) => (
+              <RevealOnScroll
                 key={event.id}
-                event={event}
-                categories={categories}
-                hosts={hosts}
-                priority={index === 0}
-              />
+                className={index === 0 ? "board-grid__lead" : index === 3 ? "board-grid__wide" : ""}
+                delay={index * 80}
+              >
+                <BoardCard
+                  event={event}
+                  categories={categories}
+                  hosts={hosts}
+                  tall={index === 0 || index === 2}
+                  priority={index === 0}
+                />
+              </RevealOnScroll>
             ))}
           </div>
         ) : (
-          <p className="mt-6 text-sm text-muted">Published events will show up here.</p>
+          <RevealOnScroll delay={120}>
+            <p className="font-display mt-10 max-w-xl text-3xl italic leading-tight text-ink/70">
+              The board is clear for now. Published events will be pinned here.
+            </p>
+          </RevealOnScroll>
         )}
       </section>
 
-      <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-6xl px-5 py-14 md:px-8">
-          <h2 className="font-display text-4xl text-ink">Coming up</h2>
-          {upcoming.length ? (
-            <ul className="mt-6 divide-y divide-line">
-              {upcoming.slice(0, 5).map((event) => (
-                <li key={event.id} className="grid gap-2 py-5 md:grid-cols-[11rem_1fr] md:items-baseline">
-                  <p className="text-sm text-muted">{formatEventDate(event.eventDate) ?? "Date to be set"}</p>
-                  <div>
-                    <Link href={`/events/${event.slug}`} className="text-lg font-medium">
-                      {event.title}
-                    </Link>
-                    <p className="mt-1 text-sm leading-6 text-muted">{event.shortDescription}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-4 max-w-xl text-sm leading-6 text-muted">
-              When an upcoming activity is published with a date, it lands here. Dates are not filled in to make the list look busy.
-            </p>
-          )}
-        </div>
-      </section>
+      <ComingUp events={upcoming} categories={categories} />
 
-      <section className="mx-auto max-w-6xl px-5 py-14 md:px-8">
-        <h2 className="font-display text-4xl text-ink">Browse by kind</h2>
-        <ul className="mt-6 divide-y divide-line border-y border-line">
-          {categories.map((category) => (
-            <li key={category.id}>
-              <Link
-                href={`/events?category=${category.slug}`}
-                className="grid gap-1 py-4 md:grid-cols-[14rem_1fr] md:items-baseline"
-              >
-                <span className="font-display text-2xl">{category.name}</span>
-                <span className="text-sm leading-6 text-muted">{category.description}</span>
-              </Link>
+      <section className="mx-auto max-w-[90rem] px-5 py-20 md:px-8 md:py-28">
+        <RevealOnScroll>
+          <h2 className="font-display max-w-[12ch] text-[clamp(2.6rem,5vw,4.5rem)] leading-[0.9] text-ink">
+            Browse <span className="italic">by kind.</span>
+          </h2>
+        </RevealOnScroll>
+        <ol className="mt-10 border-t border-ink">
+          {categories.map((category, index) => (
+            <li key={category.id} className="border-b border-line">
+              <RevealOnScroll delay={index * 50}>
+                <Link
+                  href={`/events?category=${category.slug}`}
+                  className="group grid gap-2 py-6 md:grid-cols-[5rem_1fr_auto] md:items-baseline md:gap-8"
+                >
+                  <span className="font-display text-2xl italic text-accent">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span className="font-display text-3xl text-ink transition-[transform,color] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-3 group-hover:text-accent md:text-4xl">
+                    {category.name}
+                  </span>
+                  <span className="max-w-md text-sm leading-6 text-muted md:text-right">{category.description}</span>
+                </Link>
+              </RevealOnScroll>
             </li>
           ))}
-        </ul>
+        </ol>
       </section>
 
-      <section className="bg-wash">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-4 px-5 py-14 md:px-8">
-          <div>
-            <p className="text-sm text-accent">Student council · Boys</p>
-            <h2 className="font-display mt-2 text-4xl text-ink">The council, year by year.</h2>
-          </div>
-          <Link href="/council" className="text-sm font-medium text-accent">
-            View
-          </Link>
-        </div>
-      </section>
+      <CouncilPreview />
 
-      <section className="mx-auto grid max-w-6xl gap-12 px-5 py-14 md:px-8 lg:grid-cols-2">
-        <div>
-          <div className="flex items-end justify-between gap-4">
-            <h2 className="font-display text-4xl text-ink">Achievements</h2>
-            <Link href="/achievements" className="text-sm text-accent">
-              Archive
-            </Link>
-          </div>
-          {achievements.length ? (
-            <ul className="mt-6 divide-y divide-line border-y border-line">
-              {achievements.slice(0, 4).map((item) => (
-                <li key={item.id} className="py-4">
-                  <p className="text-lg font-medium">{item.title}</p>
-                  <p className="mt-1 text-sm text-muted">
-                    {[item.competitionName, item.award, item.winnerName].filter(Boolean).join(" · ")}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-4 text-sm leading-6 text-muted">
-              Competition results show up here after someone publishes them.
-            </p>
-          )}
-        </div>
-        <div>
-          <div className="flex items-end justify-between gap-4">
-            <h2 className="font-display text-4xl text-ink">From the gallery</h2>
-            <Link href="/gallery" className="text-sm text-accent">
-              All photographs
-            </Link>
-          </div>
-          <div className="mt-6 grid grid-cols-3 gap-2">
-            {highlights.map((event) => (
-              <Link key={event.id} href={`/gallery#gallery-${event.slug}`}>
-                <MediaFrame
-                  url={event.coverImageUrl}
-                  alt={event.coverAlt}
-                  hosts={hosts}
-                  title={event.title}
-                  kicker="Photo"
-                />
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-t border-line">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-14 md:flex-row md:items-end md:justify-between md:px-8">
-          <p className="max-w-xl text-base leading-7 text-muted">
-            Registration for a chosen activity opens on Arigo. Signing in there does not, on its own, put a student on an event list.
-          </p>
-          <a href={siteConfig.arigoUrl ?? "https://arigo.buildkre.com"} className="text-sm font-medium text-accent">
-            Open Arigo
-          </a>
-        </div>
+      <section className="mx-auto grid max-w-[90rem] gap-16 px-5 py-20 md:px-8 md:py-28 lg:grid-cols-2 lg:gap-12">
+        <AchievementCards achievements={achievements} categories={categories} hosts={hosts} />
+        <GalleryMosaic events={events} hosts={hosts} />
       </section>
     </>
   );

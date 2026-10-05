@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { canDelete, canEditPublication, canTransition, type Actor } from "@/lib/auth/permissions";
 import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "@/lib/data/seed";
-import type { Achievement, CampusEvent, Category, CouncilYear, PublicationStatus } from "@/lib/types";
+import type { Achievement, CampusEvent, Category, CouncilYear, Newsletter, PublicationStatus } from "@/lib/types";
 import type { AchievementInput, CouncilInput, EventInput } from "@/lib/validation/content";
 
 type Store = {
@@ -10,6 +10,7 @@ type Store = {
   achievements: Achievement[];
   categories: Category[];
   councilYears: CouncilYear[];
+  newsletter?: Newsletter | null;
 };
 
 function contentFilePath() {
@@ -40,6 +41,7 @@ export function readContentStore(): Store {
             posts: year.posts ?? [],
           }))
         : seedCouncilYears,
+      newsletter: parsed.newsletter ?? null,
     };
   } catch {
     return initialStore();
@@ -338,5 +340,15 @@ export function addCategoryToStore(name: string, slug: string, description: stri
     description,
     sortOrder: store.categories.length + 1,
   });
+  return writeContentStore(store);
+}
+
+export function readNewsletter(): Newsletter | null {
+  return readContentStore().newsletter ?? null;
+}
+
+export function saveNewsletterToStore(newsletter: Newsletter) {
+  const store = readContentStore();
+  store.newsletter = newsletter;
   return writeContentStore(store);
 }

@@ -132,6 +132,13 @@ export type CouncilYear = {
   publishedAt: string | null;
 };
 
+export type Newsletter = {
+  title: string;
+  imageUrl: string;
+  href: string;
+  published: boolean;
+};
+
 export type PublicCatalog = {
   source: "local" | "supabase";
   categories: Category[];

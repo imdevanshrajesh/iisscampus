@@ -1,12 +1,10 @@
 "use client";
 
-import { Home, Images, CalendarDays, Users } from "lucide-react";
+import { Home, Images, CalendarDays, Users, Newspaper } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { siteConfig } from "@/lib/config";
-import type { CampusPulse } from "@/lib/data/catalog";
 import { primaryNav } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +13,7 @@ const dock = [
   { href: "/events", label: "Events", icon: CalendarDays },
   { href: "/council", label: "Council", icon: Users },
   { href: "/gallery", label: "Gallery", icon: Images },
+  { href: "/newsletter", label: "Letter", icon: Newspaper },
 ];
 
 export function HomeLink() {
@@ -31,7 +30,7 @@ export function HomeLink() {
   );
 }
 
-export function SiteChrome({ pulse }: { pulse: CampusPulse }) {
+export function SiteChrome() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
@@ -79,7 +78,7 @@ export function SiteChrome({ pulse }: { pulse: CampusPulse }) {
       </a>
       <header className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-3 pt-3 sm:px-4 sm:pt-4">
         <div
-          className="nav-island pointer-events-auto text-white"
+          className="nav-island pointer-events-auto"
           data-open={expanded ? "true" : "false"}
           onMouseEnter={() => {
             if (canHover) setOpen(true);
@@ -88,20 +87,16 @@ export function SiteChrome({ pulse }: { pulse: CampusPulse }) {
             if (!pinned) setOpen(false);
           }}
         >
-          <div className="flex items-center justify-between gap-2 px-2 py-2">
-            <Link href="/" aria-label="Home" className="shrink-0 rounded-full" onClick={closeMenu}>
-              <Image src="/brand/iiss-mark.webp" alt="" width={28} height={28} className="h-7 w-7 rounded-full" priority />
+          <div className="nav-island__bar">
+            <Link href="/" aria-label="Home" className="nav-island__logo" onClick={closeMenu}>
+              <Image src="/brand/iiss-mark.webp" alt="" width={32} height={32} className="h-7 w-7 object-contain" priority />
             </Link>
-            <Link
-              href="/"
-              onClick={closeMenu}
-              className="rounded-full px-2.5 py-1.5 text-sm font-medium text-white"
-            >
+            <Link href="/" onClick={closeMenu} className="rounded-full px-2.5 py-1.5 text-sm font-medium text-ink">
               Home
             </Link>
             <button
               type="button"
-              className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white"
+              className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-white/70 px-3 py-1.5 text-xs font-medium text-ink"
               aria-expanded={expanded}
               onClick={() => {
                 if (pinned) {
@@ -113,47 +108,36 @@ export function SiteChrome({ pulse }: { pulse: CampusPulse }) {
                 setOpen(true);
               }}
             >
-              {pulse.tone === "live" ? <span className="h-1.5 w-1.5 rounded-full bg-accent" /> : null}
               {expanded ? "Close" : "Menu"}
             </button>
           </div>
 
           <div
             className={cn(
-              "grid transition-[grid-template-rows] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+              "grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
               expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
             )}
           >
             <div className="overflow-hidden" aria-hidden={!expanded} inert={!expanded}>
-              <div className="flex flex-col gap-3 px-3 pb-3 pt-1">
-                <nav className="flex flex-wrap gap-1" aria-label="Primary">
-                  {primaryNav.map((link) => {
-                    const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
-                    return (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        onClick={closeMenu}
-                        className={cn(
-                          "rounded-full px-3 py-1.5 text-sm",
-                          active ? "bg-white text-navy" : "text-white/80 hover:bg-white/10 hover:text-white",
-                        )}
-                        aria-current={active ? "page" : undefined}
-                      >
-                        {link.label}
-                      </Link>
-                    );
-                  })}
-                </nav>
-                <Link href={pulse.href} onClick={closeMenu} className="rounded-2xl bg-white/10 px-3 py-2.5 text-sm text-white">
-                  <span className="block text-xs text-white/60">{pulse.detail}</span>
-                  <span className="mt-0.5 block">{pulse.label}</span>
-                </Link>
-                <div className="flex gap-4 px-1 text-xs text-white/60">
-                  <a href={siteConfig.officialSchoolUrl}>iiss.ae</a>
-                  <a href={siteConfig.arigoUrl ?? "https://arigo.buildkre.com"}>Arigo</a>
-                </div>
-              </div>
+              <nav className="flex flex-wrap gap-1 px-2 pt-1 pb-2.5" aria-label="Primary">
+                {primaryNav.map((link) => {
+                  const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={closeMenu}
+                      className={cn(
+                        "rounded-full px-3 py-1.5 text-sm",
+                        active ? "bg-navy text-white" : "text-ink/75 hover:bg-ink/5 hover:text-ink",
+                      )}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                })}
+              </nav>
             </div>
           </div>
         </div>

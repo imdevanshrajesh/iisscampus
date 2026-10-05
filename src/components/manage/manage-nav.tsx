@@ -9,6 +9,7 @@ const links = [
   { href: "/manage/council", label: "Council" },
   { href: "/manage/achievements", label: "Achievements" },
   { href: "/manage/gallery", label: "Gallery" },
+  { href: "/manage/newsletter", label: "Newsletter" },
 ];
 
 export function ManageNav({ showSettings }: { showSettings: boolean }) {

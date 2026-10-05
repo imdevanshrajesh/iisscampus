@@ -1,9 +1,11 @@
+import { ArrowUpRight } from "lucide-react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import { siteConfig } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "About",
-  description: "What IISSCampus is for, and how it relates to Arigo.",
+  description: "What the campus archive is for at India International School, Sharjah.",
   alternates: { canonical: "/about" },
 };
 
@@ -18,55 +20,72 @@ const kinds = [
 
 export default function AboutPage() {
   return (
-    <div className="mx-auto max-w-3xl px-5 py-14 md:px-8 md:py-20">
-      <p className="text-sm text-accent">About</p>
-      <h1 className="font-display mt-3 text-5xl text-ink md:text-6xl">A record of school life.</h1>
-      <div className="mt-8 space-y-5 text-base leading-7 text-ink">
-        <p>
-          IISSCampus keeps activities, the boys&apos; student council, and achievements from India International School, Sharjah. It is an independent archive. It is not the official school website.
-        </p>
-        <p>
-          The official site remains at{" "}
-          <a href={siteConfig.officialSchoolUrl} className="text-accent">
-            iiss.ae
+    <div className="mx-auto max-w-[90rem] px-5 py-10 md:px-8 md:py-16">
+      <div className="council-hero grid gap-12 md:grid-cols-[1fr_20rem] md:gap-20">
+        <div>
+          <p className="kicker text-accent">About</p>
+          <h1 className="font-display mt-4 max-w-[12ch] text-[clamp(3.2rem,7vw,6.5rem)] leading-[0.86] text-ink">
+            A record of <span className="italic">school life.</span>
+          </h1>
+          <div className="mt-10 max-w-xl space-y-5 text-lg leading-8 text-ink/85">
+            <p>
+              This campus archive keeps activities, the boys&apos; student council, and achievements from India
+              International School, Sharjah, in one place.
+            </p>
+            <p className="text-base leading-7 text-muted">
+              It is an independent record and not the official school website.
+            </p>
+          </div>
+
+          <a
+            href={siteConfig.officialSchoolUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="group mt-8 inline-flex items-center gap-2.5 rounded-full border border-line bg-background/60 py-1.5 pr-3.5 pl-1.5 text-xs text-ink transition-colors duration-300 hover:border-accent/50"
+          >
+            <Image src="/brand/iiss-mark.webp" alt="" width={28} height={28} className="h-7 w-7 rounded-full bg-white object-contain p-0.5" />
+            <span>
+              Official school website <span className="text-muted">· iiss.ae</span>
+            </span>
+            <ArrowUpRight
+              aria-hidden="true"
+              size={14}
+              className="text-accent transition-transform duration-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+            />
           </a>
-          .
-        </p>
+        </div>
+
+        <aside className="md:pt-24">
+          <p className="kicker text-muted">What is documented</p>
+          <ol className="mt-4 border-t border-ink">
+            {kinds.map((kind, index) => (
+              <li key={kind} className="flex items-baseline gap-4 border-b border-line py-3.5 text-sm text-ink">
+                <span className="font-display text-xs italic text-accent">{String(index + 1).padStart(2, "0")}</span>
+                {kind}
+              </li>
+            ))}
+          </ol>
+
+          <p className="kicker mt-10 text-muted">Contact</p>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            {siteConfig.contactUrl ? (
+              <a href={siteConfig.contactUrl} className="text-link text-ink">
+                Send feedback
+              </a>
+            ) : (
+              "A contact link has not been configured."
+            )}
+            {siteConfig.instagramUrl ? (
+              <>
+                {" · "}
+                <a href={siteConfig.instagramUrl} className="text-link text-ink">
+                  Instagram
+                </a>
+              </>
+            ) : null}
+          </p>
+        </aside>
       </div>
-      <h2 className="mt-12 text-2xl font-medium tracking-tight">What is documented</h2>
-      <ul className="mt-4 space-y-2 text-base leading-7">
-        {kinds.map((kind) => (
-          <li key={kind}>{kind}</li>
-        ))}
-      </ul>
-      <h2 className="mt-12 text-2xl font-medium tracking-tight">Arigo</h2>
-      <p className="mt-4 text-base leading-7">
-        Arigo is a separate student community. When an activity needs registration, IISSCampus links to the address configured for that event. Creating an Arigo account does not, by itself, register a student for an event. Arigo handles its own sign-in. IISSCampus does not collect Arigo passwords.
-      </p>
-      {siteConfig.arigoUrl ? (
-        <a href={siteConfig.arigoUrl} className="mt-6 inline-flex text-sm font-medium text-accent">
-          Explore Arigo
-        </a>
-      ) : null}
-      <h2 className="mt-12 text-2xl font-medium tracking-tight">Contact</h2>
-      <p className="mt-4 text-base leading-7 text-muted">
-        {siteConfig.contactUrl ? (
-          <a href={siteConfig.contactUrl} className="text-accent">
-            Send feedback
-          </a>
-        ) : (
-          "A contact link has not been configured."
-        )}
-        {siteConfig.instagramUrl ? (
-          <>
-            {" "}
-            ·{" "}
-            <a href={siteConfig.instagramUrl} className="text-accent">
-              Instagram
-            </a>
-          </>
-        ) : null}
-      </p>
     </div>
   );
 }

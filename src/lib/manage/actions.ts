@@ -14,6 +14,7 @@ import {
   saveAchievementToStore,
   saveCouncilToStore,
   saveEventToStore,
+  saveNewsletterToStore,
 } from "@/lib/data/file-content";
 import { classifyMediaUrl, classifyNavigationUrl, parseMediaHostList } from "@/lib/media/url";
 import { isMissingTableError, missingCouncilTablesMessage } from "@/lib/supabase/errors";
@@ -1025,4 +1026,63 @@ export async function deleteCouncilYear(_state: ActionState, formData: FormData)
   await writeAudit(context.supabase, context.actor.userId, "delete", "campus_council_years", id);
   revalidateCouncil(String(existing.data.slug));
   redirect("/manage/council");
+}
+
+export async function saveNewsletter(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const title = String(formData.get("title") ?? "").trim();
+  const imageRaw = String(formData.get("imageUrl") ?? "").trim();
+  const hrefRaw = String(formData.get("href") ?? "").trim();
+  const published = formData.get("published") === "on";
+
+  if (title.length < 2 || title.length > 80) return { error: "Enter a title." };
+  if (!imageRaw) return { error: "Enter an image URL." };
+  const href = classifyNavigationUrl(hrefRaw);
+  if (!href.ok) return { error: href.message };
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor(() => true);
+    if ("error" in access) return access;
+    const image = classifyNavigationUrl(imageRaw);
+    if (!image.ok) return { error: image.message };
+    if (!saveNewsletterToStore({ title, imageUrl: image.url, href: href.url, published })) {
+      return { error: "The newsletter could not be saved." };
+    }
+    revalidatePath("/");
+    revalidatePath("/newsletter");
+    revalidatePath("/manage/newsletter");
+    return { ok: "Newsletter saved." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "create_draft")) return { error: genericDenial };
+
+  const hostsRow = await context.supabase.from("campus_settings").select("media_hosts").eq("id", true).maybeSingle();
+  const hosts = Array.isArray(hostsRow.data?.media_hosts) ? hostsRow.data.media_hosts.map(String) : [];
+  const image = classifyMediaUrl(imageRaw, hosts);
+  if (!image.ok) return { error: image.message };
+
+  const saved = await context.supabase
+    .from("campus_settings")
+    .update({
+      newsletter_title: title,
+      newsletter_image_url: image.url,
+      newsletter_href: href.url,
+      newsletter_published: published,
+    })
+    .eq("id", true);
+  if (saved.error) {
+    const missing = (saved.error.message ?? "").toLowerCase().includes("newsletter_");
+    return {
+      error: missing
+        ? "Run supabase/NEWSLETTER.sql in the database, then save again."
+        : databaseError(saved.error, "The newsletter could not be saved."),
+    };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, "update_newsletter", "campus_settings", null);
+  revalidatePath("/");
+  revalidatePath("/newsletter");
+  revalidatePath("/manage/newsletter");
+  return { ok: "Newsletter saved." };
 }

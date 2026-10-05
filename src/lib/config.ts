@@ -31,12 +31,13 @@ export function resolveSiteUrl() {
 }
 
 export const siteConfig = {
-  name: "IISSCampus",
+  name: "India International School, Sharjah",
+  shortName: "IISS Campus",
   description:
     "A digital archive of student activities, events, achievements, and campus life at India International School, Sharjah.",
   url: resolveSiteUrl(),
   officialSchoolUrl: "https://iiss.ae",
-  arigoUrl: absoluteHttps(read("NEXT_PUBLIC_ARIGO_URL")) ?? "https://arigo.buildkre.com",
+  arigoUrl: absoluteHttps(read("NEXT_PUBLIC_ARIGO_URL")),
   instagramUrl: absoluteHttps(read("NEXT_PUBLIC_INSTAGRAM_URL")),
   contactUrl: absoluteHttps(read("NEXT_PUBLIC_CONTACT_URL")),
 };

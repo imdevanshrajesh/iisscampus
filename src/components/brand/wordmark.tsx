@@ -12,7 +12,7 @@ export function Wordmark({ href = "/", tone = "ink" }: { href?: string; tone?: "
         className="h-9 w-9 rounded-md"
         priority
       />
-      <span className="text-lg font-semibold tracking-tight">Campus</span>
+      <span className="text-lg font-semibold tracking-tight">IISS Campus</span>
     </Link>
   );
 }

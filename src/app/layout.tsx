@@ -11,30 +11,41 @@ const geist = Geist({
 const display = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
-  weight: ["500", "600"],
+  style: ["normal", "italic"],
+  axes: ["SOFT", "WONK", "opsz"],
 });
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   title: {
-    default: "IISSCampus",
-    template: "%s · IISSCampus",
+    default: siteConfig.name,
+    template: `%s · ${siteConfig.shortName}`,
   },
   description: siteConfig.description,
-  applicationName: "Campus",
+  applicationName: siteConfig.shortName,
   icons: { icon: "/brand/iiss-mark.webp", apple: "/brand/iiss-mark.webp" },
   openGraph: {
     type: "website",
-    siteName: "IISSCampus",
+    siteName: siteConfig.name,
     locale: "en_AE",
-    title: "IISSCampus",
+    title: siteConfig.name,
     description: siteConfig.description,
   },
 };
 
+const introScript = `(function(){try{var q=new URLSearchParams(location.search);var force=q.has("intro");var seen=false;try{seen=localStorage.getItem("campus-intro-seen")==="1"||sessionStorage.getItem("campus-intro-seen")==="1"}catch(e){}if(location.pathname==="/"&&(force||!seen)){document.documentElement.dataset.intro="play";try{localStorage.setItem("campus-intro-seen","1");sessionStorage.setItem("campus-intro-seen","1")}catch(e){}if(force&&window.history&&window.history.replaceState){var clean=location.pathname+(location.hash||"");window.history.replaceState({},document.title,clean)}}}catch(e){}})();`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geist.variable} ${display.variable} h-full antialiased`} data-scroll-behavior="smooth">
+    <html
+      lang="en"
+      className={`${geist.variable} ${display.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: introScript }} />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
