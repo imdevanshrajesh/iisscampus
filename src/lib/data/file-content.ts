@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { canDelete, canEditPublication, canTransition, type Actor } from "@/lib/auth/permissions";
 import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "@/lib/data/seed";
-import type { Achievement, CampusEvent, Category, CouncilYear, Newsletter, PublicationStatus } from "@/lib/types";
+import type { Achievement, CampusEvent, Category, CouncilYear, Newsletter, PublicationStatus, SocialLinks } from "@/lib/types";
 import type { AchievementInput, CouncilInput, EventInput } from "@/lib/validation/content";
 
 type Store = {
@@ -11,6 +11,7 @@ type Store = {
   categories: Category[];
   councilYears: CouncilYear[];
   newsletter?: Newsletter | null;
+  social?: SocialLinks | null;
 };
 
 function contentFilePath() {
@@ -36,12 +37,16 @@ export function readContentStore(): Store {
       councilYears: Array.isArray(parsed.councilYears)
         ? parsed.councilYears.map((year) => ({
             ...year,
-            members: year.members ?? [],
+            members: (year.members ?? []).map((member) => ({
+              ...member,
+              quote: member.quote ?? null,
+            })),
             photos: year.photos ?? [],
             posts: year.posts ?? [],
           }))
         : seedCouncilYears,
       newsletter: parsed.newsletter ?? null,
+      social: parsed.social ?? null,
     };
   } catch {
     return initialStore();
@@ -279,6 +284,7 @@ export function saveCouncilToStore(actor: Actor, input: CouncilInput, intent: st
       name: member.name,
       imageUrl: member.imageUrl,
       imageAlt: member.imageAlt,
+      quote: member.quote,
       sortOrder: index,
     })),
     photos: input.photos.map((photo, index) => ({
@@ -350,5 +356,15 @@ export function readNewsletter(): Newsletter | null {
 export function saveNewsletterToStore(newsletter: Newsletter) {
   const store = readContentStore();
   store.newsletter = newsletter;
+  return writeContentStore(store);
+}
+
+export function readSocial(): SocialLinks | null {
+  return readContentStore().social ?? null;
+}
+
+export function saveSocialToStore(social: SocialLinks) {
+  const store = readContentStore();
+  store.social = social;
   return writeContentStore(store);
 }

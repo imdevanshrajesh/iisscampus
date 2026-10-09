@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { CouncilPageView } from "@/components/council/council-page";
 import { selectPublicCouncil } from "@/lib/data/catalog";
-import { getPublicCatalog } from "@/lib/data/queries";
+import { getPublicCatalog, getPublicSocial } from "@/lib/data/queries";
 
 export const metadata: Metadata = {
   title: "Student Council · Boys",
@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 };
 
 export default async function CouncilPage() {
-  const catalog = await getPublicCatalog();
+  const [catalog, social] = await Promise.all([getPublicCatalog(), getPublicSocial()]);
   const years = selectPublicCouncil(catalog.councilYears);
 
-  return <CouncilPageView years={years} hosts={catalog.mediaHosts} />;
+  return <CouncilPageView years={years} hosts={catalog.mediaHosts} scixcomUrl={social.scixcomInstagramUrl} />;
 }

@@ -33,8 +33,6 @@ export const metadata: Metadata = {
   },
 };
 
-const introScript = `(function(){try{if(location.pathname==="/"){document.documentElement.dataset.intro="play"}}catch(e){}})();`;
-
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -43,9 +41,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: introScript }} />
-      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

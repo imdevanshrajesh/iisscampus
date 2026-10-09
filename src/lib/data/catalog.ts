@@ -75,6 +75,26 @@ export function pairCouncilMembers(members: CouncilMember[]) {
   return pairs;
 }
 
+function eventWhen(event: CampusEvent) {
+  return event.endDate ?? event.eventDate ?? "";
+}
+
+function statusRank(status: EventStatus | null) {
+  if (status === "ongoing") return 0;
+  if (status === "upcoming") return 1;
+  if (status === "completed") return 2;
+  return 3;
+}
+
+export function compareCampusEvents(a: CampusEvent, b: CampusEvent) {
+  const byStatus = statusRank(a.eventStatus) - statusRank(b.eventStatus);
+  if (byStatus !== 0) return byStatus;
+  if (a.eventStatus === "completed") {
+    return eventWhen(b).localeCompare(eventWhen(a)) || a.title.localeCompare(b.title);
+  }
+  return (a.eventDate ?? "9999").localeCompare(b.eventDate ?? "9999") || a.title.localeCompare(b.title);
+}
+
 export function eventStatusLabel(status: EventStatus | null) {
   if (status === "ongoing") return "On now";
   if (status === "upcoming") return "Coming up";
@@ -156,7 +176,7 @@ export function filterPublishedEvents(
     if (!query) return true;
     const haystack = `${event.title} ${event.shortDescription} ${event.fullDescription}`.toLowerCase();
     return haystack.includes(query);
-  });
+  }).sort(compareCampusEvents);
 }
 
 export function publishedYears(events: CampusEvent[]) {

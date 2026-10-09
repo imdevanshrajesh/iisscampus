@@ -94,6 +94,7 @@ export type CouncilMember = {
   name: string;
   imageUrl: string | null;
   imageAlt: string | null;
+  quote: string | null;
   sortOrder: number;
 };
 
@@ -137,6 +138,11 @@ export type Newsletter = {
   imageUrl: string;
   href: string;
   published: boolean;
+};
+
+export type SocialLinks = {
+  instagramUrl: string;
+  scixcomInstagramUrl: string;
 };
 
 export type PublicCatalog = {

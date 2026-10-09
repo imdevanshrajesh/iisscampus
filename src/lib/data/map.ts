@@ -87,6 +87,7 @@ export function mapCouncilMember(row: Record<string, unknown>): CouncilMember {
     name: String(row.name ?? ""),
     imageUrl: row.image_url ? String(row.image_url) : null,
     imageAlt: row.image_alt ? String(row.image_alt) : null,
+    quote: row.quote ? String(row.quote) : null,
     sortOrder: Number(row.sort_order ?? 0),
   };
 }

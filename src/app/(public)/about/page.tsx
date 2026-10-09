@@ -2,6 +2,7 @@ import { ArrowUpRight } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { siteConfig } from "@/lib/config";
+import { getPublicSocial } from "@/lib/data/queries";
 
 export const metadata: Metadata = {
   title: "About",
@@ -18,7 +19,8 @@ const kinds = [
   "The boys' student council, year by year",
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const social = await getPublicSocial();
   return (
     <div className="mx-auto max-w-[90rem] px-5 py-10 md:px-8 md:py-16">
       <div className="council-hero grid gap-12 md:grid-cols-[1fr_20rem] md:gap-20">
@@ -75,14 +77,14 @@ export default function AboutPage() {
             ) : (
               "A contact link has not been configured."
             )}
-            {siteConfig.instagramUrl ? (
-              <>
-                {" · "}
-                <a href={siteConfig.instagramUrl} className="text-link text-ink">
-                  Instagram
-                </a>
-              </>
-            ) : null}
+            {" · "}
+            <a href={social.instagramUrl} className="text-link text-ink" rel="noopener noreferrer">
+              Instagram
+            </a>
+            {" · "}
+            <a href={social.scixcomInstagramUrl} className="text-link text-ink" rel="noopener noreferrer">
+              SciXcom
+            </a>
           </p>
         </aside>
       </div>

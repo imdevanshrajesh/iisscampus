@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { campusPulse, filterPublishedEvents, isCouncilStaffRole, pairCouncilMembers, selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "../src/lib/data/catalog.ts";
+import { campusPulse, compareCampusEvents, filterPublishedEvents, isCouncilStaffRole, pairCouncilMembers, selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "../src/lib/data/catalog.ts";
 import type { CouncilYear } from "../src/lib/types.ts";
 import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "../src/lib/data/seed.ts";
 import type { CampusEvent } from "../src/lib/types.ts";
@@ -96,5 +96,42 @@ describe("public catalog", () => {
     );
     assert.equal(seedCouncilYears[0].members[0]?.role, "CCA Coordinator");
     assert.equal(seedCouncilYears[0].members[0]?.name, "JANATHUL FIRTHOSE");
+  });
+
+  it("lists finished events with the latest ending first", () => {
+    const older: CampusEvent = {
+      ...seedEvents[0],
+      id: "20000000-0000-4000-8000-000000000091",
+      slug: "older-finish",
+      title: "Older finish",
+      eventDate: "2026-01-02",
+      endDate: "2026-01-04",
+      eventStatus: "completed",
+      isSample: false,
+    };
+    const newer: CampusEvent = {
+      ...seedEvents[0],
+      id: "20000000-0000-4000-8000-000000000092",
+      slug: "newer-finish",
+      title: "Newer finish",
+      eventDate: "2026-03-01",
+      endDate: "2026-03-02",
+      eventStatus: "completed",
+      isSample: false,
+    };
+    const upcoming: CampusEvent = {
+      ...seedEvents[0],
+      id: "20000000-0000-4000-8000-000000000093",
+      slug: "still-ahead",
+      title: "Still ahead",
+      eventDate: "2026-09-01",
+      eventStatus: "upcoming",
+      isSample: false,
+    };
+    const ordered = [older, upcoming, newer].sort(compareCampusEvents);
+    assert.deepEqual(
+      ordered.map((event) => event.slug),
+      ["still-ahead", "newer-finish", "older-finish"],
+    );
   });
 });

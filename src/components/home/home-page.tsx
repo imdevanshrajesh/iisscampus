@@ -10,6 +10,7 @@ import { LiveNow } from "@/components/home/live-now";
 import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
 import { RingLink } from "@/components/home/ring-link";
 import { Today } from "@/components/home/today";
+import { compareCampusEvents } from "@/lib/data/catalog";
 import type { Achievement, CampusEvent, Category } from "@/lib/types";
 
 const pageAnchors = [
@@ -40,7 +41,11 @@ export function HomePage({
   const upcoming = events
     .filter((event) => event.eventStatus === "upcoming" && !event.isSample)
     .slice()
-    .sort((a, b) => (a.eventDate ?? "9999").localeCompare(b.eventDate ?? "9999"));
+    .sort(compareCampusEvents);
+  const completed = events
+    .filter((event) => event.eventStatus === "completed" && !event.isSample)
+    .slice()
+    .sort(compareCampusEvents);
 
   return (
     <>
@@ -158,7 +163,24 @@ export function HomePage({
         )}
       </section>
 
-      <ComingUp events={upcoming} categories={categories} />
+      <ComingUp
+        events={upcoming}
+        categories={categories}
+        heading="Coming"
+        accent="up"
+        kicker="Next on the calendar"
+        seeMoreHref="/events?status=upcoming"
+        empty="Nothing dated yet. Upcoming activities land here the moment they are published."
+      />
+
+      <ComingUp
+        events={completed}
+        categories={categories}
+        heading="Just"
+        accent="finished"
+        kicker="Most recent first"
+        seeMoreHref="/events?status=completed"
+      />
 
       <section className="mx-auto max-w-[90rem] px-5 py-20 md:px-8 md:py-28">
         <RevealOnScroll>

@@ -167,6 +167,7 @@ const councilMemberSchema = z.object({
   name: z.string().trim().min(2).max(80),
   imageUrl: optionalText(2048),
   imageAlt: optionalText(200),
+  quote: optionalText(400),
 });
 
 const councilPhotoSchema = z.object({
@@ -223,6 +224,7 @@ export function councilInputFromForm(formData: FormData) {
         name,
         imageUrl: String(formData.get(`members.${index}.imageUrl`) ?? ""),
         imageAlt: String(formData.get(`members.${index}.imageAlt`) ?? ""),
+        quote: String(formData.get(`members.${index}.quote`) ?? ""),
       },
     ];
   });

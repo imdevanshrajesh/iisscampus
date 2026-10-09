@@ -17,7 +17,7 @@ const kinds: { value: CouncilKind; label: string }[] = [
   { value: "past", label: "Earlier" },
 ];
 
-type MemberDraft = { key: string; role: string; name: string; imageUrl: string; imageAlt: string };
+type MemberDraft = { key: string; role: string; name: string; imageUrl: string; imageAlt: string; quote: string };
 type PhotoDraft = { key: string; url: string; alt: string; caption: string };
 type PostDraft = {
   key: string;
@@ -55,6 +55,7 @@ export function CouncilForm({
       name: member.name,
       imageUrl: member.imageUrl ?? "",
       imageAlt: member.imageAlt ?? "",
+      quote: member.quote ?? "",
     })) ?? [],
   );
   const [photos, setPhotos] = useState<PhotoDraft[]>(
@@ -142,14 +143,19 @@ export function CouncilForm({
         <div className="flex items-end justify-between gap-4">
           <div>
             <h2 className="text-lg font-medium">Council posts</h2>
-            <p className="mt-1 text-sm text-muted">Role, then name. A photograph is optional and can be added later.</p>
+            <p className="mt-1 text-sm text-muted">
+              Role, then name. A photograph is optional. The message appears under that student when someone hovers their card.
+            </p>
           </div>
           <button
             type="button"
             className="text-sm text-accent"
             disabled={locked}
             onClick={() =>
-              setMembers((current) => [...current, { key: crypto.randomUUID(), role: "", name: "", imageUrl: "", imageAlt: "" }])
+              setMembers((current) => [
+                ...current,
+                { key: crypto.randomUUID(), role: "", name: "", imageUrl: "", imageAlt: "", quote: "" },
+              ])
             }
           >
             Add a post
@@ -220,6 +226,23 @@ export function CouncilForm({
                 />
               </label>
             </div>
+            <label className="grid gap-1.5 text-sm">
+              Message for students
+              <textarea
+                name={`members.${index}.quote`}
+                value={member.quote}
+                disabled={locked}
+                rows={3}
+                maxLength={400}
+                className={fieldClass}
+                placeholder="What they want to share. Shown when someone hovers this card."
+                onChange={(event) =>
+                  setMembers((current) =>
+                    current.map((item) => (item.key === member.key ? { ...item, quote: event.target.value } : item)),
+                  )
+                }
+              />
+            </label>
             <div className="flex gap-4 text-sm text-muted">
               <button
                 type="button"
@@ -274,7 +297,7 @@ export function CouncilForm({
             onClick={() =>
               setMembers((current) => [
                 ...current,
-                { key: crypto.randomUUID(), role: "CCA Coordinator", name: "", imageUrl: "", imageAlt: "" },
+                { key: crypto.randomUUID(), role: "CCA Coordinator", name: "", imageUrl: "", imageAlt: "", quote: "" },
               ])
             }
           >

@@ -44,6 +44,10 @@ const councilRoster: [string, string][] = [
   ["Ethos Vice Captain", "UMER BILAL"],
   ["Nex Gen Captain", "RITVIK SAI"],
   ["Nex Gen Vice Captain", "ABHAY SIVANANDAN"],
+  ["Media Captain", "ARMAN"],
+  ["Media Vice Captain", "ZEBADIYA"],
+  ["Steam Captain", "MUHAMMAD ZEHAL"],
+  ["Steam Vice Captain", "ASWAS JOY"],
 ];
 
 function councilMember(index: number, role: string, name: string): CouncilMember {
@@ -53,6 +57,7 @@ function councilMember(index: number, role: string, name: string): CouncilMember
     name,
     imageUrl: null,
     imageAlt: null,
+    quote: null,
     sortOrder: index,
   };
 }

@@ -1,13 +1,14 @@
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "@/lib/data/catalog";
-import { readContentStore, readNewsletter } from "@/lib/data/file-content";
+import { readContentStore, readNewsletter, readSocial } from "@/lib/data/file-content";
+import { defaultSocialLinks } from "@/lib/config";
 import { groupCouncilRows, mapAchievement, mapCategory, mapEvent, mapImage } from "@/lib/data/map";
 import { contentMode } from "@/lib/data/content-mode";
 import { seedMediaHosts } from "@/lib/data/seed";
 import { logPostgrestUnlessMissing } from "@/lib/supabase/errors";
 import { createPublicClient } from "@/lib/supabase/public";
-import type { Achievement, CampusEvent, Category, CouncilYear, Newsletter, PublicCatalog } from "@/lib/types";
+import type { Achievement, CampusEvent, Category, CouncilYear, Newsletter, PublicCatalog, SocialLinks } from "@/lib/types";
 
 function localCatalog(): PublicCatalog {
   const store = readContentStore();
@@ -155,6 +156,34 @@ export async function getEditableNewsletter(): Promise<Newsletter | null> {
     console.error(error);
   }
   return readNewsletter();
+}
+
+function socialFromRow(row: { instagram_url?: string | null; scixcom_instagram_url?: string | null } | null): SocialLinks {
+  const instagram = String(row?.instagram_url ?? "").trim();
+  const scixcom = String(row?.scixcom_instagram_url ?? "").trim();
+  return {
+    instagramUrl: instagram || defaultSocialLinks.instagramUrl,
+    scixcomInstagramUrl: scixcom || defaultSocialLinks.scixcomInstagramUrl,
+  };
+}
+
+export async function getPublicSocial(): Promise<SocialLinks> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const row = await supabase
+          .from("campus_settings")
+          .select("instagram_url, scixcom_instagram_url")
+          .eq("id", true)
+          .maybeSingle();
+        if (!row.error) return socialFromRow(row.data);
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return readSocial() ?? { ...defaultSocialLinks };
 }
 
 export const getPublicCatalog = cache(

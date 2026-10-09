@@ -3,8 +3,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "@/lib/config";
 import { primaryNav } from "@/lib/nav";
+import type { SocialLinks } from "@/lib/types";
 
-export function SiteFooter({ showSampleNote }: { showSampleNote: boolean }) {
+export function SiteFooter({
+  showSampleNote,
+  social,
+}: {
+  showSampleNote: boolean;
+  social: SocialLinks;
+}) {
   return (
     <footer className="mt-auto bg-navy text-white">
       <div className="mx-auto max-w-[90rem] px-5 pt-16 pb-28 md:px-8 md:pt-20 md:pb-10">
@@ -50,13 +57,16 @@ export function SiteFooter({ showSampleNote }: { showSampleNote: boolean }) {
                   <ArrowUpRight aria-hidden="true" size={13} className="text-gold" />
                 </a>
               </li>
-              {siteConfig.instagramUrl ? (
-                <li>
-                  <a href={siteConfig.instagramUrl} className="text-link text-white/85">
-                    Instagram
-                  </a>
-                </li>
-              ) : null}
+              <li>
+                <a href={social.instagramUrl} className="text-link text-white/85" rel="noopener noreferrer">
+                  Instagram
+                </a>
+              </li>
+              <li>
+                <a href={social.scixcomInstagramUrl} className="text-link text-white/85" rel="noopener noreferrer">
+                  SciXcom
+                </a>
+              </li>
               {siteConfig.contactUrl ? (
                 <li>
                   <a href={siteConfig.contactUrl} className="text-link text-white/85">

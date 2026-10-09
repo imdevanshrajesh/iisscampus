@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { can, canDelete, canEditPublication, canTransition } from "@/lib/auth/permissions";
 import { consumeRateLimit } from "@/lib/auth/rate-limit";
 import { getCampusActor, getCampusSession, sessionActionError } from "@/lib/auth/session";
-import { isSupabaseConfigured } from "@/lib/config";
+import { defaultSocialLinks, isSupabaseConfigured } from "@/lib/config";
 import { contentMode } from "@/lib/data/content-mode";
 import {
   addCategoryToStore,
@@ -15,6 +15,7 @@ import {
   saveCouncilToStore,
   saveEventToStore,
   saveNewsletterToStore,
+  saveSocialToStore,
 } from "@/lib/data/file-content";
 import { classifyMediaUrl, classifyNavigationUrl, parseMediaHostList } from "@/lib/media/url";
 import { isMissingTableError, missingCouncilTablesMessage } from "@/lib/supabase/errors";
@@ -834,11 +835,17 @@ async function replaceCouncilChildren(
         name: member.name,
         image_url: member.imageUrl,
         image_alt: member.imageAlt,
+        quote: member.quote,
         sort_order: index,
       })),
     );
     if (inserted.error) {
-      throw new Error(databaseError(inserted.error, "The council list could not be saved."));
+      const missingQuote = (inserted.error.message ?? "").toLowerCase().includes("quote");
+      throw new Error(
+        missingQuote
+          ? "Run supabase/QUOTES_AND_SOCIAL.sql in the database, then save again."
+          : databaseError(inserted.error, "The council list could not be saved."),
+      );
     }
   }
 
@@ -1085,4 +1092,58 @@ export async function saveNewsletter(_state: ActionState, formData: FormData): P
   revalidatePath("/newsletter");
   revalidatePath("/manage/newsletter");
   return { ok: "Newsletter saved." };
+}
+
+function socialUrl(raw: string, fallback: string, label: string) {
+  const value = raw.trim() || fallback;
+  const classified = classifyNavigationUrl(value);
+  if (!classified.ok) return { error: `${label} must be a valid https:// link.` };
+  return { url: classified.url };
+}
+
+export async function saveSocial(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const instagram = socialUrl(String(formData.get("instagramUrl") ?? ""), defaultSocialLinks.instagramUrl, "Campus Instagram");
+  if ("error" in instagram) return { error: instagram.error };
+  const scixcom = socialUrl(
+    String(formData.get("scixcomInstagramUrl") ?? ""),
+    defaultSocialLinks.scixcomInstagramUrl,
+    "SciXcom Instagram",
+  );
+  if ("error" in scixcom) return { error: scixcom.error };
+  const links = { instagramUrl: instagram.url, scixcomInstagramUrl: scixcom.url };
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor(() => true);
+    if ("error" in access) return access;
+    if (!saveSocialToStore(links)) return { error: "The Instagram links could not be saved." };
+    revalidatePath("/", "layout");
+    revalidatePath("/manage/settings");
+    return { ok: "Instagram links saved." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const saved = await context.supabase
+    .from("campus_settings")
+    .update({
+      instagram_url: links.instagramUrl,
+      scixcom_instagram_url: links.scixcomInstagramUrl,
+    })
+    .eq("id", true);
+  if (saved.error) {
+    const missing = (saved.error.message ?? "").toLowerCase().includes("instagram");
+    return {
+      error: missing
+        ? "Run supabase/QUOTES_AND_SOCIAL.sql in the database, then save again."
+        : databaseError(saved.error, "The Instagram links could not be saved."),
+    };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, "update_social", "campus_settings", null);
+  revalidatePath("/", "layout");
+  revalidatePath("/about");
+  revalidatePath("/manage/settings");
+  return { ok: "Instagram links saved." };
 }

@@ -30,6 +30,11 @@ export function resolveSiteUrl() {
   }
 }
 
+export const defaultSocialLinks = {
+  instagramUrl: "https://www.instagram.com/iisscampus/",
+  scixcomInstagramUrl: "https://www.instagram.com/scixcom.27/",
+};
+
 export const siteConfig = {
   name: "India International School, Sharjah",
   shortName: "IISS Campus",

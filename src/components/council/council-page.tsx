@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import type { ReactNode } from "react";
 import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
 import { formatEventDate, isCouncilStaffRole, pairCouncilMembers, paragraphs } from "@/lib/data/catalog";
 import { classifyMediaUrl } from "@/lib/media/url";
@@ -15,9 +16,11 @@ const kindLabel: Record<CouncilKind, string> = {
 export function CouncilPageView({
   years,
   hosts,
+  scixcomUrl,
 }: {
   years: CouncilYear[];
   hosts: readonly string[];
+  scixcomUrl: string;
 }) {
   return (
     <div className="council-page">
@@ -44,13 +47,8 @@ export function CouncilPageView({
         </div>
 
         {years.length ? (
-          <div className="relative z-[1] mt-12 flex flex-wrap gap-2 md:pl-[calc(18rem+4rem)]">
-            {years.map((year) => (
-              <a key={year.id} href={`#${year.slug}`} className="council-year-chip">
-                <span className="council-year-chip__label">{year.label}</span>
-                <span className="council-year-chip__kind">{kindLabel[year.kind]}</span>
-              </a>
-            ))}
+          <div className="relative z-[1] mt-12 flex flex-wrap items-center gap-2 md:pl-[calc(18rem+4rem)]">
+            {yearChips(years, scixcomUrl)}
           </div>
         ) : null}
       </section>
@@ -72,6 +70,44 @@ export function CouncilPageView({
         </div>
       )}
     </div>
+  );
+}
+
+function yearChips(years: CouncilYear[], scixcomUrl: string) {
+  const chips: ReactNode[] = [];
+  for (const year of years) {
+    chips.push(
+      <a key={year.id} href={`#${year.slug}`} className="council-year-chip">
+        <span className="council-year-chip__label">{year.label}</span>
+        <span className="council-year-chip__kind">{kindLabel[year.kind]}</span>
+      </a>,
+    );
+    if (year.kind === "current" && scixcomUrl) {
+      chips.push(
+        <a
+          key={`${year.id}-scixcom`}
+          href={scixcomUrl}
+          className="council-year-chip council-scixcom"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="SciXcom on Instagram"
+        >
+          <InstagramMark />
+          <span className="council-year-chip__label">SciXcom</span>
+        </a>,
+      );
+    }
+  }
+  return chips;
+}
+
+function InstagramMark() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className="shrink-0">
+      <rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="17.4" cy="6.6" r="1" fill="currentColor" />
+    </svg>
   );
 }
 
@@ -196,21 +232,31 @@ function MemberFace({
   const portrait = member.imageUrl ? classifyMediaUrl(member.imageUrl, hosts) : null;
 
   return (
-    <div className="flex items-center gap-3">
-      <div className={`${compact ? "h-12 w-12" : "h-16 w-16"} overflow-hidden rounded-xl bg-white/5`}>
-        {portrait?.ok ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={portrait.url} alt={member.imageAlt ?? ""} className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full items-end p-2">
-            <span className="font-display text-lg text-ink/30">{member.name.slice(0, 1)}</span>
-          </div>
-        )}
+    <div className="council-person" tabIndex={member.quote ? 0 : undefined}>
+      <div className="flex items-center gap-3">
+        <div className={`${compact ? "h-12 w-12" : "h-16 w-16"} overflow-hidden rounded-xl bg-white/5`}>
+          {portrait?.ok ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={portrait.url} alt={member.imageAlt ?? ""} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full items-end p-2">
+              <span className="font-display text-lg text-ink/30">{member.name.slice(0, 1)}</span>
+            </div>
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-[0.14em] text-muted">{member.role}</p>
+          <p className={`font-medium text-ink ${compact ? "text-sm" : "text-base"}`}>{member.name}</p>
+        </div>
       </div>
-      <div className="min-w-0">
-        <p className="text-xs uppercase tracking-[0.14em] text-muted">{member.role}</p>
-        <p className={`font-medium text-ink ${compact ? "text-sm" : "text-base"}`}>{member.name}</p>
-      </div>
+      {member.quote ? (
+        <>
+          <p className="council-person__hint">Message</p>
+          <p className="council-person__quote">
+            <span>{member.quote}</span>
+          </p>
+        </>
+      ) : null}
     </div>
   );
 }
