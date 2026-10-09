@@ -60,7 +60,7 @@ begin
         select max(member.sort_order)
         from public.campus_council_members member
         where member.year_id = year.id
-      ), -1) + added.offset
+      ), -1) + added.sort_slot
     from public.campus_council_years year
     cross join (
       values
@@ -68,7 +68,7 @@ begin
         (2, 'Media Vice Captain', 'ZEBADIYA'),
         (3, 'Steam Captain', 'MUHAMMAD ZEHAL'),
         (4, 'Steam Vice Captain', 'ASWAS JOY')
-    ) as added(offset, role, name)
+    ) as added(sort_slot, role, name)
     where year.kind = 'current'
       and year.publication_status = 'published'
       and not exists (

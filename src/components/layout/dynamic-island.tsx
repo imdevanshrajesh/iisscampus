@@ -89,7 +89,7 @@ export function SiteChrome() {
         >
           <div className="nav-island__bar">
             <Link href="/" aria-label="Home" className="nav-island__logo" onClick={closeMenu}>
-              <Image src="/brand/iiss-mark.webp" alt="" width={32} height={32} className="h-7 w-7 object-contain" priority />
+              <Image src="/brand/student-council.png" alt="" width={32} height={32} unoptimized className="h-full w-full object-cover" priority />
             </Link>
             <Link href="/" onClick={closeMenu} className="rounded-full px-2.5 py-1.5 text-sm font-medium text-ink">
               Home

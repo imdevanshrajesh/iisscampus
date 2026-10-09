@@ -10,6 +10,7 @@ import { LiveNow } from "@/components/home/live-now";
 import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
 import { RingLink } from "@/components/home/ring-link";
 import { Today } from "@/components/home/today";
+import { siteConfig } from "@/lib/config";
 import { compareCampusEvents } from "@/lib/data/catalog";
 import type { Achievement, CampusEvent, Category } from "@/lib/types";
 
@@ -55,7 +56,7 @@ export function HomePage({
             className="rise kicker grid grid-cols-2 gap-3 border-y border-ink/80 py-3 text-ink/75 md:grid-cols-3"
             style={delay(0)}
           >
-            <span>India International School, Sharjah</span>
+            <span>{siteConfig.name}</span>
             <span className="hidden text-center md:block">IISIANS</span>
             <span className="text-right">
               <Today />
@@ -82,7 +83,7 @@ export function HomePage({
                 </defs>
                 <text>
                   <textPath href="#hero-stamp-path">
-                    India International School · Sharjah · IISIANS ·
+                    {`${siteConfig.name} · ${siteConfig.name} · `}
                   </textPath>
                 </text>
               </svg>

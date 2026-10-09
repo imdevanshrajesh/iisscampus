@@ -163,7 +163,7 @@ html[data-intro="play"] body {
   place-items: center;
   overflow: hidden;
   border-radius: 999px;
-  background: #fff;
+  background: #0b1d4a;
 }
 
 @media (min-width: 1024px) {

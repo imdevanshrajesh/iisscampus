@@ -17,8 +17,8 @@ export function SiteFooter({
       <div className="mx-auto max-w-[90rem] px-5 pt-16 pb-28 md:px-8 md:pt-20 md:pb-10">
         <div className="grid gap-12 md:grid-cols-12">
           <div className="md:col-span-6">
-            <p className="font-display max-w-[14ch] text-[clamp(2.4rem,4.5vw,4rem)] leading-[0.9]">
-              India International School, <span className="italic text-gold">Sharjah.</span>
+            <p className="font-display max-w-[15ch] text-[clamp(2.4rem,4.5vw,4rem)] leading-[0.9]">
+              IISS x Student Council <span className="italic text-gold">Boys.</span>
             </p>
             <p className="mt-5 max-w-sm text-sm leading-6 text-white/60">
               A running record of campus events, the boys&apos; student council, and published achievements. Not the

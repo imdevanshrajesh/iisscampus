@@ -6,7 +6,7 @@ import { getPublicSocial } from "@/lib/data/queries";
 
 export const metadata: Metadata = {
   title: "About",
-  description: "What the campus archive is for at India International School, Sharjah.",
+  description: "What the campus archive is for at IISS x Student Council Boys.",
   alternates: { canonical: "/about" },
 };
 
@@ -31,8 +31,8 @@ export default async function AboutPage() {
           </h1>
           <div className="mt-10 max-w-xl space-y-5 text-lg leading-8 text-ink/85">
             <p>
-              This campus archive keeps activities, the boys&apos; student council, and achievements from India
-              International School, Sharjah, in one place.
+              IISS x Student Council Boys keeps activities, the boys&apos; student council, and achievements in one
+              place.
             </p>
             <p className="text-base leading-7 text-muted">
               It is an independent record and not the official school website.

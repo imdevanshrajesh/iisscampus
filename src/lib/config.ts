@@ -36,10 +36,10 @@ export const defaultSocialLinks = {
 };
 
 export const siteConfig = {
-  name: "India International School, Sharjah",
-  shortName: "IISS Campus",
+  name: "IISS x Student Council Boys",
+  shortName: "IISS x Student Council Boys",
   description:
-    "A digital archive of student activities, events, achievements, and campus life at India International School, Sharjah.",
+    "A digital archive of student activities, events, achievements, and campus life for IISS x Student Council Boys.",
   url: resolveSiteUrl(),
   officialSchoolUrl: "https://iiss.ae",
   arigoUrl: absoluteHttps(read("NEXT_PUBLIC_ARIGO_URL")),

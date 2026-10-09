@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   applicationName: siteConfig.shortName,
-  icons: { icon: "/brand/iiss-mark.webp", apple: "/brand/iiss-mark.webp" },
+  icons: { icon: "/brand/student-council.png", apple: "/brand/student-council.png" },
   openGraph: {
     type: "website",
     siteName: siteConfig.name,

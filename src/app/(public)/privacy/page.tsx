@@ -26,8 +26,8 @@ export default function PrivacyPage() {
           achievement pages only when that record has been published.
         </p>
         <p>
-          This is an independent activities archive for India International School, Sharjah. It is not the official
-          school website.
+          This is an independent activities archive for IISS x Student Council Boys. It is not the official school
+          website.
         </p>
       </div>
     </div>
