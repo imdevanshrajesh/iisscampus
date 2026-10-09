@@ -95,6 +95,9 @@ export type CouncilMember = {
   imageUrl: string | null;
   imageAlt: string | null;
   quote: string | null;
+  about: string | null;
+  work: string | null;
+  slug: string;
   sortOrder: number;
 };
 

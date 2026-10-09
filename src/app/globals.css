@@ -89,6 +89,34 @@ html[data-intro="play"] body {
   letter-spacing: -0.04em;
 }
 
+.profile-name {
+  font-family: var(--font-display), Georgia, "Times New Roman", serif;
+  font-weight: 520;
+  font-variation-settings: "opsz" 144, "SOFT" 0, "WONK" 0;
+  letter-spacing: -0.035em;
+}
+
+h1.profile-name {
+  letter-spacing: 0.035em;
+  line-height: 0.98;
+}
+
+.profile-note {
+  margin-top: 1.15rem;
+  min-height: 9rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(141, 180, 214, 0.28);
+  background: rgba(13, 52, 94, 0.45);
+  padding: 1.4rem 1.5rem 1.6rem;
+}
+
+.profile-portrait {
+  width: 100%;
+  max-width: 16rem;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
 .kicker {
   font-size: 0.68rem;
   font-weight: 500;
@@ -804,14 +832,22 @@ html[data-intro="play"] .hero-scribble path {
   box-shadow: 0 20px 40px -18px rgba(0, 0, 0, 0.5);
 }
 
-.council-person:focus {
-  outline: none;
+.council-person__link {
+  border-radius: 0.75rem;
+  color: inherit;
+  text-decoration: none;
 }
 
-.council-person:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 4px;
-  border-radius: 0.6rem;
+.council-person__name {
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.22em;
+  transition: text-decoration-color 200ms ease;
+}
+
+.council-person__link:hover .council-person__name,
+.council-person__link:focus-visible .council-person__name {
+  text-decoration-color: currentColor;
 }
 
 .council-person__hint {
@@ -846,12 +882,12 @@ html[data-intro="play"] .hero-scribble path {
 
 @media (hover: hover) and (pointer: fine) {
   .council-person:hover .council-person__hint,
-  .council-person:focus-visible .council-person__hint {
+  .council-person:focus-within .council-person__hint {
     display: none;
   }
 
   .council-person:hover .council-person__quote,
-  .council-person:focus-visible .council-person__quote {
+  .council-person:focus-within .council-person__quote {
     grid-template-rows: 1fr;
     margin-top: 0.7rem;
     opacity: 1;

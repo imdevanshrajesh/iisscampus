@@ -63,14 +63,17 @@ export function CouncilYearBlock({
       ) : null}
 
       {pairs.length ? (
-        <ul className="mt-8 divide-y divide-line border-y border-line">
+        <div className="mt-12 border-t border-line pt-8">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Council members</p>
+          <ul className="mt-3 divide-y divide-line border-y border-line">
           {pairs.map((pair) => (
             <li key={pair.lead.id} className="grid md:grid-cols-2">
               <CouncilSeat member={pair.lead} hosts={hosts} />
               {pair.deputy ? <CouncilSeat member={pair.deputy} hosts={hosts} /> : <div className="hidden md:block" />}
             </li>
           ))}
-        </ul>
+          </ul>
+        </div>
       ) : null}
 
       {photos.length ? (

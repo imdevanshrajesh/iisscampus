@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { campusPulse, compareCampusEvents, filterPublishedEvents, isCouncilStaffRole, pairCouncilMembers, selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "../src/lib/data/catalog.ts";
+import { campusPulse, compareCampusEvents, councilMemberSlugs, filterPublishedEvents, findPublicCouncilMember, isCouncilStaffRole, pairCouncilMembers, selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "../src/lib/data/catalog.ts";
 import type { CouncilYear } from "../src/lib/types.ts";
 import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "../src/lib/data/seed.ts";
 import type { CampusEvent } from "../src/lib/types.ts";
@@ -96,6 +96,20 @@ describe("public catalog", () => {
     );
     assert.equal(seedCouncilYears[0].members[0]?.role, "CCA Coordinator");
     assert.equal(seedCouncilYears[0].members[0]?.name, "JANATHUL FIRTHOSE");
+  });
+
+  it("opens a page for a student and for the CCA coordinator", () => {
+    const year = seedCouncilYears[0];
+    const head = year.members.find((member) => member.role === "Head Boy");
+    assert.equal(head?.slug, "mohammed-rehaan");
+    assert.equal(findPublicCouncilMember(seedCouncilYears, year.slug, "mohammed-rehaan")?.member.name, "MOHAMMED REHAAN");
+    assert.equal(findPublicCouncilMember(seedCouncilYears, year.slug, "janathul-firthose")?.member.role, "CCA Coordinator");
+    const [first, second] = councilMemberSlugs([
+      { name: "MOHAMMED ALI", role: "Ethos Captain" },
+      { name: "Mohammed Ali", role: "Sports Captain" },
+    ]);
+    assert.equal(first, "mohammed-ali");
+    assert.equal(second, "mohammed-ali-sports-captain");
   });
 
   it("lists finished events with the latest ending first", () => {

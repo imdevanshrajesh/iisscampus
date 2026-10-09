@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
 import { formatEventDate, isCouncilStaffRole, pairCouncilMembers, paragraphs } from "@/lib/data/catalog";
@@ -139,31 +140,33 @@ function CouncilYearSection({
         {staff.length ? (
           <div className="mt-8">
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Teacher in charge</p>
-            <ul className="mt-3 flex flex-wrap gap-3">
+            <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {staff.map((person) => (
-                <li key={person.id} className="rounded-2xl border border-line px-4 py-3">
-                  <p className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-muted">{person.role}</p>
-                  <p className="mt-1 text-sm font-medium text-ink">{person.name}</p>
-                </li>
+                <div key={person.id} className="council-member-card">
+                  <MemberFace member={person} hosts={hosts} yearSlug={year.slug} />
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
         ) : null}
 
         {pairs.length ? (
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-12 border-t border-line pt-8">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Council members</p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {pairs.map(({ lead, deputy }, index) => (
               <RevealOnScroll key={lead.id} delay={80 + index * 50}>
                 <div className="council-member-card">
-                  <MemberFace member={lead} hosts={hosts} />
+                  <MemberFace member={lead} hosts={hosts} yearSlug={year.slug} />
                   {deputy ? (
                     <div className="mt-4 border-t border-line/60 pt-4">
-                      <MemberFace member={deputy} hosts={hosts} compact />
+                      <MemberFace member={deputy} hosts={hosts} yearSlug={year.slug} compact />
                     </div>
                   ) : null}
                 </div>
               </RevealOnScroll>
             ))}
+            </div>
           </div>
         ) : null}
 
@@ -223,21 +226,23 @@ function CouncilYearSection({
 function MemberFace({
   member,
   hosts,
+  yearSlug,
   compact = false,
 }: {
   member: CouncilMember;
   hosts: readonly string[];
+  yearSlug: string;
   compact?: boolean;
 }) {
   const portrait = member.imageUrl ? classifyMediaUrl(member.imageUrl, hosts) : null;
 
   return (
-    <div className="council-person" tabIndex={member.quote ? 0 : undefined}>
-      <div className="flex items-center gap-3">
+    <div className="council-person">
+      <Link href={`/council/${yearSlug}/${member.slug}`} className="council-person__link flex items-center gap-3">
         <div className={`${compact ? "h-12 w-12" : "h-16 w-16"} overflow-hidden rounded-xl bg-white/5`}>
           {portrait?.ok ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={portrait.url} alt={member.imageAlt ?? ""} className="h-full w-full object-cover" />
+            <img src={portrait.url} alt="" className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full items-end p-2">
               <span className="font-display text-lg text-ink/30">{member.name.slice(0, 1)}</span>
@@ -246,9 +251,9 @@ function MemberFace({
         </div>
         <div className="min-w-0">
           <p className="text-xs uppercase tracking-[0.14em] text-muted">{member.role}</p>
-          <p className={`font-medium text-ink ${compact ? "text-sm" : "text-base"}`}>{member.name}</p>
+          <p className={`council-person__name font-medium text-ink ${compact ? "text-sm" : "text-base"}`}>{member.name}</p>
         </div>
-      </div>
+      </Link>
       {member.quote ? (
         <>
           <p className="council-person__hint">Message</p>

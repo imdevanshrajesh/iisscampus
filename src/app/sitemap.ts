@@ -10,5 +10,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const events = catalog.events.map((event) => ({
     url: `${siteConfig.url}/events/${event.slug}`,
   }));
-  return [...staticRoutes, ...events];
+  const councilMembers = catalog.councilYears.flatMap((year) =>
+    year.members
+      .filter((member) => member.slug)
+      .map((member) => ({
+        url: `${siteConfig.url}/council/${year.slug}/${member.slug}`,
+      })),
+  );
+  return [...staticRoutes, ...events, ...councilMembers];
 }

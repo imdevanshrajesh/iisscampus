@@ -1,3 +1,4 @@
+import { councilMemberSlugs } from "@/lib/data/catalog";
 import type {
   Achievement,
   CampusEvent,
@@ -11,6 +12,12 @@ import type {
   ParticipatingGroup,
   ScheduleItem,
 } from "@/lib/types";
+
+function assignMemberSlugs(members: CouncilMember[]) {
+  const sorted = members.slice().sort((a, b) => a.sortOrder - b.sortOrder);
+  const slugs = councilMemberSlugs(sorted);
+  return sorted.map((member, index) => ({ ...member, slug: slugs[index] ?? member.slug }));
+}
 
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
@@ -88,6 +95,9 @@ export function mapCouncilMember(row: Record<string, unknown>): CouncilMember {
     imageUrl: row.image_url ? String(row.image_url) : null,
     imageAlt: row.image_alt ? String(row.image_alt) : null,
     quote: row.quote ? String(row.quote) : null,
+    about: row.about ? String(row.about) : null,
+    work: row.work ? String(row.work) : null,
+    slug: row.slug ? String(row.slug) : "",
     sortOrder: Number(row.sort_order ?? 0),
   };
 }
@@ -130,7 +140,7 @@ export function mapCouncilYear(
     publicationStatus: row.publication_status as CouncilYear["publicationStatus"],
     sortOrder: Number(row.sort_order ?? 0),
     isSample: Boolean(row.is_sample),
-    members: members.slice().sort((a, b) => a.sortOrder - b.sortOrder),
+    members: assignMemberSlugs(members),
     photos: photos.slice().sort((a, b) => a.sortOrder - b.sortOrder),
     posts: posts.slice().sort((a, b) => a.sortOrder - b.sortOrder),
     createdAt: String(row.created_at),

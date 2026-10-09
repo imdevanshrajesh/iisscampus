@@ -1,3 +1,4 @@
+import { councilMemberSlugs } from "./catalog.ts";
 import type { Achievement, CampusEvent, Category, CouncilMember, CouncilYear } from "@/lib/types";
 
 const now = "2026-01-01T00:00:00.000Z";
@@ -50,16 +51,21 @@ const councilRoster: [string, string][] = [
   ["Steam Vice Captain", "ASWAS JOY"],
 ];
 
-function councilMember(index: number, role: string, name: string): CouncilMember {
-  return {
+function councilMembers(): CouncilMember[] {
+  const members = councilRoster.map(([role, name], index): CouncilMember => ({
     id: `31000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
     role,
     name,
     imageUrl: null,
     imageAlt: null,
     quote: null,
+    about: null,
+    work: null,
+    slug: "",
     sortOrder: index,
-  };
+  }));
+  const slugs = councilMemberSlugs(members);
+  return members.map((member, index) => ({ ...member, slug: slugs[index] ?? "" }));
 }
 
 export const seedCouncilYears: CouncilYear[] = [
@@ -72,7 +78,7 @@ export const seedCouncilYears: CouncilYear[] = [
     publicationStatus: "published",
     sortOrder: 0,
     isSample: false,
-    members: councilRoster.map(([role, name], index) => councilMember(index, role, name)),
+    members: councilMembers(),
     photos: [],
     posts: [],
     createdAt: now,

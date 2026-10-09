@@ -40,6 +40,47 @@ function isVicePost(role: string) {
   return /\b(vice|deputy)\b/i.test(role);
 }
 
+const memberSlugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export function councilNameSlug(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 72);
+}
+
+export function councilMemberSlugs(members: { name: string; role: string; slug?: string | null }[]) {
+  const taken = new Set<string>();
+  return members.map((member) => {
+    const fromName = councilNameSlug(member.name) || councilNameSlug(member.role) || "member";
+    const current = member.slug && memberSlugPattern.test(member.slug) ? member.slug : "";
+    const reusable = current === fromName || current.startsWith(`${fromName}-`);
+    let slug = reusable && current && !taken.has(current) ? current : "";
+    if (!slug && !taken.has(fromName)) slug = fromName;
+    if (!slug) {
+      const withRole = `${fromName}-${councilNameSlug(member.role) || "post"}`.replace(/-+/g, "-").slice(0, 80);
+      if (!taken.has(withRole)) slug = withRole;
+    }
+    let n = 2;
+    while (!slug || taken.has(slug)) {
+      slug = `${fromName}-${n}`.slice(0, 80);
+      n += 1;
+    }
+    taken.add(slug);
+    return slug;
+  });
+}
+
+export function findPublicCouncilMember(years: CouncilYear[], yearSlug: string, memberSlug: string) {
+  const year = years.find((item) => item.slug === yearSlug);
+  if (!year) return null;
+  const member = year.members.find((item) => item.slug === memberSlug);
+  if (!member) return null;
+  return { year, member };
+}
+
 export function isCouncilStaffRole(role: string) {
   const value = role.trim().toLowerCase();
   return (

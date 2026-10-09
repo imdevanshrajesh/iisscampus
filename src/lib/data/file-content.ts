@@ -1,8 +1,9 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { canDelete, canEditPublication, canTransition, type Actor } from "@/lib/auth/permissions";
+import { councilMemberSlugs } from "@/lib/data/catalog";
 import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "@/lib/data/seed";
-import type { Achievement, CampusEvent, Category, CouncilYear, Newsletter, PublicationStatus, SocialLinks } from "@/lib/types";
+import type { Achievement, CampusEvent, Category, CouncilMember, CouncilYear, Newsletter, PublicationStatus, SocialLinks } from "@/lib/types";
 import type { AchievementInput, CouncilInput, EventInput } from "@/lib/validation/content";
 
 type Store = {
@@ -16,6 +17,18 @@ type Store = {
 
 function contentFilePath() {
   return path.join(process.cwd(), "data", "campus.json");
+}
+
+function normalizeCouncilMembers(members: CouncilMember[]) {
+  const normalized = members.map((member) => ({
+    ...member,
+    quote: member.quote ?? null,
+    about: member.about ?? null,
+    work: member.work ?? null,
+    slug: member.slug ?? "",
+  }));
+  const slugs = councilMemberSlugs(normalized);
+  return normalized.map((member, index) => ({ ...member, slug: slugs[index] ?? member.slug }));
 }
 
 function initialStore(): Store {
@@ -37,10 +50,7 @@ export function readContentStore(): Store {
       councilYears: Array.isArray(parsed.councilYears)
         ? parsed.councilYears.map((year) => ({
             ...year,
-            members: (year.members ?? []).map((member) => ({
-              ...member,
-              quote: member.quote ?? null,
-            })),
+            members: normalizeCouncilMembers(year.members ?? []),
             photos: year.photos ?? [],
             posts: year.posts ?? [],
           }))
@@ -278,15 +288,21 @@ export function saveCouncilToStore(actor: Actor, input: CouncilInput, intent: st
     publicationStatus: publication.status,
     sortOrder: input.sortOrder,
     isSample: existing?.isSample ?? false,
-    members: input.members.map((member, index) => ({
-      id: member.id ?? crypto.randomUUID(),
-      role: member.role,
-      name: member.name,
-      imageUrl: member.imageUrl,
-      imageAlt: member.imageAlt,
-      quote: member.quote,
-      sortOrder: index,
-    })),
+    members: (() => {
+      const slugs = councilMemberSlugs(input.members);
+      return input.members.map((member, index) => ({
+        id: member.id ?? crypto.randomUUID(),
+        role: member.role,
+        name: member.name,
+        imageUrl: member.imageUrl,
+        imageAlt: member.imageAlt,
+        quote: member.quote,
+        about: member.about,
+        work: member.work,
+        slug: slugs[index] ?? "",
+        sortOrder: index,
+      }));
+    })(),
     photos: input.photos.map((photo, index) => ({
       id: photo.id ?? crypto.randomUUID(),
       url: photo.url,

@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
-import { isCouncilStaffRole } from "@/lib/data/catalog";
+import { councilMemberSlugs, isCouncilStaffRole } from "@/lib/data/catalog";
 import { saveCouncilYear, type ActionState } from "@/lib/manage/actions";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import type { CampusRole, CouncilKind, CouncilYear } from "@/lib/types";
@@ -17,7 +17,16 @@ const kinds: { value: CouncilKind; label: string }[] = [
   { value: "past", label: "Earlier" },
 ];
 
-type MemberDraft = { key: string; role: string; name: string; imageUrl: string; imageAlt: string; quote: string };
+type MemberDraft = {
+  key: string;
+  role: string;
+  name: string;
+  imageUrl: string;
+  imageAlt: string;
+  quote: string;
+  about: string;
+  work: string;
+};
 type PhotoDraft = { key: string; url: string; alt: string; caption: string };
 type PostDraft = {
   key: string;
@@ -56,6 +65,8 @@ export function CouncilForm({
       imageUrl: member.imageUrl ?? "",
       imageAlt: member.imageAlt ?? "",
       quote: member.quote ?? "",
+      about: member.about ?? "",
+      work: member.work ?? "",
     })) ?? [],
   );
   const [photos, setPhotos] = useState<PhotoDraft[]>(
@@ -78,6 +89,8 @@ export function CouncilForm({
   );
   const locked =
     role === "editor" && (year?.publicationStatus === "published" || year?.publicationStatus === "archived");
+  const memberSlugs = councilMemberSlugs(members);
+  const memberPageQuery = year?.publicationStatus === "published" ? "" : "?preview=1";
 
   return (
     <form action={action} className="grid max-w-3xl gap-8">
@@ -144,7 +157,7 @@ export function CouncilForm({
           <div>
             <h2 className="text-lg font-medium">Council posts</h2>
             <p className="mt-1 text-sm text-muted">
-              Role, then name. A photograph is optional. The message appears under that student when someone hovers their card.
+              Role, then name. The photograph is shown large on their page. The message stays on the roster card. About me and what they have done appear only on their own page.
             </p>
           </div>
           <button
@@ -154,7 +167,7 @@ export function CouncilForm({
             onClick={() =>
               setMembers((current) => [
                 ...current,
-                { key: crypto.randomUUID(), role: "", name: "", imageUrl: "", imageAlt: "", quote: "" },
+                { key: crypto.randomUUID(), role: "", name: "", imageUrl: "", imageAlt: "", quote: "", about: "", work: "" },
               ])
             }
           >
@@ -243,7 +256,51 @@ export function CouncilForm({
                 }
               />
             </label>
-            <div className="flex gap-4 text-sm text-muted">
+            <label className="grid gap-1.5 text-sm">
+              About me
+              <textarea
+                name={`members.${index}.about`}
+                value={member.about}
+                disabled={locked}
+                rows={5}
+                maxLength={4000}
+                className={fieldClass}
+                placeholder="A short introduction, shown on this student's own page."
+                onChange={(event) =>
+                  setMembers((current) =>
+                    current.map((item) => (item.key === member.key ? { ...item, about: event.target.value } : item)),
+                  )
+                }
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              What I have done
+              <textarea
+                name={`members.${index}.work`}
+                value={member.work}
+                disabled={locked}
+                rows={5}
+                maxLength={4000}
+                className={fieldClass}
+                placeholder="The work of this post: duties, events, and what they have taken on."
+                onChange={(event) =>
+                  setMembers((current) =>
+                    current.map((item) => (item.key === member.key ? { ...item, work: event.target.value } : item)),
+                  )
+                }
+              />
+            </label>
+            <div className="flex flex-wrap gap-4 text-sm text-muted">
+              {slug && member.name.trim() && memberSlugs[index] ? (
+                <a
+                  href={`/council/${slug}/${memberSlugs[index]}${memberPageQuery}`}
+                  className="text-accent"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open page
+                </a>
+              ) : null}
               <button
                 type="button"
                 disabled={locked || index === 0}
@@ -288,7 +345,9 @@ export function CouncilForm({
         <div className="flex items-end justify-between gap-4">
           <div>
             <h2 className="text-lg font-medium">Teacher in charge</h2>
-            <p className="mt-1 text-sm text-muted">Shown above the student roster on the public council page.</p>
+            <p className="mt-1 text-sm text-muted">
+              Shown above the student roster. The name opens her own page, with the same photograph, message, about me, and what she has done.
+            </p>
           </div>
           <button
             type="button"
@@ -297,7 +356,7 @@ export function CouncilForm({
             onClick={() =>
               setMembers((current) => [
                 ...current,
-                { key: crypto.randomUUID(), role: "CCA Coordinator", name: "", imageUrl: "", imageAlt: "", quote: "" },
+                { key: crypto.randomUUID(), role: "CCA Coordinator", name: "", imageUrl: "", imageAlt: "", quote: "", about: "", work: "" },
               ])
             }
           >
@@ -309,10 +368,9 @@ export function CouncilForm({
         )}
         {members.map((member, index) =>
           isCouncilStaffRole(member.role) ? (
-            <div key={member.key} className="grid gap-3 rounded-xl border border-line bg-background p-4 md:grid-cols-[1fr_1fr_auto]">
+            <div key={member.key} className="grid gap-3 rounded-xl border border-line bg-background p-4">
               <input type="hidden" name={`members.${index}.id`} value={member.key} />
-              <input type="hidden" name={`members.${index}.imageUrl`} value="" />
-              <input type="hidden" name={`members.${index}.imageAlt`} value="" />
+              <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
               <label className="grid gap-1.5 text-sm">
                 Role
                 <select
@@ -358,6 +416,99 @@ export function CouncilForm({
               >
                 Remove
               </button>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="grid gap-1.5 text-sm">
+                  Photograph URL
+                  <input
+                    name={`members.${index}.imageUrl`}
+                    value={member.imageUrl}
+                    disabled={locked}
+                    className={fieldClass}
+                    placeholder={IMAGE_URL_EXAMPLE}
+                    onChange={(event) =>
+                      setMembers((current) =>
+                        current.map((item) => (item.key === member.key ? { ...item, imageUrl: event.target.value } : item)),
+                      )
+                    }
+                  />
+                </label>
+                <label className="grid gap-1.5 text-sm">
+                  Photograph description
+                  <input
+                    name={`members.${index}.imageAlt`}
+                    value={member.imageAlt}
+                    disabled={locked}
+                    className={fieldClass}
+                    onChange={(event) =>
+                      setMembers((current) =>
+                        current.map((item) => (item.key === member.key ? { ...item, imageAlt: event.target.value } : item)),
+                      )
+                    }
+                  />
+                </label>
+              </div>
+              <label className="grid gap-1.5 text-sm">
+                Message for students
+                <textarea
+                  name={`members.${index}.quote`}
+                  value={member.quote}
+                  disabled={locked}
+                  rows={3}
+                  maxLength={400}
+                  className={fieldClass}
+                  placeholder="Shown when someone hovers this card."
+                  onChange={(event) =>
+                    setMembers((current) =>
+                      current.map((item) => (item.key === member.key ? { ...item, quote: event.target.value } : item)),
+                    )
+                  }
+                />
+              </label>
+              <label className="grid gap-1.5 text-sm">
+                About me
+                <textarea
+                  name={`members.${index}.about`}
+                  value={member.about}
+                  disabled={locked}
+                  rows={5}
+                  maxLength={4000}
+                  className={fieldClass}
+                  placeholder="A short introduction, shown on her own page."
+                  onChange={(event) =>
+                    setMembers((current) =>
+                      current.map((item) => (item.key === member.key ? { ...item, about: event.target.value } : item)),
+                    )
+                  }
+                />
+              </label>
+              <label className="grid gap-1.5 text-sm">
+                What I have done
+                <textarea
+                  name={`members.${index}.work`}
+                  value={member.work}
+                  disabled={locked}
+                  rows={5}
+                  maxLength={4000}
+                  className={fieldClass}
+                  placeholder="The work of this post."
+                  onChange={(event) =>
+                    setMembers((current) =>
+                      current.map((item) => (item.key === member.key ? { ...item, work: event.target.value } : item)),
+                    )
+                  }
+                />
+              </label>
+              {slug && member.name.trim() && memberSlugs[index] ? (
+                <a
+                  href={`/council/${slug}/${memberSlugs[index]}${memberPageQuery}`}
+                  className="text-sm text-accent"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open page
+                </a>
+              ) : null}
             </div>
           ) : null,
         )}

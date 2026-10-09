@@ -7,6 +7,7 @@ import { can, canDelete, canEditPublication, canTransition } from "@/lib/auth/pe
 import { consumeRateLimit } from "@/lib/auth/rate-limit";
 import { getCampusActor, getCampusSession, sessionActionError } from "@/lib/auth/session";
 import { defaultSocialLinks, isSupabaseConfigured } from "@/lib/config";
+import { councilMemberSlugs } from "@/lib/data/catalog";
 import { contentMode } from "@/lib/data/content-mode";
 import {
   addCategoryToStore,
@@ -810,12 +811,24 @@ export async function deleteAchievement(_state: ActionState, formData: FormData)
   redirect(manageDestination(formData, "/manage/achievements"));
 }
 
-function revalidateCouncil(slug?: string) {
+function revalidateCouncil(slug?: string, memberSlugs: string[] = []) {
   revalidatePath("/");
   revalidatePath("/council");
+  revalidatePath("/sitemap.xml");
   revalidatePath("/manage");
   revalidatePath("/manage/council");
-  if (slug) revalidatePath(`/council/${slug}`);
+  if (!slug) return;
+  for (const memberSlug of memberSlugs) {
+    revalidatePath(`/council/${slug}/${memberSlug}`);
+  }
+}
+
+function missingMemberProfileColumn(message: string) {
+  const text = message.toLowerCase();
+  return (
+    /could not find the '(about|work|slug)' column/.test(text) ||
+    (/column/.test(text) && /(about|work|slug)/.test(text) && /does not exist/.test(text))
+  );
 }
 
 async function replaceCouncilChildren(
@@ -828,17 +841,42 @@ async function replaceCouncilChildren(
     throw new Error(databaseError(removedMembers.error, "The council list could not be saved."));
   }
   if (input.members.length) {
-    const inserted = await supabase.from("campus_council_members").insert(
-      input.members.map((member, index) => ({
-        year_id: yearId,
-        role: member.role,
-        name: member.name,
-        image_url: member.imageUrl,
-        image_alt: member.imageAlt,
-        quote: member.quote,
-        sort_order: index,
-      })),
-    );
+    const slugs = councilMemberSlugs(input.members);
+    const rows = input.members.map((member, index) => ({
+      year_id: yearId,
+      role: member.role,
+      name: member.name,
+      image_url: member.imageUrl,
+      image_alt: member.imageAlt,
+      quote: member.quote,
+      about: member.about,
+      work: member.work,
+      slug: slugs[index],
+      sort_order: index,
+    }));
+    const inserted = await supabase.from("campus_council_members").insert(rows);
+    if (inserted.error && missingMemberProfileColumn(inserted.error.message ?? "")) {
+      const fallback = await supabase.from("campus_council_members").insert(
+        rows.map((member) => ({
+          year_id: member.year_id,
+          role: member.role,
+          name: member.name,
+          image_url: member.image_url,
+          image_alt: member.image_alt,
+          quote: member.quote,
+          sort_order: member.sort_order,
+        })),
+      );
+      if (fallback.error) {
+        const missingQuote = (fallback.error.message ?? "").toLowerCase().includes("quote");
+        throw new Error(
+          missingQuote
+            ? "Run supabase/QUOTES_AND_SOCIAL.sql in the database, then save again."
+            : databaseError(fallback.error, "The council list could not be saved."),
+        );
+      }
+      throw new Error("Run supabase/MEMBER_PROFILES.sql in the database, then save again.");
+    }
     if (inserted.error) {
       const missingQuote = (inserted.error.message ?? "").toLowerCase().includes("quote");
       throw new Error(
@@ -901,7 +939,7 @@ export async function saveCouncilYear(_state: ActionState, formData: FormData): 
     if ("error" in access) return access;
     const saved = saveCouncilToStore(access.actor, parsed.data, intent, id);
     if ("error" in saved) return { error: saved.error };
-    revalidateCouncil(saved.slug);
+    revalidateCouncil(saved.slug, councilMemberSlugs(parsed.data.members));
     if (!id) redirect(`/manage/council/${saved.id}/edit`);
     return { ok: saved.status === "published" ? "Published." : "Saved." };
   }
@@ -994,7 +1032,7 @@ export async function saveCouncilYear(_state: ActionState, formData: FormData): 
     await writeAudit(context.supabase, context.actor.userId, intent, "campus_council_years", yearId);
   }
 
-  revalidateCouncil(parsed.data.slug);
+  revalidateCouncil(parsed.data.slug, councilMemberSlugs(parsed.data.members));
   if (!id) redirect(`/manage/council/${yearId}/edit`);
   return { ok: status === "published" ? "Published." : "Saved." };
 }
