@@ -84,6 +84,7 @@ export function EventDetail({
                 href={registration.href}
                 className="rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-accent-ink"
                 rel="noopener noreferrer"
+                target="_blank"
               >
                 {registration.label}
               </a>
@@ -92,7 +93,12 @@ export function EventDetail({
               <p className="text-sm text-muted">Registration has closed.</p>
             ) : null}
             {instagram.ok ? (
-              <a href={instagram.url} className="rounded-md border border-line px-4 py-2.5 text-sm" rel="noopener noreferrer">
+              <a
+                href={instagram.url}
+                className="rounded-md border border-line px-4 py-2.5 text-sm"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
                 Instagram
               </a>
             ) : null}
@@ -166,7 +172,7 @@ export function EventDetail({
         {video ? (
           <Section title="Video">
             {video.kind === "link" ? (
-              <a href={video.href} className="text-accent" rel="noopener noreferrer">
+              <a href={video.href} className="text-accent" rel="noopener noreferrer" target="_blank">
                 Watch the video
               </a>
             ) : (

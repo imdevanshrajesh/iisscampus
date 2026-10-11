@@ -71,18 +71,33 @@ export default async function AboutPage() {
           <p className="kicker mt-10 text-muted">Contact</p>
           <p className="mt-3 text-sm leading-6 text-muted">
             {siteConfig.contactUrl ? (
-              <a href={siteConfig.contactUrl} className="text-link text-ink">
+              <a
+                href={siteConfig.contactUrl}
+                className="text-link text-ink"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
                 Send feedback
               </a>
             ) : (
               "A contact link has not been configured."
             )}
             {" · "}
-            <a href={social.instagramUrl} className="text-link text-ink" rel="noopener noreferrer">
+            <a
+              href={social.instagramUrl}
+              className="text-link text-ink"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
               Instagram
             </a>
             {" · "}
-            <a href={social.scixcomInstagramUrl} className="text-link text-ink" rel="noopener noreferrer">
+            <a
+              href={social.scixcomInstagramUrl}
+              className="text-link text-ink"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
               SciXcom
             </a>
           </p>

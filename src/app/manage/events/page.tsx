@@ -46,7 +46,14 @@ export default async function ManageEventsPage({
               <p className="text-xs uppercase tracking-[0.14em] text-muted">{event.publicationStatus.replace("_", " ")}</p>
             </div>
             <div className="flex flex-wrap items-center gap-4">
-              <a href={`/events/${event.slug}?preview=1`} className="text-sm font-medium text-accent">Preview</a>
+              <a
+                href={`/events/${event.slug}?preview=1`}
+                className="text-sm font-medium text-accent"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                Preview
+              </a>
               <Link href={`/manage/events/${event.id}/edit`} className="text-sm text-ink">Edit</Link>
               {canDelete({ userId: "staff", role: access.role }, event.publicationStatus) ? (
                 <DeleteRecord action={deleteEvent} id={event.id} label="Delete" />

@@ -348,7 +348,12 @@ export function EventForm({
           </>
         ) : null}
         {event ? (
-          <a href={`/events/${event.slug}?preview=1`} className="self-center text-sm text-accent">
+          <a
+            href={`/events/${event.slug}?preview=1`}
+            className="self-center text-sm text-accent"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
             Preview
           </a>
         ) : null}

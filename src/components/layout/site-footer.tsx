@@ -58,18 +58,33 @@ export function SiteFooter({
                 </a>
               </li>
               <li>
-                <a href={social.instagramUrl} className="text-link text-white/85" rel="noopener noreferrer">
+                <a
+                  href={social.instagramUrl}
+                  className="text-link text-white/85"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
                   Instagram
                 </a>
               </li>
               <li>
-                <a href={social.scixcomInstagramUrl} className="text-link text-white/85" rel="noopener noreferrer">
+                <a
+                  href={social.scixcomInstagramUrl}
+                  className="text-link text-white/85"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
                   SciXcom
                 </a>
               </li>
               {siteConfig.contactUrl ? (
                 <li>
-                  <a href={siteConfig.contactUrl} className="text-link text-white/85">
+                  <a
+                    href={siteConfig.contactUrl}
+                    className="text-link text-white/85"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
                     Contact
                   </a>
                 </li>

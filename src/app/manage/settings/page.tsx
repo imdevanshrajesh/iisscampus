@@ -35,7 +35,12 @@ export default async function SettingsPage() {
         </ol>
         <p className="mt-4 max-w-xl text-sm leading-6 text-muted">
           Recommended host:{" "}
-          <a href="https://cloudinary.com" className="text-accent underline-offset-2 hover:underline">
+          <a
+            href="https://cloudinary.com"
+            className="text-accent underline-offset-2 hover:underline"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
             Cloudinary
           </a>{" "}
           (free Media Library). Keep assets public so the preview and public pages can load them.

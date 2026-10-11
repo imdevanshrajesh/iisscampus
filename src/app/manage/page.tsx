@@ -62,9 +62,14 @@ export default async function ManageHomePage() {
                     </Link>
                     <p className="text-sm text-muted">{eventStatusLabel(event.eventStatus)}</p>
                   </div>
-                  <Link href={`/events/${event.slug}`} className="text-sm text-accent">
+                  <a
+                    href={`/events/${event.slug}`}
+                    className="text-sm text-accent"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
                     View
-                  </Link>
+                  </a>
                 </li>
               ))}
             </ul>
