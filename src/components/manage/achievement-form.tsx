@@ -3,9 +3,10 @@
 import { useActionState, useState } from "react";
 import { saveAchievement, type ActionState } from "@/lib/manage/actions";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
+import { ResourceRepeater } from "@/components/manage/resource-repeater";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import { classifyMediaUrl } from "@/lib/media/url";
-import type { Achievement, CampusRole, Category, CampusEvent } from "@/lib/types";
+import type { Achievement, CampusRole, Category, CampusEvent, ContentResource } from "@/lib/types";
 
 const fieldClass = "w-full rounded-md border border-line bg-background px-3 py-2 text-sm";
 
@@ -24,12 +25,14 @@ export function AchievementForm({
 }) {
   const [state, action, pending] = useActionState(saveAchievement, {} as ActionState);
   const [imageUrl, setImageUrl] = useState(achievement?.imageUrl ?? "");
+  const [resources, setResources] = useState<ContentResource[]>(achievement?.resources ?? []);
   const image = classifyMediaUrl(imageUrl, mediaHosts);
   const locked = role === "editor" && (achievement?.publicationStatus === "published" || achievement?.publicationStatus === "archived");
 
   return (
     <form action={action} className="grid max-w-2xl gap-4">
       {achievement ? <input type="hidden" name="id" value={achievement.id} /> : null}
+      <input type="hidden" name="resources" value={JSON.stringify(resources.filter((item) => item.title.trim()))} />
       {state.error ? <p className="text-sm">{state.error}</p> : null}
       {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
       <fieldset disabled={locked} className="grid gap-4">
@@ -70,6 +73,7 @@ export function AchievementForm({
           <img src={image.url} alt="" className="aspect-[4/3] max-w-xs rounded-xl object-cover" />
         ) : null}
         <label className="grid gap-1.5 text-sm">Alternative text<input name="imageAlt" defaultValue={achievement?.imageAlt ?? ""} className={fieldClass} /></label>
+        <ResourceRepeater resources={resources} onChange={setResources} />
       </fieldset>
       <div className="flex flex-wrap gap-3">
         <button type="submit" name="intent" value="save" disabled={locked || pending} className="rounded-md bg-navy px-4 py-2 text-sm text-white">{achievement?.publicationStatus === "published" ? "Save changes" : "Save draft"}</button>

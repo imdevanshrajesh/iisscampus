@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { grantRole, saveCategory, saveSettings, saveSocial, type ActionState } from "@/lib/manage/actions";
+import { grantRole, saveSettings, saveSocial, type ActionState } from "@/lib/manage/actions";
 import type { SocialLinks } from "@/lib/types";
 import { RECOMMENDED_IMAGE_HOST } from "@/lib/media/guide";
 
@@ -84,21 +84,6 @@ export function RoleForm() {
       {state.error ? <p className="text-sm">{state.error}</p> : null}
       {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
       <button type="submit" disabled={pending} className="justify-self-start rounded-md bg-ink px-4 py-2 text-sm text-white">Update role</button>
-    </form>
-  );
-}
-
-export function CategoryForm() {
-  const [state, action, pending] = useActionState(saveCategory, {} as ActionState);
-  return (
-    <form action={action} className="mt-10 grid max-w-xl gap-3 border-t border-line pt-8">
-      <h2 className="text-lg font-medium">Add a category</h2>
-      <label className="grid gap-1.5 text-sm">Name<input name="name" required className={fieldClass} /></label>
-      <label className="grid gap-1.5 text-sm">Slug<input name="slug" required className={fieldClass} /></label>
-      <label className="grid gap-1.5 text-sm">Description<input name="description" className={fieldClass} /></label>
-      {state.error ? <p className="text-sm">{state.error}</p> : null}
-      {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
-      <button type="submit" disabled={pending} className="justify-self-start rounded-md border border-line bg-white px-4 py-2 text-sm">Add category</button>
     </form>
   );
 }

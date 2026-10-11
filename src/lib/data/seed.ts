@@ -94,6 +94,8 @@ export const seedCategories: Category[] = [
     name: "Cultural",
     description: "Performances, heritage programmes, and cultural gatherings.",
     sortOrder: 1,
+    imageUrl: null,
+    pdfUrl: null,
   },
   {
     id: "10000000-0000-4000-8000-000000000002",
@@ -101,6 +103,8 @@ export const seedCategories: Category[] = [
     name: "Sports",
     description: "Matches, house sport, and athletic gatherings.",
     sortOrder: 2,
+    imageUrl: null,
+    pdfUrl: null,
   },
   {
     id: "10000000-0000-4000-8000-000000000003",
@@ -108,6 +112,8 @@ export const seedCategories: Category[] = [
     name: "Academic",
     description: "Subject exhibitions, academic contests, and scholarly work.",
     sortOrder: 3,
+    imageUrl: null,
+    pdfUrl: null,
   },
   {
     id: "10000000-0000-4000-8000-000000000004",
@@ -115,6 +121,8 @@ export const seedCategories: Category[] = [
     name: "Technology",
     description: "Computing, design, and technology showcases.",
     sortOrder: 4,
+    imageUrl: null,
+    pdfUrl: null,
   },
   {
     id: "10000000-0000-4000-8000-000000000005",
@@ -122,6 +130,8 @@ export const seedCategories: Category[] = [
     name: "Sustainability",
     description: "Environmental projects and campus sustainability work.",
     sortOrder: 5,
+    imageUrl: null,
+    pdfUrl: null,
   },
   {
     id: "10000000-0000-4000-8000-000000000006",
@@ -129,6 +139,8 @@ export const seedCategories: Category[] = [
     name: "Student Initiatives",
     description: "Activities organised and led by students.",
     sortOrder: 6,
+    imageUrl: null,
+    pdfUrl: null,
   },
   {
     id: "10000000-0000-4000-8000-000000000007",
@@ -136,6 +148,8 @@ export const seedCategories: Category[] = [
     name: "Celebrations",
     description: "Festive days and community celebrations.",
     sortOrder: 7,
+    imageUrl: null,
+    pdfUrl: null,
   },
 ];
 
@@ -166,6 +180,7 @@ function sampleEvent(
     instagramUrl: null,
     schedule: [],
     groups: [],
+    resources: [],
     videoUrl: null,
     images: [],
     relatedIds: [],
@@ -269,6 +284,7 @@ export const seedAchievements: Achievement[] = [
     eventId: "20000000-0000-4000-8000-000000000001",
     imageUrl: null,
     imageAlt: null,
+    resources: [],
     publicationStatus: "published",
     isSample: true,
     createdAt: now,
@@ -287,6 +303,7 @@ export const seedAchievements: Achievement[] = [
     eventId: seedEvents[0].id,
     imageUrl: null,
     imageAlt: null,
+    resources: [],
     publicationStatus: "draft",
     isSample: true,
     createdAt: now,

@@ -18,20 +18,31 @@ export function NewsletterForm({ newsletter }: { newsletter: Newsletter | null }
         <input name="title" defaultValue={newsletter?.title ?? ""} className={fieldClass} required />
       </label>
       <label className="block text-sm">
-        Image URL
+        Cover image URL
         <input
           name="imageUrl"
           defaultValue={newsletter?.imageUrl ?? ""}
           className={fieldClass}
           placeholder={IMAGE_URL_EXAMPLE}
-          required
         />
       </label>
       <ImageUrlHint />
       <label className="block text-sm">
-        Link
-        <input name="href" defaultValue={newsletter?.href ?? ""} placeholder="https://" className={fieldClass} required />
+        PDF download URL
+        <input
+          name="pdfUrl"
+          defaultValue={newsletter?.pdfUrl ?? ""}
+          placeholder="https://"
+          className={fieldClass}
+        />
       </label>
+      <label className="block text-sm">
+        Alternate link
+        <input name="href" defaultValue={newsletter?.href ?? ""} placeholder="https://" className={fieldClass} />
+      </label>
+      <p className="text-sm text-muted">
+        Publish with a PDF, an alternate link, or both. The public page shows Download PDF when a PDF URL is set.
+      </p>
       <label className="flex items-center gap-2 text-sm">
         <input name="published" type="checkbox" defaultChecked={newsletter?.published ?? false} />
         Show on the site

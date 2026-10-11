@@ -12,6 +12,7 @@ import { RingLink } from "@/components/home/ring-link";
 import { Today } from "@/components/home/today";
 import { siteConfig } from "@/lib/config";
 import { compareCampusEvents } from "@/lib/data/catalog";
+import { classifyNavigationUrl } from "@/lib/media/url";
 import type { Achievement, CampusEvent, Category } from "@/lib/types";
 
 const pageAnchors = [
@@ -190,24 +191,39 @@ export function HomePage({
           </h2>
         </RevealOnScroll>
         <ol className="mt-10 border-t border-ink">
-          {categories.map((category, index) => (
-            <li key={category.id} className="border-b border-line">
-              <RevealOnScroll delay={index * 50}>
-                <Link
-                  href={`/events?category=${category.slug}`}
-                  className="group grid gap-2 py-6 md:grid-cols-[5rem_1fr_auto] md:items-baseline md:gap-8"
-                >
-                  <span className="font-display text-2xl italic text-accent">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <span className="font-display text-3xl text-ink transition-[transform,color] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-3 group-hover:text-accent md:text-4xl">
-                    {category.name}
-                  </span>
-                  <span className="max-w-md text-sm leading-6 text-muted md:text-right">{category.description}</span>
-                </Link>
-              </RevealOnScroll>
-            </li>
-          ))}
+          {categories.map((category, index) => {
+            const pdf = category.pdfUrl ? classifyNavigationUrl(category.pdfUrl) : null;
+            return (
+              <li key={category.id} className="border-b border-line">
+                <RevealOnScroll delay={index * 50}>
+                  <div className="group grid gap-3 py-6 md:grid-cols-[5rem_1fr_auto] md:items-baseline md:gap-8">
+                    <span className="font-display text-2xl italic text-accent">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <div>
+                      <Link
+                        href={`/events?category=${category.slug}`}
+                        className="font-display text-3xl text-ink transition-[transform,color] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-3 group-hover:text-accent md:text-4xl"
+                      >
+                        {category.name}
+                      </Link>
+                      {pdf?.ok ? (
+                        <a
+                          href={pdf.url}
+                          className="mt-2 block text-sm text-accent"
+                          rel="noopener noreferrer"
+                          target="_blank"
+                        >
+                          Download PDF
+                        </a>
+                      ) : null}
+                    </div>
+                    <span className="max-w-md text-sm leading-6 text-muted md:text-right">{category.description}</span>
+                  </div>
+                </RevealOnScroll>
+              </li>
+            );
+          })}
         </ol>
       </section>
 

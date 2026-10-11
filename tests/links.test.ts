@@ -16,18 +16,47 @@ describe("registration and redirects", () => {
     assert.deepEqual(registrationState({ ...base, registrationEnabled: false }), { state: "hidden" });
   });
 
-  it("opens an allowlisted-style https registration link", () => {
+  it("opens an https registration link as Register now", () => {
     const state = registrationState(base, "2026-01-01");
     assert.equal(state.state, "open");
     if (state.state === "open") {
       assert.equal(state.href, "https://arigo.example/events/fifa");
-      assert.equal(state.label, "Register through Arigo");
+      assert.equal(state.label, "Register now");
     }
   });
 
-  it("does not offer a button when the registration url is missing or unsafe", () => {
-    assert.equal(registrationState({ ...base, registrationUrl: null }).state, "unavailable");
-    assert.equal(registrationState({ ...base, registrationUrl: "javascript:alert(1)" }).state, "unavailable");
+  it("uses a custom button label when provided", () => {
+    const state = registrationState({ ...base, registrationLabel: "Join the team" }, "2026-01-01");
+    assert.equal(state.state, "open");
+    if (state.state === "open") assert.equal(state.label, "Join the team");
+  });
+
+  it("falls back to Arigo signup when the registration url is blank", () => {
+    const previous = process.env.NEXT_PUBLIC_ARIGO_URL;
+    process.env.NEXT_PUBLIC_ARIGO_URL = "https://arigo.example";
+    try {
+      const state = registrationState({ ...base, registrationUrl: null }, "2026-01-01");
+      assert.equal(state.state, "open");
+      if (state.state === "open") {
+        assert.equal(state.href, "https://arigo.example/signup");
+        assert.equal(state.label, "Register now");
+      }
+    } finally {
+      if (previous === undefined) delete process.env.NEXT_PUBLIC_ARIGO_URL;
+      else process.env.NEXT_PUBLIC_ARIGO_URL = previous;
+    }
+  });
+
+  it("does not offer a button when the registration url is unsafe and Arigo is unavailable", () => {
+    const previous = process.env.NEXT_PUBLIC_ARIGO_URL;
+    delete process.env.NEXT_PUBLIC_ARIGO_URL;
+    try {
+      assert.equal(registrationState({ ...base, registrationUrl: null }).state, "unavailable");
+      assert.equal(registrationState({ ...base, registrationUrl: "javascript:alert(1)" }).state, "unavailable");
+    } finally {
+      if (previous === undefined) delete process.env.NEXT_PUBLIC_ARIGO_URL;
+      else process.env.NEXT_PUBLIC_ARIGO_URL = previous;
+    }
   });
 
   it("closes registration after the deadline", () => {

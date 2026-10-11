@@ -3,6 +3,7 @@ import Link from "next/link";
 import { MediaFrame } from "@/components/media/media-frame";
 import { categoryById, formatEventDate } from "@/lib/data/catalog";
 import { getPublicCatalog } from "@/lib/data/queries";
+import { classifyNavigationUrl } from "@/lib/media/url";
 
 export const metadata: Metadata = {
   title: "Achievements",
@@ -103,6 +104,31 @@ export default async function AchievementsPage({
                     <Link href={`/events/${related.slug}`} className="mt-4 inline-flex text-sm text-accent">
                       Related event
                     </Link>
+                  ) : null}
+                  {item.resources.length ? (
+                    <div className="mt-4 border-t border-line pt-4">
+                      <ul className="space-y-3">
+                        {item.resources.map((resource) => {
+                          const link = resource.href ? classifyNavigationUrl(resource.href) : null;
+                          return (
+                            <li key={`${resource.title}-${resource.href ?? ""}`}>
+                              <p className="text-sm font-medium">{resource.title}</p>
+                              {resource.detail ? <p className="text-sm text-muted">{resource.detail}</p> : null}
+                              {link?.ok ? (
+                                <a
+                                  href={link.url}
+                                  className="mt-1 inline-flex text-sm text-accent"
+                                  rel="noopener noreferrer"
+                                  target="_blank"
+                                >
+                                  {resource.kind === "pdf" ? "Download PDF" : "Open link"}
+                                </a>
+                              ) : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
                   ) : null}
                 </div>
               </li>

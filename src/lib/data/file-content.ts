@@ -151,6 +151,7 @@ export function saveEventToStore(
     activities: input.activities,
     schedule: input.schedule,
     groups: input.groups,
+    resources: input.resources,
     videoUrl: input.videoUrl,
     images: input.images.map((image, index) => ({
       id: image.id ?? crypto.randomUUID(),
@@ -214,6 +215,7 @@ export function saveAchievementToStore(actor: Actor, input: AchievementInput, in
     eventId: input.eventId,
     imageUrl: input.imageUrl,
     imageAlt: input.imageAlt,
+    resources: input.resources,
     publicationStatus: status,
     isSample: existing?.isSample ?? false,
     createdAt: existing?.createdAt ?? now,
@@ -352,17 +354,44 @@ export function deleteFromStore(actor: Actor, kind: "events" | "achievements" | 
   return writeContentStore(store);
 }
 
-export function addCategoryToStore(name: string, slug: string, description: string) {
+export function saveCategoryToStore(input: {
+  id?: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  sortOrder: number;
+  imageUrl: string | null;
+  pdfUrl: string | null;
+}) {
   const store = readContentStore();
-  if (store.categories.some((category) => category.slug === slug)) return false;
-  store.categories.push({
-    id: crypto.randomUUID(),
+  const existing = input.id ? store.categories.find((category) => category.id === input.id) : undefined;
+  if (store.categories.some((category) => category.slug === input.slug && category.id !== existing?.id)) {
+    return false;
+  }
+  const record = {
+    id: existing?.id ?? crypto.randomUUID(),
+    name: input.name,
+    slug: input.slug,
+    description: input.description ?? "",
+    sortOrder: input.sortOrder || (existing?.sortOrder ?? store.categories.length + 1),
+    imageUrl: input.imageUrl,
+    pdfUrl: input.pdfUrl,
+  };
+  store.categories = existing
+    ? store.categories.map((category) => (category.id === existing.id ? record : category))
+    : [...store.categories, record];
+  return writeContentStore(store);
+}
+
+export function addCategoryToStore(name: string, slug: string, description: string) {
+  return saveCategoryToStore({
     name,
     slug,
     description,
-    sortOrder: store.categories.length + 1,
+    sortOrder: 0,
+    imageUrl: null,
+    pdfUrl: null,
   });
-  return writeContentStore(store);
 }
 
 export function readNewsletter(): Newsletter | null {

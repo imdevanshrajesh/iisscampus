@@ -14,6 +14,18 @@ type RegistrationFields = {
   registrationDeadline: string | null;
 };
 
+function arigoSignupUrl() {
+  const raw = process.env.NEXT_PUBLIC_ARIGO_URL?.trim();
+  if (!raw) return null;
+  const classified = classifyNavigationUrl(raw);
+  if (!classified.ok) return null;
+  try {
+    return new URL("/signup", classified.url).toString();
+  } catch {
+    return null;
+  }
+}
+
 export function registrationState(
   event: RegistrationFields,
   today = new Date().toISOString().slice(0, 10),
@@ -24,14 +36,17 @@ export function registrationState(
     return { state: "closed" };
   }
 
-  const classified = classifyNavigationUrl(event.registrationUrl);
-  if (!classified.ok) return { state: "unavailable" };
+  let href: string | null = null;
+  if (event.registrationUrl) {
+    const classified = classifyNavigationUrl(event.registrationUrl);
+    if (!classified.ok) return { state: "unavailable" };
+    href = classified.url;
+  } else {
+    href = arigoSignupUrl();
+  }
+  if (!href) return { state: "unavailable" };
 
-  const label =
-    event.registrationLabel?.trim() ||
-    (event.registrationProvider?.toLowerCase() === "arigo"
-      ? "Register through Arigo"
-      : "Register");
+  const label = event.registrationLabel?.trim() || "Register now";
 
-  return { state: "open", href: classified.url, label };
+  return { state: "open", href, label };
 }

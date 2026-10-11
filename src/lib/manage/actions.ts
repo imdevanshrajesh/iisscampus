@@ -10,9 +10,9 @@ import { defaultSocialLinks, isSupabaseConfigured } from "@/lib/config";
 import { councilMemberSlugs } from "@/lib/data/catalog";
 import { contentMode } from "@/lib/data/content-mode";
 import {
-  addCategoryToStore,
   deleteFromStore,
   saveAchievementToStore,
+  saveCategoryToStore,
   saveCouncilToStore,
   saveEventToStore,
   saveNewsletterToStore,
@@ -23,6 +23,7 @@ import { isMissingTableError, missingCouncilTablesMessage } from "@/lib/supabase
 import { createStaffClient } from "@/lib/supabase/server";
 import {
   achievementInputSchema,
+  categoryInputSchema,
   councilInputFromForm,
   eventInputSchema,
   validateCouncilMedia,
@@ -173,6 +174,7 @@ function eventRecord(input: EventInput, status: PublicationStatus, featured: boo
     video_url: httpsOrNull(input.videoUrl),
     schedule: input.schedule,
     groups: input.groups,
+    resources: input.resources,
     publication_status: status,
   };
 }
@@ -255,7 +257,8 @@ function readEventInput(formData: FormData) {
   const images = readList(formData, "images");
   const schedule = readList(formData, "schedule");
   const groups = readList(formData, "groups");
-  if (!images || !schedule || !groups) return { error: "A list field could not be read." };
+  const resources = readList(formData, "resources");
+  if (!images || !schedule || !groups || !resources) return { error: "A list field could not be read." };
 
   const parsed = eventInputSchema.safeParse({
     title: formData.get("title"),
@@ -282,6 +285,7 @@ function readEventInput(formData: FormData) {
     videoUrl: formData.get("videoUrl"),
     schedule,
     groups,
+    resources,
     images,
     relatedIds: formData.getAll("relatedIds").map(String).filter(Boolean),
   });
@@ -452,7 +456,12 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
         .maybeSingle();
 
   if (saved.error) {
-    return { error: databaseError(saved.error, "The event could not be saved.") };
+    const missing = (saved.error.message ?? "").toLowerCase().includes("resources");
+    return {
+      error: missing
+        ? "Run supabase/RESOURCES_AND_NEWSLETTER_PDF.sql in the database, then save again."
+        : databaseError(saved.error, "The event could not be saved."),
+    };
   }
 
   let eventId = saved.data?.id ?? null;
@@ -492,27 +501,36 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
   return { ok: status === "published" ? "Published." : "Saved." };
 }
 
+function readAchievementInput(formData: FormData) {
+  const resources = readList(formData, "resources");
+  if (!resources) return { error: "A list field could not be read." };
+  const parsed = achievementInputSchema.safeParse({
+    title: formData.get("title"),
+    competitionName: formData.get("competitionName"),
+    winnerName: formData.get("winnerName"),
+    award: formData.get("award"),
+    eventDate: formData.get("eventDate"),
+    academicYear: formData.get("academicYear"),
+    categoryId: formData.get("categoryId"),
+    eventId: formData.get("eventId"),
+    imageUrl: formData.get("imageUrl"),
+    imageAlt: formData.get("imageAlt"),
+    resources,
+  });
+  if (!parsed.success) return { error: issueMessage(parsed.error) };
+  return { input: parsed.data };
+}
+
 export async function saveAchievement(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = readAchievementInput(formData);
+  if ("error" in parsed) return { error: parsed.error };
+
   if ((await contentMode()) === "file") {
     const access = await fileActor((actor) => can(actor, "manage_achievements"));
     if ("error" in access) return access;
-    const actor = access.actor;
-    const parsed = achievementInputSchema.safeParse({
-      title: formData.get("title"),
-      competitionName: formData.get("competitionName"),
-      winnerName: formData.get("winnerName"),
-      award: formData.get("award"),
-      eventDate: formData.get("eventDate"),
-      academicYear: formData.get("academicYear"),
-      categoryId: formData.get("categoryId"),
-      eventId: formData.get("eventId"),
-      imageUrl: formData.get("imageUrl"),
-      imageAlt: formData.get("imageAlt"),
-    });
-    if (!parsed.success) return { error: issueMessage(parsed.error) };
     const saved = saveAchievementToStore(
-      actor,
-      parsed.data,
+      access.actor,
+      parsed.input,
       String(formData.get("intent") ?? "save"),
       String(formData.get("id") ?? ""),
     );
@@ -526,21 +544,7 @@ export async function saveAchievement(_state: ActionState, formData: FormData): 
   if ("error" in context) return { error: context.error };
   if (!can(context.actor, "manage_achievements")) return { error: genericDenial };
 
-  const parsed = achievementInputSchema.safeParse({
-    title: formData.get("title"),
-    competitionName: formData.get("competitionName"),
-    winnerName: formData.get("winnerName"),
-    award: formData.get("award"),
-    eventDate: formData.get("eventDate"),
-    academicYear: formData.get("academicYear"),
-    categoryId: formData.get("categoryId"),
-    eventId: formData.get("eventId"),
-    imageUrl: formData.get("imageUrl"),
-    imageAlt: formData.get("imageAlt"),
-  });
-  if (!parsed.success) return { error: issueMessage(parsed.error) };
-
-  const input: AchievementInput = parsed.data;
+  const input: AchievementInput = parsed.input;
   const settings = await context.supabase
     .from("campus_settings")
     .select("media_hosts")
@@ -595,6 +599,7 @@ export async function saveAchievement(_state: ActionState, formData: FormData): 
     event_id: input.eventId,
     image_url: input.imageUrl,
     image_alt: input.imageAlt,
+    resources: input.resources,
     publication_status: status,
     published_at: publishedAt,
     is_sample: false,
@@ -604,7 +609,12 @@ export async function saveAchievement(_state: ActionState, formData: FormData): 
     ? await context.supabase.from("campus_achievements").update(record).eq("id", id)
     : await context.supabase.from("campus_achievements").insert(record);
   if (saved.error) {
-    return { error: databaseError(saved.error, "The achievement could not be saved.") };
+    const missing = (saved.error.message ?? "").toLowerCase().includes("resources");
+    return {
+      error: missing
+        ? "Run supabase/RESOURCES_AND_NEWSLETTER_PDF.sql in the database, then save again."
+        : databaseError(saved.error, "The achievement could not be saved."),
+    };
   }
 
   revalidatePath("/achievements");
@@ -613,42 +623,93 @@ export async function saveAchievement(_state: ActionState, formData: FormData): 
 }
 
 export async function saveCategory(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = categoryInputSchema.safeParse({
+    name: formData.get("name"),
+    slug: formData.get("slug"),
+    description: formData.get("description"),
+    sortOrder: formData.get("sortOrder") || 0,
+    imageUrl: formData.get("imageUrl"),
+    pdfUrl: formData.get("pdfUrl"),
+  });
+  if (!parsed.success) return { error: issueMessage(parsed.error) };
+
+  const id = String(formData.get("id") ?? "").trim();
+  const imageRaw = parsed.data.imageUrl;
+  const pdfRaw = parsed.data.pdfUrl;
+  if (pdfRaw) {
+    const pdf = classifyNavigationUrl(pdfRaw);
+    if (!pdf.ok) return { error: "Category PDF must be a valid https:// link." };
+    parsed.data.pdfUrl = pdf.url;
+  }
+
   if ((await contentMode()) === "file") {
     const access = await fileActor((actor) => can(actor, "manage_categories"));
     if ("error" in access) return access;
-    const name = String(formData.get("name") ?? "").trim();
-    const slug = String(formData.get("slug") ?? "").trim();
-    const description = String(formData.get("description") ?? "").trim();
-    if (name.length < 2 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-      return { error: "Enter a category name and a lowercase slug." };
+    if (imageRaw) {
+      const image = classifyNavigationUrl(imageRaw);
+      if (!image.ok) return { error: image.message };
+      parsed.data.imageUrl = image.url;
     }
-    if (!addCategoryToStore(name, slug, description)) return { error: "The category could not be saved." };
+    if (
+      !saveCategoryToStore({
+        id: id || undefined,
+        name: parsed.data.name,
+        slug: parsed.data.slug,
+        description: parsed.data.description,
+        sortOrder: parsed.data.sortOrder,
+        imageUrl: parsed.data.imageUrl,
+        pdfUrl: parsed.data.pdfUrl,
+      })
+    ) {
+      return { error: "The category could not be saved." };
+    }
+    revalidatePath("/");
     revalidatePath("/events");
+    revalidatePath("/achievements");
+    revalidatePath("/manage/categories");
     revalidatePath("/manage/events");
-    return { ok: "Category added." };
+    return { ok: id ? "Category saved." : "Category added." };
   }
 
   const context = await staffContext();
   if ("error" in context) return { error: context.error };
   if (!can(context.actor, "manage_categories")) return { error: genericDenial };
 
-  const name = String(formData.get("name") ?? "").trim();
-  const slug = String(formData.get("slug") ?? "").trim();
-  const description = String(formData.get("description") ?? "").trim();
-  if (name.length < 2 || name.length > 60) return { error: "Enter a category name." };
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return { error: "Use a lowercase slug." };
-
-  const saved = await context.supabase.from("campus_categories").insert({
-    name,
-    slug,
-    description: description || null,
-  });
-  if (saved.error) {
-    return { error: databaseError(saved.error, "The category could not be saved.") };
+  const hostsRow = await context.supabase.from("campus_settings").select("media_hosts").eq("id", true).maybeSingle();
+  const hosts = Array.isArray(hostsRow.data?.media_hosts) ? hostsRow.data.media_hosts.map(String) : [];
+  if (imageRaw) {
+    const image = classifyMediaUrl(imageRaw, hosts);
+    if (!image.ok) return { error: image.message };
+    parsed.data.imageUrl = image.url;
   }
+
+  const record = {
+    name: parsed.data.name,
+    slug: parsed.data.slug,
+    description: parsed.data.description,
+    sort_order: parsed.data.sortOrder,
+    image_url: parsed.data.imageUrl,
+    pdf_url: parsed.data.pdfUrl,
+  };
+
+  const saved = id
+    ? await context.supabase.from("campus_categories").update(record).eq("id", id)
+    : await context.supabase.from("campus_categories").insert(record);
+  if (saved.error) {
+    const missing = (saved.error.message ?? "").toLowerCase().includes("image_url")
+      || (saved.error.message ?? "").toLowerCase().includes("pdf_url");
+    return {
+      error: missing
+        ? "Run supabase/RESOURCES_AND_NEWSLETTER_PDF.sql in the database, then save again."
+        : databaseError(saved.error, "The category could not be saved."),
+    };
+  }
+  revalidatePath("/");
   revalidatePath("/events");
+  revalidatePath("/achievements");
+  revalidatePath("/manage/categories");
   revalidatePath("/manage/events");
-  return { ok: "Category added." };
+  return { ok: id ? "Category saved." : "Category added." };
 }
 
 export async function saveSettings(_state: ActionState, formData: FormData): Promise<ActionState> {
@@ -1077,19 +1138,39 @@ export async function saveNewsletter(_state: ActionState, formData: FormData): P
   const title = String(formData.get("title") ?? "").trim();
   const imageRaw = String(formData.get("imageUrl") ?? "").trim();
   const hrefRaw = String(formData.get("href") ?? "").trim();
+  const pdfRaw = String(formData.get("pdfUrl") ?? "").trim();
   const published = formData.get("published") === "on";
 
   if (title.length < 2 || title.length > 80) return { error: "Enter a title." };
-  if (!imageRaw) return { error: "Enter an image URL." };
-  const href = classifyNavigationUrl(hrefRaw);
-  if (!href.ok) return { error: href.message };
+
+  let href: string | null = null;
+  if (hrefRaw) {
+    const classified = classifyNavigationUrl(hrefRaw);
+    if (!classified.ok) return { error: classified.message };
+    href = classified.url;
+  }
+
+  let pdfUrl: string | null = null;
+  if (pdfRaw) {
+    const classified = classifyNavigationUrl(pdfRaw);
+    if (!classified.ok) return { error: "PDF must be a valid https:// link." };
+    pdfUrl = classified.url;
+  }
+
+  if (published && !href && !pdfUrl) {
+    return { error: "Add a PDF or a link before publishing." };
+  }
 
   if ((await contentMode()) === "file") {
     const access = await fileActor(() => true);
     if ("error" in access) return access;
-    const image = classifyNavigationUrl(imageRaw);
-    if (!image.ok) return { error: image.message };
-    if (!saveNewsletterToStore({ title, imageUrl: image.url, href: href.url, published })) {
+    let imageUrl: string | null = null;
+    if (imageRaw) {
+      const image = classifyNavigationUrl(imageRaw);
+      if (!image.ok) return { error: image.message };
+      imageUrl = image.url;
+    }
+    if (!saveNewsletterToStore({ title, imageUrl, href, pdfUrl, published })) {
       return { error: "The newsletter could not be saved." };
     }
     revalidatePath("/");
@@ -1104,23 +1185,29 @@ export async function saveNewsletter(_state: ActionState, formData: FormData): P
 
   const hostsRow = await context.supabase.from("campus_settings").select("media_hosts").eq("id", true).maybeSingle();
   const hosts = Array.isArray(hostsRow.data?.media_hosts) ? hostsRow.data.media_hosts.map(String) : [];
-  const image = classifyMediaUrl(imageRaw, hosts);
-  if (!image.ok) return { error: image.message };
+  let imageUrl: string | null = null;
+  if (imageRaw) {
+    const image = classifyMediaUrl(imageRaw, hosts);
+    if (!image.ok) return { error: image.message };
+    imageUrl = image.url;
+  }
 
   const saved = await context.supabase
     .from("campus_settings")
     .update({
       newsletter_title: title,
-      newsletter_image_url: image.url,
-      newsletter_href: href.url,
+      newsletter_image_url: imageUrl,
+      newsletter_href: href,
+      newsletter_pdf_url: pdfUrl,
       newsletter_published: published,
     })
     .eq("id", true);
   if (saved.error) {
-    const missing = (saved.error.message ?? "").toLowerCase().includes("newsletter_");
+    const message = (saved.error.message ?? "").toLowerCase();
+    const missing = message.includes("newsletter_");
     return {
       error: missing
-        ? "Run supabase/NEWSLETTER.sql in the database, then save again."
+        ? "Run supabase/NEWSLETTER.sql and supabase/RESOURCES_AND_NEWSLETTER_PDF.sql in the database, then save again."
         : databaseError(saved.error, "The newsletter could not be saved."),
     };
   }

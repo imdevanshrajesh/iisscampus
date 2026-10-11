@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ResourceCards } from "@/components/content/resource-cards";
 import { GalleryView } from "@/components/gallery/gallery-view";
 import { MediaFrame } from "@/components/media/media-frame";
 import { EventCard } from "@/components/events/event-card";
@@ -147,6 +148,7 @@ export function EventDetail({
             </ul>
           </Section>
         ) : null}
+        <ResourceCards resources={event.resources} title="Competition details" />
         {results.length ? (
           <Section title="Results">
             <ul className="space-y-4">

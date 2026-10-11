@@ -4,9 +4,17 @@ import { useActionState, useState } from "react";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { saveEvent, type ActionState } from "@/lib/manage/actions";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
+import { ResourceRepeater } from "@/components/manage/resource-repeater";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import { classifyMediaUrl } from "@/lib/media/url";
-import type { CampusEvent, CampusRole, Category, ParticipatingGroup, ScheduleItem } from "@/lib/types";
+import type {
+  CampusEvent,
+  CampusRole,
+  Category,
+  ContentResource,
+  ParticipatingGroup,
+  ScheduleItem,
+} from "@/lib/types";
 
 type ImageDraft = {
   url: string;
@@ -46,6 +54,7 @@ export function EventForm({
   );
   const [schedule, setSchedule] = useState<ScheduleItem[]>(event?.schedule ?? []);
   const [groups, setGroups] = useState<ParticipatingGroup[]>(event?.groups ?? []);
+  const [resources, setResources] = useState<ContentResource[]>(event?.resources ?? []);
   const locked =
     role === "editor" &&
     (event?.publicationStatus === "published" || event?.publicationStatus === "archived");
@@ -72,6 +81,7 @@ export function EventForm({
       <input type="hidden" name="images" value={JSON.stringify(images.filter((image) => image.url.trim()))} />
       <input type="hidden" name="schedule" value={JSON.stringify(schedule.filter((item) => item.time.trim() && item.title.trim()))} />
       <input type="hidden" name="groups" value={JSON.stringify(groups.filter((group) => group.name.trim()))} />
+      <input type="hidden" name="resources" value={JSON.stringify(resources.filter((item) => item.title.trim()))} />
 
       {state.error ? <p className="rounded-md border border-line bg-wash px-3 py-2 text-sm">{state.error}</p> : null}
       {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
@@ -255,23 +265,28 @@ export function EventForm({
           onRemove={(index) => setGroups((current) => current.filter((_, rowIndex) => rowIndex !== index))}
         />
 
+        <ResourceRepeater resources={resources} onChange={setResources} />
+
         <fieldset className="grid gap-3 border-t border-line pt-5">
           <legend className="text-lg font-medium">Registration</legend>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="registrationEnabled" defaultChecked={event?.registrationEnabled} />
-            Registration required
+            Show Register now
           </label>
+          <p className="text-sm text-muted">
+            When checked, the public page shows Register now. Leave the URL blank to send visitors to Arigo signup, or paste a specific registration page.
+          </p>
           <label className="grid gap-1.5 text-sm">
             Provider
             <input name="registrationProvider" defaultValue={event?.registrationProvider ?? ""} placeholder="Arigo" className={fieldClass} />
           </label>
           <label className="grid gap-1.5 text-sm">
             Registration URL
-            <input name="registrationUrl" defaultValue={event?.registrationUrl ?? ""} placeholder="https://" className={fieldClass} />
+            <input name="registrationUrl" defaultValue={event?.registrationUrl ?? ""} placeholder="https:// (optional)" className={fieldClass} />
           </label>
           <label className="grid gap-1.5 text-sm">
             Button label
-            <input name="registrationLabel" defaultValue={event?.registrationLabel ?? ""} placeholder="Register through Arigo" className={fieldClass} />
+            <input name="registrationLabel" defaultValue={event?.registrationLabel ?? ""} placeholder="Register now" className={fieldClass} />
           </label>
           <label className="grid gap-1.5 text-sm">
             Deadline

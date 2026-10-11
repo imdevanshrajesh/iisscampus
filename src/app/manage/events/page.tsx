@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { DeleteRecord } from "@/components/manage/delete-record";
-import { CategoryForm } from "@/components/manage/settings-forms";
 import { ManageUnavailable } from "@/components/manage/unavailable";
 import { canDelete } from "@/lib/auth/permissions";
 import { deleteEvent } from "@/lib/manage/actions";
@@ -57,7 +56,13 @@ export default async function ManageEventsPage({
         ))}
         {events.length === 0 ? <li className="px-4 py-8 text-sm text-muted">No events match.</li> : null}
       </ul>
-      <CategoryForm />
+      <p className="mt-8 text-sm text-muted">
+        Manage category cards, images, and PDF briefs on{" "}
+        <Link href="/manage/categories" className="text-accent">
+          Categories
+        </Link>
+        .
+      </p>
     </div>
   );
 }

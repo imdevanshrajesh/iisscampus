@@ -3,6 +3,7 @@ import type {
   Achievement,
   CampusEvent,
   Category,
+  ContentResource,
   CouncilKind,
   CouncilMember,
   CouncilPhoto,
@@ -23,6 +24,17 @@ function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+function mapResources(value: unknown): ContentResource[] {
+  return asArray<ContentResource>(value)
+    .filter((item) => item && typeof item.title === "string" && item.title.trim())
+    .map((item) => ({
+      title: String(item.title).trim(),
+      detail: item.detail ? String(item.detail) : null,
+      href: item.href ? String(item.href) : null,
+      kind: item.kind === "link" || item.kind === "pdf" ? item.kind : "card",
+    }));
+}
+
 export function mapCategory(row: Record<string, unknown>): Category {
   return {
     id: String(row.id),
@@ -30,6 +42,8 @@ export function mapCategory(row: Record<string, unknown>): Category {
     name: String(row.name),
     description: String(row.description ?? ""),
     sortOrder: Number(row.sort_order ?? 0),
+    imageUrl: row.image_url ? String(row.image_url) : null,
+    pdfUrl: row.pdf_url ? String(row.pdf_url) : null,
   };
 }
 
@@ -78,6 +92,7 @@ export function mapEvent(
     activities: row.activities ? String(row.activities) : null,
     schedule: asArray<ScheduleItem>(row.schedule),
     groups: asArray<ParticipatingGroup>(row.groups),
+    resources: mapResources(row.resources),
     videoUrl: row.video_url ? String(row.video_url) : null,
     images: images.sort((a, b) => a.sortOrder - b.sortOrder),
     relatedIds,
@@ -195,6 +210,7 @@ export function mapAchievement(row: Record<string, unknown>): Achievement {
     eventId: row.event_id ? String(row.event_id) : null,
     imageUrl: row.image_url ? String(row.image_url) : null,
     imageAlt: row.image_alt ? String(row.image_alt) : null,
+    resources: mapResources(row.resources),
     publicationStatus: row.publication_status as Achievement["publicationStatus"],
     isSample: Boolean(row.is_sample),
     createdAt: String(row.created_at),

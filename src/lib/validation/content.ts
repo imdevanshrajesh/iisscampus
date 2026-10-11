@@ -54,6 +54,45 @@ export const groupSchema = z.object({
   detail: optionalText(160),
 });
 
+export const resourceSchema = z
+  .object({
+    title: z.string().trim().min(1).max(120),
+    detail: optionalText(500),
+    href: optionalText(2048),
+    kind: z.enum(["card", "link", "pdf"]).default("card"),
+  })
+  .superRefine((value, context) => {
+    if (value.kind === "card") {
+      if (value.href) {
+        const classified = classifyNavigationUrl(value.href);
+        if (!classified.ok) {
+          context.addIssue({
+            code: "custom",
+            path: ["href"],
+            message: "Use a valid https:// link, or leave the link blank.",
+          });
+        }
+      }
+      return;
+    }
+    if (!value.href) {
+      context.addIssue({
+        code: "custom",
+        path: ["href"],
+        message: value.kind === "pdf" ? "Add an https:// PDF link." : "Add an https:// link.",
+      });
+      return;
+    }
+    const classified = classifyNavigationUrl(value.href);
+    if (!classified.ok) {
+      context.addIssue({
+        code: "custom",
+        path: ["href"],
+        message: "Use a valid https:// link.",
+      });
+    }
+  });
+
 export const eventInputSchema = z
   .object({
     title: z.string().trim().min(2).max(140),
@@ -80,6 +119,7 @@ export const eventInputSchema = z
     videoUrl: optionalText(2048),
     schedule: z.array(scheduleItemSchema).max(40).default([]),
     groups: z.array(groupSchema).max(40).default([]),
+    resources: z.array(resourceSchema).max(40).default([]),
     images: z.array(galleryImageSchema).max(40).default([]),
     relatedIds: z.array(z.string().uuid()).max(8).default([]),
   })
@@ -91,15 +131,13 @@ export const eventInputSchema = z
         message: "The end date must be on or after the start date.",
       });
     }
-    if (value.registrationEnabled) {
-      const classified = value.registrationUrl
-        ? classifyNavigationUrl(value.registrationUrl)
-        : null;
-      if (!classified?.ok) {
+    if (value.registrationEnabled && value.registrationUrl) {
+      const classified = classifyNavigationUrl(value.registrationUrl);
+      if (!classified.ok) {
         context.addIssue({
           code: "custom",
           path: ["registrationUrl"],
-          message: "Add an https:// registration link, or turn registration off.",
+          message: "Use a valid https:// registration link, or leave the field blank to use Arigo signup.",
         });
       }
     }
@@ -157,9 +195,21 @@ export const achievementInputSchema = z.object({
   eventId: z.string().uuid().optional().or(z.literal("")).transform((value) => value || null),
   imageUrl: optionalText(2048),
   imageAlt: optionalText(200),
+  resources: z.array(resourceSchema).max(40).default([]),
 });
 
 export type AchievementInput = z.infer<typeof achievementInputSchema>;
+
+export const categoryInputSchema = z.object({
+  name: z.string().trim().min(2).max(60),
+  slug: slugSchema,
+  description: optionalText(280),
+  sortOrder: z.coerce.number().int().min(0).max(500).default(0),
+  imageUrl: optionalText(2048),
+  pdfUrl: optionalText(2048),
+});
+
+export type CategoryInput = z.infer<typeof categoryInputSchema>;
 
 const councilMemberSchema = z.object({
   id: z.string().uuid().optional(),

@@ -12,7 +12,7 @@ export default async function ManageNewsletterPage() {
     <div className="mx-auto max-w-6xl px-5 py-12 md:px-8">
       <h1 className="font-display text-4xl text-ink">Newsletter</h1>
       <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
-        The current monthly issue. The image opens the link.
+        Publish a cover, a PDF students can download, and an optional alternate link.
       </p>
       <div className="mt-8">
         <NewsletterForm newsletter={newsletter} />

@@ -56,9 +56,9 @@ URLs must use `https://`, must not include credentials or a custom port, and mus
 
 ### Registration
 
-Each event can store an external registration URL, usually an existing Arigo page. The public button appears only when registration is enabled and the URL is a valid `https://` link. IISSCampus does not collect Arigo passwords and does not write hackathon or competition registrations.
+Each event can show a public **Register now** button when registration is enabled. Paste a specific `https://` registration URL, or leave the URL blank so visitors go to Arigo signup (`NEXT_PUBLIC_ARIGO_URL` + `/signup`). IISSCampus does not collect Arigo passwords and does not write hackathon or competition registrations.
 
-Set `NEXT_PUBLIC_ARIGO_URL` to the public Arigo origin when you want the community link and return-address allowlist. Per-event registration URLs are stored on the event.
+For a full event site that creates Arigo accounts and stores its own tables, see [`docs/new-event-site.md`](docs/new-event-site.md).
 
 ## Database
 

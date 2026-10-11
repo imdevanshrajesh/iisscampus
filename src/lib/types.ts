@@ -6,12 +6,23 @@ export type CouncilKind = "current" | "upcoming" | "past";
 
 export type CampusRole = "editor" | "administrator";
 
+export type ResourceKind = "card" | "link" | "pdf";
+
+export type ContentResource = {
+  title: string;
+  detail: string | null;
+  href: string | null;
+  kind: ResourceKind;
+};
+
 export type Category = {
   id: string;
   slug: string;
   name: string;
   description: string;
   sortOrder: number;
+  imageUrl: string | null;
+  pdfUrl: string | null;
 };
 
 export type GalleryImage = {
@@ -61,6 +72,7 @@ export type CampusEvent = {
   activities: string | null;
   schedule: ScheduleItem[];
   groups: ParticipatingGroup[];
+  resources: ContentResource[];
   videoUrl: string | null;
   images: GalleryImage[];
   relatedIds: string[];
@@ -81,6 +93,7 @@ export type Achievement = {
   eventId: string | null;
   imageUrl: string | null;
   imageAlt: string | null;
+  resources: ContentResource[];
   publicationStatus: PublicationStatus;
   isSample: boolean;
   createdAt: string;
@@ -138,8 +151,9 @@ export type CouncilYear = {
 
 export type Newsletter = {
   title: string;
-  imageUrl: string;
-  href: string;
+  imageUrl: string | null;
+  href: string | null;
+  pdfUrl: string | null;
   published: boolean;
 };
 

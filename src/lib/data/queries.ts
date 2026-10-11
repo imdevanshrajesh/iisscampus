@@ -112,14 +112,15 @@ export async function getPublicNewsletter(): Promise<Newsletter | null> {
       if (supabase) {
         const row = await supabase
           .from("campus_settings")
-          .select("newsletter_title, newsletter_image_url, newsletter_href, newsletter_published")
+          .select("newsletter_title, newsletter_image_url, newsletter_href, newsletter_pdf_url, newsletter_published")
           .eq("id", true)
           .maybeSingle();
         if (!row.error && row.data?.newsletter_published) {
           const title = String(row.data.newsletter_title ?? "").trim();
-          const imageUrl = String(row.data.newsletter_image_url ?? "").trim();
-          const href = String(row.data.newsletter_href ?? "").trim();
-          if (title && imageUrl && href) return { title, imageUrl, href, published: true };
+          const imageUrl = String(row.data.newsletter_image_url ?? "").trim() || null;
+          const href = String(row.data.newsletter_href ?? "").trim() || null;
+          const pdfUrl = String(row.data.newsletter_pdf_url ?? "").trim() || null;
+          if (title && (href || pdfUrl)) return { title, imageUrl, href, pdfUrl, published: true };
         }
         if (!row.error) return null;
       }
@@ -128,7 +129,7 @@ export async function getPublicNewsletter(): Promise<Newsletter | null> {
     console.error(error);
   }
   const local = readNewsletter();
-  if (!local?.published || !local.title || !local.imageUrl || !local.href) return null;
+  if (!local?.published || !local.title || !(local.href || local.pdfUrl)) return null;
   return local;
 }
 
@@ -139,14 +140,15 @@ export async function getEditableNewsletter(): Promise<Newsletter | null> {
       if (supabase) {
         const row = await supabase
           .from("campus_settings")
-          .select("newsletter_title, newsletter_image_url, newsletter_href, newsletter_published")
+          .select("newsletter_title, newsletter_image_url, newsletter_href, newsletter_pdf_url, newsletter_published")
           .eq("id", true)
           .maybeSingle();
         if (!row.error && row.data) {
           return {
             title: String(row.data.newsletter_title ?? ""),
-            imageUrl: String(row.data.newsletter_image_url ?? ""),
-            href: String(row.data.newsletter_href ?? ""),
+            imageUrl: String(row.data.newsletter_image_url ?? "").trim() || null,
+            href: String(row.data.newsletter_href ?? "").trim() || null,
+            pdfUrl: String(row.data.newsletter_pdf_url ?? "").trim() || null,
             published: Boolean(row.data.newsletter_published),
           };
         }
