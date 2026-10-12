@@ -143,7 +143,7 @@ export const eventInputSchema = z
     fullDescription: z.string().trim().min(20).max(12000),
     categoryId: z.string().uuid(),
     categoryIds: z.array(z.string().uuid()).max(12).default([]),
-    listing: z.enum(["event", "competition"]).default("event"),
+    listing: z.enum(["event", "competition", "external"]).default("event"),
     coverImageUrl: optionalText(2048),
     coverAlt: optionalText(200),
     coverAttribution: optionalText(160),
@@ -153,6 +153,7 @@ export const eventInputSchema = z
     endTime: timeSchema,
     locationName: optionalText(160),
     locationMapUrl: optionalText(2048),
+    hostName: optionalText(120),
     gradeFrom: optionalGrade,
     gradeTo: optionalGrade,
     feeAed: optionalMoney,
@@ -200,6 +201,13 @@ export const eventInputSchema = z
         code: "custom",
         path: ["gradeTo"],
         message: "Grade to must be on or after grade from.",
+      });
+    }
+    if (value.listing === "external" && !value.hostName) {
+      context.addIssue({
+        code: "custom",
+        path: ["hostName"],
+        message: "Enter the host school.",
       });
     }
     if (value.locationMapUrl) {

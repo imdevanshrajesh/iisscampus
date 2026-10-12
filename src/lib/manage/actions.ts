@@ -19,6 +19,7 @@ import {
   saveSocialToStore,
 } from "@/lib/data/file-content";
 import { classifyMediaUrl, classifyNavigationUrl, parseMediaHostList } from "@/lib/media/url";
+import { parseSocialInput } from "@/lib/social";
 import { isMissingTableError, missingCouncilTablesMessage } from "@/lib/supabase/errors";
 import { createStaffClient } from "@/lib/supabase/server";
 import {
@@ -173,6 +174,7 @@ function eventRecord(input: EventInput, status: PublicationStatus, featured: boo
     end_time: input.endTime,
     location_name: input.locationName,
     location_map_url: httpsOrNull(input.locationMapUrl),
+    host_name: input.hostName,
     grade_from: input.gradeFrom,
     grade_to: input.gradeTo,
     fee_aed: input.feeAed,
@@ -320,6 +322,7 @@ function readEventInput(formData: FormData) {
     endTime: formData.get("endTime"),
     locationName: formData.get("locationName"),
     locationMapUrl: formData.get("locationMapUrl"),
+    hostName: formData.get("hostName"),
     gradeFrom: formData.get("gradeFrom"),
     gradeTo: formData.get("gradeTo"),
     feeAed: formData.get("feeAed"),
@@ -501,13 +504,26 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
     published_at: publishedAt,
   };
 
-  const saved = id
-    ? await context.supabase.from("campus_events").update(record).eq("id", id).select("id").maybeSingle()
-    : await context.supabase
-        .from("campus_events")
-        .insert({ ...record, created_by: context.actor.userId, is_sample: false })
-        .select("id")
-        .maybeSingle();
+  const writeEvent = (payload: Record<string, unknown>) =>
+    id
+      ? context.supabase.from("campus_events").update(payload).eq("id", id).select("id").maybeSingle()
+      : context.supabase
+          .from("campus_events")
+          .insert({ ...payload, created_by: context.actor.userId, is_sample: false })
+          .select("id")
+          .maybeSingle();
+
+  let saved = await writeEvent(record);
+  const firstMessage = (saved.error?.message ?? "").toLowerCase();
+  const needsExternalSql = firstMessage.includes("host_name") || firstMessage.includes("campus_event_listing");
+  if (saved.error && needsExternalSql) {
+    if (parsed.input.listing === "external" || parsed.input.hostName) {
+      return { error: "Run supabase/EXTERNAL_COMPETITIONS.sql in the database, then save again." };
+    }
+    const { host_name: omittedHost, ...withoutHost } = record;
+    void omittedHost;
+    saved = await writeEvent(withoutHost);
+  }
 
   if (saved.error) {
     const missing = (saved.error.message ?? "").toLowerCase().includes("resources");
@@ -1288,9 +1304,22 @@ export async function saveNewsletter(_state: ActionState, formData: FormData): P
   if (saved.error) {
     const message = (saved.error.message ?? "").toLowerCase();
     const missing = message.includes("newsletter_");
+    if (missing) {
+      const pdfOnly = await context.supabase
+        .from("campus_settings")
+        .update({ newsletter_pdf_url: pdfUrl })
+        .eq("id", true);
+      if (!pdfOnly.error && !title && !imageUrl && !href && !published) {
+        await writeAudit(context.supabase, context.actor.userId, "update_newsletter", "campus_settings", null);
+        revalidatePath("/");
+        revalidatePath("/newsletter");
+        revalidatePath("/manage/newsletter");
+        return { ok: "Newsletter PDF saved." };
+      }
+    }
     return {
       error: missing
-        ? "Run supabase/NEWSLETTER.sql and supabase/RESOURCES_AND_NEWSLETTER_PDF.sql in the database, then save again."
+        ? "Run supabase/SYNC_LIVE.sql in the database, then save again."
         : databaseError(saved.error, "The newsletter could not be saved."),
     };
   }
@@ -1302,31 +1331,20 @@ export async function saveNewsletter(_state: ActionState, formData: FormData): P
   return { ok: "Newsletter saved." };
 }
 
-function socialUrl(raw: string, fallback: string, label: string) {
-  const value = raw.trim() || fallback;
-  const classified = classifyNavigationUrl(value);
-  if (!classified.ok) return { error: `${label} must be a valid https:// link.` };
-  return { url: classified.url };
-}
-
 export async function saveSocial(_state: ActionState, formData: FormData): Promise<ActionState> {
-  const instagram = socialUrl(String(formData.get("instagramUrl") ?? ""), defaultSocialLinks.instagramUrl, "Campus Instagram");
-  if ("error" in instagram) return { error: instagram.error };
-  const scixcom = socialUrl(
-    String(formData.get("scixcomInstagramUrl") ?? ""),
-    defaultSocialLinks.scixcomInstagramUrl,
-    "SciXcom Instagram",
-  );
-  if ("error" in scixcom) return { error: scixcom.error };
-  const links = { instagramUrl: instagram.url, scixcomInstagramUrl: scixcom.url };
+  const parsed = parseSocialInput(formData);
+  if ("error" in parsed) return { error: parsed.error };
+  const links = parsed.links;
 
   if ((await contentMode()) === "file") {
     const access = await fileActor(() => true);
     if ("error" in access) return access;
-    if (!saveSocialToStore(links)) return { error: "The Instagram links could not be saved." };
+    if (!saveSocialToStore(links)) return { error: "The links could not be saved." };
     revalidatePath("/", "layout");
+    revalidatePath("/about");
+    revalidatePath("/council");
     revalidatePath("/manage/settings");
-    return { ok: "Instagram links saved." };
+    return { ok: "Links saved." };
   }
 
   const context = await staffContext();
@@ -1336,24 +1354,42 @@ export async function saveSocial(_state: ActionState, formData: FormData): Promi
   const saved = await context.supabase
     .from("campus_settings")
     .update({
+      site_links: links,
       instagram_url: links.instagramUrl,
       scixcom_instagram_url: links.scixcomInstagramUrl,
     })
     .eq("id", true);
   if (saved.error) {
-    const missing = (saved.error.message ?? "").toLowerCase().includes("instagram");
-    return {
-      error: missing
-        ? "Run supabase/QUOTES_AND_SOCIAL.sql in the database, then save again."
-        : databaseError(saved.error, "The Instagram links could not be saved."),
-    };
+    const message = (saved.error.message ?? "").toLowerCase();
+    if (message.includes("site_links")) {
+      const urls = await context.supabase
+        .from("campus_settings")
+        .update({
+          instagram_url: links.instagramUrl,
+          scixcom_instagram_url: links.scixcomInstagramUrl,
+        })
+        .eq("id", true);
+      if (urls.error) return { error: databaseError(urls.error, "The links could not be saved.") };
+      const extras =
+        links.schoolLabel !== defaultSocialLinks.schoolLabel ||
+        links.schoolUrl.replace(/\/$/, "") !== defaultSocialLinks.schoolUrl.replace(/\/$/, "") ||
+        links.instagramLabel !== defaultSocialLinks.instagramLabel ||
+        links.scixcomLabel !== defaultSocialLinks.scixcomLabel ||
+        links.extraLinks.length > 0;
+      if (extras) {
+        return { error: "The Instagram addresses were saved. Run supabase/SYNC_LIVE.sql to save labels, the school website, and extra links." };
+      }
+    } else {
+      return { error: databaseError(saved.error, "The links could not be saved.") };
+    }
   }
 
   await writeAudit(context.supabase, context.actor.userId, "update_social", "campus_settings", null);
   revalidatePath("/", "layout");
   revalidatePath("/about");
+  revalidatePath("/council");
   revalidatePath("/manage/settings");
-  return { ok: "Instagram links saved." };
+  return { ok: "Links saved." };
 }
 
 export async function saveCouncilLogo(_state: ActionState, formData: FormData): Promise<ActionState> {

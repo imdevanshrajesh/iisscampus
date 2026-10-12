@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ActivityCalendar } from "@/components/events/activity-calendar";
 import { EventCard } from "@/components/events/event-card";
+import { PreviewTrigger } from "@/components/preview/preview-provider";
 import { filterPublishedEvents, formatEventDate, publishedYears } from "@/lib/data/catalog";
 import type { CampusEvent, Category, EventListing } from "@/lib/types";
 
@@ -71,9 +72,9 @@ export function ActivitiesBrowse({
           <ul className="mt-3 divide-y divide-white/15">
             {ongoing.map((event) => (
               <li key={event.id} className="flex flex-wrap items-baseline justify-between gap-3 py-3">
-                <Link href={`/events/${event.slug}`} className="font-display text-2xl">
+                <PreviewTrigger event={event} className="font-display text-left text-2xl">
                   {event.title}
-                </Link>
+                </PreviewTrigger>
                 <span className="text-sm text-white/60">{formatEventDate(event.eventDate) ?? "Dates open"}</span>
               </li>
             ))}

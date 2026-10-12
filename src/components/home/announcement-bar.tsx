@@ -11,22 +11,24 @@ const SPEED_PX_PER_SEC = 32;
 function AnnouncementItems({
   items,
   eventById,
+  copyKey,
 }: {
   items: Announcement[];
   eventById: Map<string, CampusEvent>;
+  copyKey: string;
 }) {
   return (
     <>
       {items.map((item) => {
         const linked = item.eventId ? eventById.get(item.eventId) : null;
         const content = (
-          <span className="announcement-bar__item text-sm">
+          <span className="announcement-bar__item text-sm whitespace-nowrap">
             {renderAnnouncementMessage(item.message)}
             {linked ? <span className="ml-2 text-white/60">· {linked.title}</span> : null}
           </span>
         );
         return (
-          <span key={item.id} className="inline-flex shrink-0 items-center gap-10 px-5">
+          <span key={`${copyKey}-${item.id}`} className="inline-flex shrink-0 items-center gap-10 px-5 whitespace-nowrap">
             {linked ? (
               <Link href={`/events/${linked.slug}`} className="hover:underline">
                 {content}
@@ -53,28 +55,30 @@ export function AnnouncementBar({
 }) {
   const pathname = usePathname();
   const barRef = useRef<HTMLDivElement>(null);
-  const groupRef = useRef<HTMLDivElement>(null);
-  const [copies, setCopies] = useState(2);
-  const [durationSec, setDurationSec] = useState(20);
-  const [shiftPx, setShiftPx] = useState(0);
+  const unitRef = useRef<HTMLDivElement>(null);
+  const [loop, setLoop] = useState({ repeat: 1, shift: 0, duration: 20 });
 
   const active = announcements.filter((item) => item.enabled && item.message.trim());
   const eventById = new Map(events.map((event) => [event.id, event]));
   const onCouncil = pathname === "/council" || pathname.startsWith("/council/");
 
   const measure = useEffectEvent(() => {
-    const group = groupRef.current;
+    const unit = unitRef.current;
     const bar = barRef.current;
-    if (!group || !bar) return;
+    if (!unit || !bar) return;
 
-    const groupWidth = group.scrollWidth;
+    const unitWidth = Math.ceil(unit.getBoundingClientRect().width);
     const viewport = bar.clientWidth;
-    if (groupWidth <= 0 || viewport <= 0) return;
+    if (unitWidth <= 0 || viewport <= 0) return;
 
-    const needed = Math.max(2, Math.ceil((viewport * 2) / groupWidth) + 1);
-    setCopies(needed);
-    setShiftPx(groupWidth);
-    setDurationSec(Math.max(10, groupWidth / SPEED_PX_PER_SEC));
+    const repeat = Math.max(1, Math.ceil(viewport / unitWidth));
+    const shift = unitWidth * repeat;
+    const duration = Math.max(12, shift / SPEED_PX_PER_SEC);
+    setLoop((current) =>
+      current.repeat === repeat && current.shift === shift && current.duration === duration
+        ? current
+        : { repeat, shift, duration },
+    );
   });
 
   useEffect(() => {
@@ -82,13 +86,15 @@ export function AnnouncementBar({
 
     measure();
     const bar = barRef.current;
-    const group = groupRef.current;
+    const unit = unitRef.current;
     if (!bar || typeof ResizeObserver === "undefined") return;
 
     const observer = new ResizeObserver(() => measure());
     observer.observe(bar);
-    if (group) observer.observe(group);
+    if (unit) observer.observe(unit);
     window.addEventListener("resize", measure);
+    const fonts = document.fonts;
+    fonts?.ready.then(() => measure()).catch(() => undefined);
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", measure);
@@ -104,24 +110,30 @@ export function AnnouncementBar({
       role="region"
       aria-label="Announcements"
     >
+      <div ref={unitRef} className="announcement-bar__measure" aria-hidden="true">
+        <AnnouncementItems items={active} eventById={eventById} copyKey="measure" />
+      </div>
       <div
+        key={loop.shift}
         className="announcement-bar__track"
         style={
           {
-            "--marquee-shift": `-${shiftPx}px`,
-            animationDuration: `${durationSec}s`,
-            animationPlayState: shiftPx > 0 ? "running" : "paused",
+            "--marquee-shift": `-${loop.shift}px`,
+            animationDuration: `${loop.duration}s`,
+            animationPlayState: loop.shift > 0 ? "running" : "paused",
           } as CSSProperties
         }
       >
-        {Array.from({ length: copies }, (_, copyIndex) => (
-          <div
-            key={copyIndex}
-            ref={copyIndex === 0 ? groupRef : undefined}
-            className="announcement-bar__group"
-            aria-hidden={copyIndex > 0 ? true : undefined}
-          >
-            <AnnouncementItems items={active} eventById={eventById} />
+        {[0, 1].map((half) => (
+          <div key={half} className="announcement-bar__group" aria-hidden={half === 1 ? true : undefined}>
+            {Array.from({ length: loop.repeat }, (_, index) => (
+              <AnnouncementItems
+                key={`${half}-${index}`}
+                items={active}
+                eventById={eventById}
+                copyKey={`${half}-${index}`}
+              />
+            ))}
           </div>
         ))}
       </div>

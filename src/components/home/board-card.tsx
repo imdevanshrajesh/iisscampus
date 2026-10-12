@@ -1,6 +1,6 @@
-import Link from "next/link";
 import type { CSSProperties } from "react";
 import { MediaFrame } from "@/components/media/media-frame";
+import { PreviewTrigger } from "@/components/preview/preview-provider";
 import { TiltSurface } from "@/components/home/tilt-surface";
 import { categoryById, eventStatusLabel, formatEventDate } from "@/lib/data/catalog";
 import { categoryStyle } from "@/lib/home/category-style";
@@ -33,7 +33,7 @@ export function BoardCard({
       style={{ "--card-glow": style.glow } as CSSProperties}
     >
       <article className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-line/80 bg-background">
-        <Link href={`/events/${event.slug}`} className="block overflow-hidden">
+        <PreviewTrigger event={event} className="flex h-full w-full flex-col overflow-hidden text-left">
           <div className={tall ? "min-h-[14rem]" : ""}>
             <MediaFrame
               url={event.coverImageUrl}
@@ -44,7 +44,6 @@ export function BoardCard({
               priority={priority}
             />
           </div>
-        </Link>
         <div className="flex flex-1 flex-col gap-3 p-5">
           <div className="flex flex-wrap items-center gap-2">
             {category ? (
@@ -59,16 +58,12 @@ export function BoardCard({
             ) : null}
             {date ? <span className="text-[11px] uppercase tracking-[0.14em] text-muted">{date}</span> : null}
           </div>
-          <h3 className={pictured ? "text-balance font-display text-2xl leading-tight" : "sr-only"}>
-            <Link href={`/events/${event.slug}`} className="transition-colors hover:text-accent">
-              {event.title}
-            </Link>
-          </h3>
+          <h3 className={pictured ? "text-balance font-display text-2xl leading-tight" : "sr-only"}>{event.title}</h3>
           <p className="text-sm leading-6 text-muted">{event.shortDescription}</p>
-          <Link href={`/events/${event.slug}`} className="mt-auto pt-1 text-sm font-medium text-accent">
-            Open event
-          </Link>
+          {event.locationName ? <p className="text-sm text-ink">{event.locationName}</p> : null}
+          <span className="mt-auto pt-1 text-sm font-medium text-accent">Preview</span>
         </div>
+        </PreviewTrigger>
       </article>
     </TiltSurface>
   );

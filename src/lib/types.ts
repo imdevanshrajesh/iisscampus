@@ -2,7 +2,7 @@ export type PublicationStatus = "draft" | "in_review" | "published" | "archived"
 
 export type EventStatus = "upcoming" | "ongoing" | "completed";
 
-export type EventListing = "event" | "competition";
+export type EventListing = "event" | "competition" | "external";
 
 export type RegistrationProvider = "arigo" | "page" | "google_form";
 
@@ -70,6 +70,7 @@ export type CampusEvent = {
   endTime: string | null;
   locationName: string | null;
   locationMapUrl: string | null;
+  hostName: string | null;
   gradeFrom: number | null;
   gradeTo: number | null;
   feeAed: number | null;
@@ -177,9 +178,20 @@ export type Newsletter = {
   published: boolean;
 };
 
+export type ExtraSiteLink = {
+  id: string;
+  label: string;
+  url: string;
+};
+
 export type SocialLinks = {
+  schoolLabel: string;
+  schoolUrl: string;
+  instagramLabel: string;
   instagramUrl: string;
+  scixcomLabel: string;
   scixcomInstagramUrl: string;
+  extraLinks: ExtraSiteLink[];
 };
 
 export type SiteBrand = {

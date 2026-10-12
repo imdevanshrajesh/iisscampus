@@ -52,7 +52,8 @@ function normalizeEvent(event: CampusEvent): CampusEvent {
   return {
     ...event,
     categoryIds,
-    listing: event.listing === "competition" ? "competition" : "event",
+    listing: event.listing === "competition" || event.listing === "external" ? event.listing : "event",
+    hostName: event.hostName ?? null,
     startTime: event.startTime ?? null,
     endTime: event.endTime ?? null,
     locationName: event.locationName ?? null,
@@ -188,6 +189,7 @@ export function saveEventToStore(
     endTime: input.endTime,
     locationName: input.locationName,
     locationMapUrl: input.locationMapUrl,
+    hostName: input.hostName,
     gradeFrom: input.gradeFrom,
     gradeTo: input.gradeTo,
     feeAed: input.feeAed,

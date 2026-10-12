@@ -71,7 +71,8 @@ function asRegistrationProvider(value: unknown): RegistrationProvider | null {
 }
 
 function asListing(value: unknown): EventListing {
-  return value === "competition" ? "competition" : "event";
+  if (value === "competition" || value === "external") return value;
+  return "event";
 }
 
 function asBoard(value: unknown): CouncilBoard {
@@ -116,6 +117,7 @@ export function mapEvent(
     endTime: optionalTime(row.end_time),
     locationName: row.location_name ? String(row.location_name) : null,
     locationMapUrl: row.location_map_url ? String(row.location_map_url) : null,
+    hostName: row.host_name ? String(row.host_name) : null,
     gradeFrom: optionalNumber(row.grade_from),
     gradeTo: optionalNumber(row.grade_to),
     feeAed: optionalNumber(row.fee_aed),

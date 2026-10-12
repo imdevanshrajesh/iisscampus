@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   grantRole,
   saveContactEmail,
@@ -9,7 +9,7 @@ import {
   saveSocial,
   type ActionState,
 } from "@/lib/manage/actions";
-import type { SocialLinks } from "@/lib/types";
+import type { ExtraSiteLink, SocialLinks } from "@/lib/types";
 import { IMAGE_URL_EXAMPLE, RECOMMENDED_IMAGE_HOST } from "@/lib/media/guide";
 
 const fieldClass = "w-full rounded-md border border-line bg-white px-3 py-2 text-sm";
@@ -92,30 +92,140 @@ export function ContactEmailForm({ contactEmail }: { contactEmail: string | null
   );
 }
 
+function LinkFields({
+  title,
+  hint,
+  labelName,
+  urlName,
+  label,
+  url,
+}: {
+  title: string;
+  hint: string;
+  labelName: string;
+  urlName: string;
+  label: string;
+  url: string;
+}) {
+  return (
+    <div className="grid gap-3 rounded-xl border border-line p-4">
+      <div>
+        <p className="text-sm font-medium">{title}</p>
+        <p className="mt-1 text-xs leading-5 text-muted">{hint}</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="grid gap-1.5 text-sm">
+          Label
+          <input name={labelName} defaultValue={label} className={fieldClass} maxLength={60} />
+        </label>
+        <label className="grid gap-1.5 text-sm">
+          Link
+          <input name={urlName} defaultValue={url} className={fieldClass} placeholder="https://" />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function ExtraLinksEditor({
+  links,
+  onChange,
+}: {
+  links: ExtraSiteLink[];
+  onChange: (links: ExtraSiteLink[]) => void;
+}) {
+  function update(index: number, patch: Partial<ExtraSiteLink>) {
+    onChange(links.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
+  }
+
+  return (
+    <div className="grid gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium">Other links</p>
+        <button
+          type="button"
+          className="text-sm text-accent"
+          onClick={() => onChange([...links, { id: crypto.randomUUID(), label: "", url: "" }])}
+        >
+          Add link
+        </button>
+      </div>
+      <p className="text-xs leading-5 text-muted">
+        Shown in the footer and on the about page, after the accounts above.
+      </p>
+      {links.map((item, index) => (
+        <div key={item.id} className="grid gap-3 rounded-xl border border-line p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1.5 text-sm">
+              Label
+              <input
+                value={item.label}
+                onChange={(event) => update(index, { label: event.target.value })}
+                className={fieldClass}
+                maxLength={60}
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              Link
+              <input
+                value={item.url}
+                onChange={(event) => update(index, { url: event.target.value })}
+                className={fieldClass}
+                placeholder="https://"
+              />
+            </label>
+          </div>
+          <button
+            type="button"
+            onClick={() => onChange(links.filter((_, itemIndex) => itemIndex !== index))}
+            className="justify-self-start text-xs text-muted"
+          >
+            Remove
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function SocialForm({ social }: { social: SocialLinks }) {
   const [state, action, pending] = useActionState(saveSocial, {} as ActionState);
+  const [extraLinks, setExtraLinks] = useState(social.extraLinks);
   return (
     <form action={action} className="grid max-w-xl gap-3">
-      <label className="grid gap-1.5 text-sm">
-        Campus Instagram
-        <input name="instagramUrl" defaultValue={social.instagramUrl} className={fieldClass} placeholder="https://" />
-      </label>
-      <label className="grid gap-1.5 text-sm">
-        SciXcom Instagram
-        <input
-          name="scixcomInstagramUrl"
-          defaultValue={social.scixcomInstagramUrl}
-          className={fieldClass}
-          placeholder="https://"
-        />
-      </label>
+      <LinkFields
+        title="School website"
+        hint="Shown with the school mark in the footer and on the about page."
+        labelName="schoolLabel"
+        urlName="schoolUrl"
+        label={social.schoolLabel}
+        url={social.schoolUrl}
+      />
+      <LinkFields
+        title="Instagram"
+        hint="The main campus account."
+        labelName="instagramLabel"
+        urlName="instagramUrl"
+        label={social.instagramLabel}
+        url={social.instagramUrl}
+      />
+      <LinkFields
+        title="Council account"
+        hint="Shown beside the current council year. Change the name and link when that account changes — SciXcom this year, a new name next year."
+        labelName="scixcomLabel"
+        urlName="scixcomInstagramUrl"
+        label={social.scixcomLabel}
+        url={social.scixcomInstagramUrl}
+      />
+      <ExtraLinksEditor links={extraLinks} onChange={setExtraLinks} />
+      <input type="hidden" name="extraLinks" value={JSON.stringify(extraLinks)} />
       <p className="text-xs leading-5 text-muted">
-        These links appear in the footer and on the about page. Leave a field blank to restore its usual address.
+        Leave a label or link blank on the three accounts above to restore its usual text and address.
       </p>
       {state.error ? <p className="text-sm">{state.error}</p> : null}
       {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
       <button type="submit" disabled={pending} className="justify-self-start rounded-md bg-ink px-4 py-2 text-sm text-white">
-        Save Instagram links
+        Save links
       </button>
     </form>
   );

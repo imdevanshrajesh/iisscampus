@@ -29,9 +29,9 @@ export function MediaFrame({ url, alt, hosts, title, kicker, priority = false }:
 
   return (
     <div className="flex min-h-44 flex-col justify-between gap-6 bg-wash p-5">
-      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-accent">
-        {kicker ?? "IISIANS"}
-      </p>
+      {kicker ? (
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-accent">{kicker}</p>
+      ) : null}
       <p className="text-balance text-2xl font-medium leading-snug text-ink">{title}</p>
     </div>
   );

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { MediaFrame } from "@/components/media/media-frame";
+import { PreviewAchievement } from "@/components/preview/preview-provider";
 import { categoryById, formatEventDate } from "@/lib/data/catalog";
 import { getPublicCatalog } from "@/lib/data/queries";
 import { classifyNavigationUrl } from "@/lib/media/url";
@@ -78,9 +78,9 @@ export default async function AchievementsPage({
         <ul className="mt-10 grid gap-6 md:grid-cols-2">
           {visible.map((item) => {
             const itemCategory = categoryById(catalog.categories, item.categoryId ?? "");
-            const related = catalog.events.find((event) => event.id === item.eventId);
             return (
               <li key={item.id} className="overflow-hidden rounded-xl border border-line">
+                <PreviewAchievement achievement={item} className="block w-full text-left">
                 <MediaFrame
                   url={item.imageUrl}
                   alt={item.imageAlt}
@@ -100,13 +100,11 @@ export default async function AchievementsPage({
                       {[item.award, item.winnerName].filter(Boolean).join(" · ")}
                     </p>
                   ) : null}
-                  {related ? (
-                    <Link href={`/events/${related.slug}`} className="mt-4 inline-flex text-sm text-accent">
-                      Related event
-                    </Link>
-                  ) : null}
-                  {item.resources.length ? (
-                    <div className="mt-4 border-t border-line pt-4">
+                </div>
+                </PreviewAchievement>
+                {item.resources.length ? (
+                <div className="px-5 pb-5">
+                    <div className="border-t border-line pt-4">
                       <ul className="space-y-3">
                         {item.resources.map((resource) => {
                           const link = resource.href ? classifyNavigationUrl(resource.href) : null;
@@ -129,8 +127,8 @@ export default async function AchievementsPage({
                         })}
                       </ul>
                     </div>
-                  ) : null}
                 </div>
+                ) : null}
               </li>
             );
           })}

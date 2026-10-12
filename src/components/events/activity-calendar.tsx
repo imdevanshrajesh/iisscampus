@@ -1,8 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
+import { PreviewTrigger } from "@/components/preview/preview-provider";
+import { formatEventDate } from "@/lib/data/catalog";
 import type { CampusEvent } from "@/lib/types";
+
+function tone(event: CampusEvent) {
+  if (event.listing === "external") return "bg-sky/15 text-sky";
+  if (event.listing === "competition") return "bg-navy/10 text-navy";
+  return "bg-accent/10 text-accent";
+}
 
 function monthLabel(year: number, month: number) {
   return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" }).format(
@@ -82,7 +89,12 @@ export function ActivityCalendar({ events }: { events: CampusEvent[] }) {
           <p className="text-xs uppercase tracking-[0.16em] text-muted">Calendar</p>
           <h2 className="font-display mt-1 text-2xl text-ink">{monthLabel(cursor.year, cursor.month)}</h2>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="mr-2 flex items-center gap-3 text-[0.65rem] uppercase tracking-[0.12em] text-muted">
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-accent" /> Event</span>
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-navy" /> Ours</span>
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-sky" /> Other school</span>
+          </p>
           <button type="button" className="rounded-md border border-line px-3 py-1.5 text-sm" onClick={() => setMode("month")}>
             Month
           </button>
@@ -115,10 +127,25 @@ export function ActivityCalendar({ events }: { events: CampusEvent[] }) {
               <p className="text-xs text-muted">{cell.day}</p>
               <ul className="mt-1 space-y-1">
                 {items.slice(0, 3).map((event) => (
-                  <li key={event.id}>
-                    <Link href={`/events/${event.slug}`} className="block truncate text-[0.7rem] text-accent">
+                  <li key={event.id} className="group relative z-10 hover:z-30 focus-within:z-30">
+                    <PreviewTrigger
+                      event={event}
+                      className={`block w-full whitespace-normal break-words rounded px-1 py-0.5 text-left text-[0.7rem] leading-snug ${tone(event)}`}
+                    >
                       {event.title}
-                    </Link>
+                    </PreviewTrigger>
+                    <div className="pointer-events-none absolute top-full left-0 z-30 mt-1 hidden w-44 rounded-md border border-line bg-white p-2 text-left shadow-[0_8px_24px_rgba(20,27,56,0.12)] group-hover:block group-focus-within:block">
+                      <p className="text-xs font-medium leading-snug text-ink">{event.title}</p>
+                      <p className="mt-1 text-[0.65rem] text-muted">
+                        {[
+                          event.listing === "external" ? event.hostName || "Another school" : null,
+                          formatEventDate(event.eventDate),
+                          event.locationName,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    </div>
                   </li>
                 ))}
                 {items.length > 3 ? <li className="text-[0.65rem] text-muted">+{items.length - 3} more</li> : null}

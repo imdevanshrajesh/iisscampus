@@ -221,6 +221,7 @@ function sampleEvent(
     endTime: null,
     locationName: null,
     locationMapUrl: null,
+    hostName: null,
     gradeFrom: null,
     gradeTo: null,
     feeAed: null,

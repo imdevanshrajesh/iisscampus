@@ -1,4 +1,5 @@
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Link2 } from "lucide-react";
+import { InstagramMark } from "@/components/brand/instagram-mark";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { contactMailto, siteConfig } from "@/lib/config";
@@ -42,14 +43,14 @@ export default async function AboutPage() {
           </div>
 
           <a
-            href={siteConfig.officialSchoolUrl}
+            href={social.schoolUrl}
             target="_blank"
             rel="noreferrer"
             className="group mt-8 inline-flex items-center gap-2.5 rounded-full border border-line bg-background/60 py-1.5 pr-3.5 pl-1.5 text-xs text-ink transition-colors duration-300 hover:border-accent/50"
           >
             <Image src="/brand/iiss-mark.webp" alt="" width={28} height={28} className="h-7 w-7 rounded-full bg-white object-contain p-0.5" />
             <span>
-              Official school website <span className="text-muted">· iiss.ae</span>
+              Official school website <span className="text-muted">· {social.schoolLabel}</span>
             </span>
             <ArrowUpRight
               aria-hidden="true"
@@ -88,21 +89,32 @@ export default async function AboutPage() {
             {" · "}
             <a
               href={social.instagramUrl}
-              className="text-link text-ink"
+              className="inline-flex items-center gap-1 text-link text-ink"
               rel="noopener noreferrer"
               target="_blank"
             >
-              Instagram
+              <InstagramMark size={13} />
+              {social.instagramLabel}
             </a>
             {" · "}
             <a
               href={social.scixcomInstagramUrl}
-              className="text-link text-ink"
+              className="inline-flex items-center gap-1 text-link text-ink"
               rel="noopener noreferrer"
               target="_blank"
             >
-              SciXcom
+              <InstagramMark size={13} />
+              {social.scixcomLabel}
             </a>
+            {social.extraLinks.map((link) => (
+              <span key={link.id}>
+                {" · "}
+                <a href={link.url} className="inline-flex items-center gap-1 text-link text-ink" rel="noopener noreferrer" target="_blank">
+                  <Link2 aria-hidden="true" size={13} />
+                  {link.label}
+                </a>
+              </span>
+            ))}
           </p>
         </aside>
       </div>

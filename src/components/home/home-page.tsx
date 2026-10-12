@@ -17,6 +17,7 @@ import type { Achievement, CampusEvent, Category } from "@/lib/types";
 
 const pageAnchors = [
   { href: "/events", label: "Events" },
+  { href: "/competitions", label: "Competitions" },
   { href: "/council", label: "Council" },
   { href: "/achievements", label: "Achievements" },
   { href: "/gallery", label: "Gallery" },
@@ -39,15 +40,23 @@ export function HomePage({
   hosts: readonly string[];
   logoUrl?: string | null;
 }) {
-  const featured = events.filter((event) => event.featured);
-  const lead = (featured.length ? featured : events).slice(0, 5);
-  const ongoing = events.filter((event) => event.eventStatus === "ongoing" && !event.isSample);
-  const upcoming = events
+  const campusEvents = events.filter((event) => event.listing !== "external");
+  const featured = campusEvents.filter((event) => event.featured);
+  const lead = (featured.length ? featured : campusEvents).slice(0, 5);
+  const ongoing = campusEvents.filter((event) => event.eventStatus === "ongoing" && !event.isSample);
+  const upcoming = campusEvents
     .filter((event) => event.eventStatus === "upcoming" && !event.isSample)
     .slice()
     .sort(compareCampusEvents);
-  const completed = events
+  const completed = campusEvents
     .filter((event) => event.eventStatus === "completed" && !event.isSample)
+    .slice()
+    .sort(compareCampusEvents);
+  const competitions = events
+    .filter(
+      (event) =>
+        (event.listing === "competition" || event.listing === "external") && !event.isSample,
+    )
     .slice()
     .sort(compareCampusEvents);
 
@@ -56,11 +65,10 @@ export function HomePage({
       <section className="home-hero">
         <div className="mx-auto max-w-[90rem] px-5 pt-4 md:px-8 md:pt-8">
           <div
-            className="rise kicker grid grid-cols-2 gap-3 border-y border-ink/80 py-3 text-ink/75 md:grid-cols-3"
+            className="rise kicker grid grid-cols-2 gap-3 border-y border-ink/80 py-3 text-ink/75"
             style={delay(0)}
           >
             <span>{siteConfig.name}</span>
-            <span className="hidden text-center md:block">IISIANS</span>
             <span className="text-right">
               <Today />
             </span>
@@ -166,6 +174,16 @@ export function HomePage({
           </RevealOnScroll>
         )}
       </section>
+
+      <ComingUp
+        events={competitions}
+        categories={categories}
+        heading="The"
+        accent="competitions"
+        kicker="Hosted here and at other schools"
+        seeMoreHref="/competitions"
+        empty="Published competitions will be listed here."
+      />
 
       <ComingUp
         events={upcoming}

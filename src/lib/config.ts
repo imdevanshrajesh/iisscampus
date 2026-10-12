@@ -1,4 +1,5 @@
-import { classifyNavigationUrl } from "@/lib/media/url";
+import { classifyNavigationUrl } from "./media/url.ts";
+import type { SocialLinks } from "./types.ts";
 
 const PRODUCTION_ORIGIN = "https://campus.buildkre.com";
 
@@ -30,9 +31,14 @@ export function resolveSiteUrl() {
   }
 }
 
-export const defaultSocialLinks = {
+export const defaultSocialLinks: SocialLinks = {
+  schoolLabel: "iiss.ae",
+  schoolUrl: "https://iiss.ae",
+  instagramLabel: "Instagram",
   instagramUrl: "https://www.instagram.com/iisscampus/",
+  scixcomLabel: "SciXcom",
   scixcomInstagramUrl: "https://www.instagram.com/scixcom.27/",
+  extraLinks: [],
 };
 
 const emailPattern = /^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}$/i;
@@ -55,7 +61,7 @@ export const siteConfig = {
   description:
     "A digital archive of student activities, events, achievements, and campus life for IISS x Student Council Boys.",
   url: resolveSiteUrl(),
-  officialSchoolUrl: "https://iiss.ae",
+  officialSchoolUrl: defaultSocialLinks.schoolUrl,
   arigoUrl: absoluteHttps(read("NEXT_PUBLIC_ARIGO_URL")),
   instagramUrl: absoluteHttps(read("NEXT_PUBLIC_INSTAGRAM_URL")),
   contactUrl: absoluteHttps(read("NEXT_PUBLIC_CONTACT_URL")),

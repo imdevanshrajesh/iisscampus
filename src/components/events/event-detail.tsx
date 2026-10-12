@@ -3,6 +3,7 @@ import { ResourceCards } from "@/components/content/resource-cards";
 import { GalleryView } from "@/components/gallery/gallery-view";
 import { MediaFrame } from "@/components/media/media-frame";
 import { ActivityFacts } from "@/components/events/activity-facts";
+import { VenueBlock } from "@/components/events/venue-block";
 import { EventCard } from "@/components/events/event-card";
 import { categoryById, eventCategoryIds, formatEventDate, paragraphs, relatedPublishedEvents } from "@/lib/data/catalog";
 import { classifyMediaUrl, classifyNavigationUrl } from "@/lib/media/url";
@@ -46,7 +47,12 @@ export function EventDetail({
   const related = relatedPublishedEvents(events, event);
   const results = achievements.filter((item) => item.eventId === event.id && item.publicationStatus === "published");
   const galleryImages = event.images.filter((image) => classifyMediaUrl(image.url, hosts).ok);
-  const listingLabel = event.listing === "competition" ? "Competition" : null;
+  const listingLabel =
+    event.listing === "external"
+      ? event.hostName || "Another school"
+      : event.listing === "competition"
+        ? "Competition"
+        : null;
 
   return (
     <article>
@@ -81,6 +87,9 @@ export function EventDetail({
               .join(" · ")}
           </p>
           <h1 className="font-display mt-4 text-balance text-4xl text-ink md:text-6xl">{event.title}</h1>
+          {event.listing === "external" && event.hostName ? (
+            <p className="mt-4 text-base text-ink">Hosted by {event.hostName}</p>
+          ) : null}
           {date ? (
             <p className="mt-5 text-sm text-muted">
               {date}
@@ -88,6 +97,7 @@ export function EventDetail({
             </p>
           ) : null}
           <p className="mt-6 max-w-xl text-lg leading-8 text-muted">{event.shortDescription}</p>
+          <VenueBlock event={event} />
           <div className="mt-8 flex flex-wrap gap-3">
             {registration.state === "open" ? (
               <a

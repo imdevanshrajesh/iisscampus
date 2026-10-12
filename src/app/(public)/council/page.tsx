@@ -17,7 +17,7 @@ export default async function CouncilPage() {
     <CouncilPageView
       years={years}
       hosts={catalog.mediaHosts}
-      scixcomUrl={social.scixcomInstagramUrl}
+      scixcom={{ label: social.scixcomLabel, url: social.scixcomInstagramUrl }}
       logoUrl={catalog.councilLogoUrl}
     />
   );

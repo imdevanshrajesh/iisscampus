@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CouncilLogo } from "@/components/brand/council-logo";
+import { NavMark } from "@/components/layout/nav-marks";
 import { primaryNav } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
@@ -128,11 +129,12 @@ export function SiteChrome({ logoUrl }: { logoUrl?: string | null }) {
                       href={link.href}
                       onClick={closeMenu}
                       className={cn(
-                        "rounded-full px-3 py-1.5 text-sm",
+                        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm",
                         active ? "bg-navy text-white" : "text-ink/75 hover:bg-ink/5 hover:text-ink",
                       )}
                       aria-current={active ? "page" : undefined}
                     >
+                      <NavMark href={link.href} />
                       {link.label}
                     </Link>
                   );

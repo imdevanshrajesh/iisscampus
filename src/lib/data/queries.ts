@@ -2,7 +2,7 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "@/lib/data/catalog";
 import { readContentStore, readNewsletter, readSocial } from "@/lib/data/file-content";
-import { defaultSocialLinks } from "@/lib/config";
+import { normalizeSocialLinks } from "@/lib/social";
 import {
   groupCouncilRows,
   mapAchievement,
@@ -166,6 +166,11 @@ export async function getPublicNewsletter(): Promise<Newsletter | null> {
           const pdfUrl = String(row.data.newsletter_pdf_url ?? "").trim() || null;
           if (title && (href || pdfUrl)) return { title, imageUrl, href, pdfUrl, published: true };
         }
+        if (row.error) {
+          const pdf = await supabase.from("campus_settings").select("newsletter_pdf_url").eq("id", true).maybeSingle();
+          const pdfUrl = String(pdf.data?.newsletter_pdf_url ?? "").trim();
+          if (!pdf.error && pdfUrl) return { title: "Newsletter", imageUrl: null, href: null, pdfUrl, published: true };
+        }
         if (!row.error) return null;
       }
     }
@@ -204,13 +209,20 @@ export async function getEditableNewsletter(): Promise<Newsletter | null> {
   return readNewsletter();
 }
 
-function socialFromRow(row: { instagram_url?: string | null; scixcom_instagram_url?: string | null } | null): SocialLinks {
-  const instagram = String(row?.instagram_url ?? "").trim();
-  const scixcom = String(row?.scixcom_instagram_url ?? "").trim();
-  return {
-    instagramUrl: instagram || defaultSocialLinks.instagramUrl,
-    scixcomInstagramUrl: scixcom || defaultSocialLinks.scixcomInstagramUrl,
-  };
+function socialFromRow(row: {
+  site_links?: unknown;
+  instagram_url?: string | null;
+  scixcom_instagram_url?: string | null;
+} | null): SocialLinks {
+  const stored =
+    row?.site_links && typeof row.site_links === "object" && !Array.isArray(row.site_links)
+      ? (row.site_links as Record<string, unknown>)
+      : {};
+  return normalizeSocialLinks({
+    ...stored,
+    instagramUrl: stored.instagramUrl || row?.instagram_url,
+    scixcomInstagramUrl: stored.scixcomInstagramUrl || row?.scixcom_instagram_url,
+  });
 }
 
 export async function getPublicSocial(): Promise<SocialLinks> {
@@ -220,16 +232,22 @@ export async function getPublicSocial(): Promise<SocialLinks> {
       if (supabase) {
         const row = await supabase
           .from("campus_settings")
-          .select("instagram_url, scixcom_instagram_url")
+          .select("site_links, instagram_url, scixcom_instagram_url")
           .eq("id", true)
           .maybeSingle();
         if (!row.error) return socialFromRow(row.data);
+        const legacy = await supabase
+          .from("campus_settings")
+          .select("instagram_url, scixcom_instagram_url")
+          .eq("id", true)
+          .maybeSingle();
+        if (!legacy.error) return socialFromRow(legacy.data);
       }
     }
   } catch (error) {
     console.error(error);
   }
-  return readSocial() ?? { ...defaultSocialLinks };
+  return normalizeSocialLinks(readSocial());
 }
 
 export async function getSiteBrand(): Promise<SiteBrand> {

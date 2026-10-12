@@ -15,6 +15,16 @@ export function ResourceRepeater({
     onChange(resources.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
   }
 
+  function move(index: number, delta: number) {
+    const next = index + delta;
+    if (next < 0 || next >= resources.length) return;
+    const copy = [...resources];
+    const [item] = copy.splice(index, 1);
+    if (!item) return;
+    copy.splice(next, 0, item);
+    onChange(copy);
+  }
+
   return (
     <div className="grid gap-3 border-t border-line pt-5">
       <div className="flex items-center justify-between">
@@ -28,7 +38,7 @@ export function ResourceRepeater({
         </button>
       </div>
       <p className="text-sm text-muted">
-        Use cards for competition details, links for external pages, and PDF for downloadable briefs.
+        Cards, links, and PDFs appear in the side preview in this order. Move a row to change that order.
       </p>
       {resources.map((item, index) => (
         <div key={index} className="grid gap-3 rounded-xl border border-line p-4">
@@ -72,13 +82,21 @@ export function ResourceRepeater({
               />
             </label>
           </div>
-          <button
-            type="button"
-            onClick={() => onChange(resources.filter((_, itemIndex) => itemIndex !== index))}
-            className="justify-self-start text-xs text-muted"
-          >
-            Remove
-          </button>
+          <div className="flex gap-3">
+            <button type="button" onClick={() => move(index, -1)} className="text-xs text-muted">
+              Move up
+            </button>
+            <button type="button" onClick={() => move(index, 1)} className="text-xs text-muted">
+              Move down
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange(resources.filter((_, itemIndex) => itemIndex !== index))}
+              className="text-xs text-muted"
+            >
+              Remove
+            </button>
+          </div>
         </div>
       ))}
     </div>

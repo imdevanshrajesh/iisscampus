@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
+import { PreviewTrigger } from "@/components/preview/preview-provider";
 import { TiltSurface } from "@/components/home/tilt-surface";
 import { categoryById, formatEventDate } from "@/lib/data/catalog";
 import { categoryStyle } from "@/lib/home/category-style";
@@ -55,9 +56,9 @@ export function ComingUp({
               return (
                 <RevealOnScroll key={event.id} delay={index * 60}>
                   <TiltSurface className="h-full">
-                    <Link
-                      href={`/events/${event.slug}`}
-                      className="coming-card group flex h-full min-h-44 flex-col justify-between rounded-2xl border border-line bg-background p-5"
+                    <PreviewTrigger
+                      event={event}
+                      className="coming-card group flex h-full min-h-44 w-full flex-col justify-between rounded-2xl border border-line bg-background p-5 text-left"
                       style={{ "--card-glow": style.glow } as CSSProperties}
                     >
                       <div>
@@ -74,9 +75,17 @@ export function ComingUp({
                         <h3 className="font-display mt-4 text-2xl leading-tight transition group-hover:text-accent">
                           {event.title}
                         </h3>
+                        {event.hostName || event.locationName ? (
+                          <p className="mt-2 text-sm text-ink">
+                            {[event.hostName ? `Hosted by ${event.hostName}` : null, event.locationName]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </p>
+                        ) : null}
                       </div>
                       <p className="mt-4 line-clamp-3 text-sm leading-6 text-muted">{event.shortDescription}</p>
-                    </Link>
+                      {event.locationName ? <p className="mt-3 text-sm text-ink">{event.locationName}</p> : null}
+                    </PreviewTrigger>
                   </TiltSurface>
                 </RevealOnScroll>
               );

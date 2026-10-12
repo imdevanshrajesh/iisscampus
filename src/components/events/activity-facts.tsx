@@ -1,4 +1,3 @@
-import { classifyNavigationUrl } from "@/lib/media/url";
 import { paragraphs } from "@/lib/data/catalog";
 import type { CampusEvent } from "@/lib/types";
 
@@ -15,19 +14,9 @@ function formatTime(value: string | null) {
   }).format(date);
 }
 
-function isGoogleMapsEmbed(url: string) {
-  try {
-    const host = new URL(url).hostname.replace(/^www\./, "");
-    return host === "google.com" || host === "maps.google.com" || host.endsWith("google.com");
-  } catch {
-    return false;
-  }
-}
-
 export function ActivityFacts({ event }: { event: CampusEvent }) {
   const start = formatTime(event.startTime);
   const end = formatTime(event.endTime);
-  const map = classifyNavigationUrl(event.locationMapUrl);
   const grades =
     event.gradeFrom != null && event.gradeTo != null
       ? event.gradeFrom === event.gradeTo
@@ -40,13 +29,12 @@ export function ActivityFacts({ event }: { event: CampusEvent }) {
 
   const rows = [
     start || end ? { label: "Time", value: [start, end].filter(Boolean).join(" – ") } : null,
-    event.locationName ? { label: "Place", value: event.locationName } : null,
     grades ? { label: "Grades", value: grades } : null,
     fee ? { label: "Fee", value: fee } : null,
     event.capacity != null ? { label: "Places", value: String(event.capacity) } : null,
   ].filter(Boolean) as { label: string; value: string }[];
 
-  if (!rows.length && !map.ok && !packing.length) return null;
+  if (!rows.length && !packing.length) return null;
 
   return (
     <section className="border-t border-line py-10">
@@ -60,30 +48,6 @@ export function ActivityFacts({ event }: { event: CampusEvent }) {
             </div>
           ))}
         </dl>
-      ) : null}
-
-      {map.ok ? (
-        <div className="mt-6 max-w-2xl">
-          <a
-            href={map.url}
-            className="text-sm text-accent"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            Open map
-          </a>
-          {isGoogleMapsEmbed(map.url) ? (
-            <div className="mt-3 overflow-hidden rounded-2xl border border-line">
-              <iframe
-                title="Location map"
-                src={map.url.includes("/embed") ? map.url : `https://maps.google.com/maps?q=${encodeURIComponent(map.url)}&output=embed`}
-                className="aspect-[16/10] w-full"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-            </div>
-          ) : null}
-        </div>
       ) : null}
 
       {packing.length ? (

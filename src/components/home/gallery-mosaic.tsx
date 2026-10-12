@@ -48,7 +48,7 @@ export function GalleryMosaic({
         </div>
       ) : (
         <div className="gallery-mosaic mt-6">
-          {["Events", "Council", "Campus"].map((label, index) => (
+          {["Events", "Council", "Photographs"].map((label, index) => (
             <RevealOnScroll key={label} className={index === 1 ? "gallery-mosaic__tall" : ""} delay={index * 90}>
               <div className="placeholder-card h-full">
                 <span className="font-display text-4xl italic text-accent">{String(index + 1).padStart(2, "0")}</span>

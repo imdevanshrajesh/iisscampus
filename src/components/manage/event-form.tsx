@@ -45,6 +45,7 @@ export function EventForm({
   const [slugEdited, setSlugEdited] = useState(Boolean(event));
   const [coverUrl, setCoverUrl] = useState(event?.coverImageUrl ?? "");
   const [coverFailed, setCoverFailed] = useState(false);
+  const [listing, setListing] = useState(event?.listing ?? "event");
   const [images, setImages] = useState<ImageDraft[]>(
     event?.images.map((image) => ({
       url: image.url,
@@ -118,12 +119,53 @@ export function EventForm({
         </label>
         <label className="grid gap-1.5 text-sm">
           Listing
-          <select name="listing" defaultValue={event?.listing ?? "event"} className={fieldClass}>
+          <select name="listing" value={listing} onChange={(change) => setListing(change.target.value as CampusEvent["listing"])} className={fieldClass}>
             <option value="event">Event</option>
-            <option value="competition">Competition</option>
+            <option value="competition">Competition we host</option>
+            <option value="external">Competition at another school</option>
           </select>
         </label>
-        <p className="text-sm text-muted">Move a finished competition to Events, or an event to Competitions, without changing its address.</p>
+        <p className="text-sm text-muted">
+          Competitions we host stay on the competitions page. Competitions at another school are listed underneath, for students who want to join.
+        </p>
+        {listing === "external" ? (
+          <fieldset className="grid gap-3 rounded-xl border border-line p-4">
+            <legend className="px-1 text-sm font-medium">Where it is hosted</legend>
+            <label className="grid gap-1.5 text-sm">
+              Host school
+              <input
+                name="hostName"
+                required
+                defaultValue={event?.hostName ?? ""}
+                className={fieldClass}
+                placeholder="Name of the school hosting it"
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              Location
+              <input
+                name="locationName"
+                defaultValue={event?.locationName ?? ""}
+                className={fieldClass}
+                placeholder="Hall, ground, or city"
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              Map
+              <input
+                name="locationMapUrl"
+                defaultValue={event?.locationMapUrl ?? ""}
+                className={fieldClass}
+                placeholder="https://maps.google.com/..."
+              />
+            </label>
+            <p className="text-xs leading-5 text-muted">
+              The school name, location, and map show on the card, in the preview, and on the page.
+            </p>
+          </fieldset>
+        ) : (
+          <input type="hidden" name="hostName" value="" />
+        )}
         <label className="grid gap-1.5 text-sm">
           Primary category
           <select name="categoryId" defaultValue={event?.categoryId ?? categories[0]?.id} className={fieldClass}>
@@ -166,14 +208,21 @@ export function EventForm({
             <input type="time" name="endTime" defaultValue={event?.endTime ?? ""} className={fieldClass} />
           </label>
         </div>
-        <label className="grid gap-1.5 text-sm">
-          Place
-          <input name="locationName" defaultValue={event?.locationName ?? ""} className={fieldClass} placeholder="School hall, ground, room" />
-        </label>
-        <label className="grid gap-1.5 text-sm">
-          Map link
-          <input name="locationMapUrl" defaultValue={event?.locationMapUrl ?? ""} className={fieldClass} placeholder="https://maps.google.com/..." />
-        </label>
+        {listing === "external" ? null : (
+          <>
+            <label className="grid gap-1.5 text-sm">
+              Venue
+              <input name="locationName" defaultValue={event?.locationName ?? ""} className={fieldClass} placeholder="Hall, ground, or room" />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              Map
+              <input name="locationMapUrl" defaultValue={event?.locationMapUrl ?? ""} className={fieldClass} placeholder="https://maps.google.com/..." />
+            </label>
+            <p className="text-sm text-muted">
+              The venue name and map show under the event, in the side preview, and on the event page. A venue name is enough to draw the map.
+            </p>
+          </>
+        )}
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-1.5 text-sm">
             Grade from
@@ -251,7 +300,9 @@ export function EventForm({
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-medium">Gallery</h2>
-              <p className="mt-1 text-sm text-muted">Pin photographs to show them on the public Gallery page.</p>
+              <p className="mt-1 text-sm text-muted">
+                Pin photographs to show them on the Gallery page and in the event preview. The order here is the order visitors see.
+              </p>
             </div>
             <button
               type="button"
@@ -300,7 +351,7 @@ export function EventForm({
                     checked={image.pinned}
                     onChange={(event) => updateImage(index, { pinned: event.target.checked })}
                   />
-                  Pin on Gallery page
+                  Pin on Gallery and in the preview
                 </label>
                 <div className="flex gap-2">
                   <button type="button" aria-label="Move image up" onClick={() => moveImage(index, -1)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-line"><ArrowUp size={16} /></button>

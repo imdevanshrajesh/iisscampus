@@ -6,6 +6,7 @@ import { CouncilBoardSection } from "@/components/council/council-board";
 import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
 import { councilMembersOnBoard, formatEventDate, paragraphs } from "@/lib/data/catalog";
 import { classifyMediaUrl } from "@/lib/media/url";
+import { linkHostIsInstagram } from "@/lib/social";
 import type { CouncilKind, CouncilYear } from "@/lib/types";
 
 const kindLabel: Record<CouncilKind, string> = {
@@ -17,12 +18,12 @@ const kindLabel: Record<CouncilKind, string> = {
 export function CouncilPageView({
   years,
   hosts,
-  scixcomUrl,
+  scixcom,
   logoUrl,
 }: {
   years: CouncilYear[];
   hosts: readonly string[];
-  scixcomUrl: string;
+  scixcom: { label: string; url: string };
   logoUrl?: string | null;
 }) {
   return (
@@ -50,7 +51,7 @@ export function CouncilPageView({
 
         {years.length ? (
           <div className="relative z-[1] mt-12 flex flex-wrap items-center gap-2 md:pl-[calc(18rem+4rem)]">
-            {yearChips(years, scixcomUrl)}
+            {yearChips(years, scixcom)}
           </div>
         ) : null}
       </section>
@@ -75,8 +76,9 @@ export function CouncilPageView({
   );
 }
 
-function yearChips(years: CouncilYear[], scixcomUrl: string) {
+function yearChips(years: CouncilYear[], scixcom: { label: string; url: string }) {
   const chips: ReactNode[] = [];
+  const instagram = linkHostIsInstagram(scixcom.url);
   for (const year of years) {
     chips.push(
       <a key={year.id} href={`#${year.slug}`} className="council-year-chip">
@@ -84,18 +86,18 @@ function yearChips(years: CouncilYear[], scixcomUrl: string) {
         <span className="council-year-chip__kind">{kindLabel[year.kind]}</span>
       </a>,
     );
-    if (year.kind === "current" && scixcomUrl) {
+    if (year.kind === "current" && scixcom.url) {
       chips.push(
         <a
           key={`${year.id}-scixcom`}
-          href={scixcomUrl}
+          href={scixcom.url}
           className="council-year-chip council-scixcom"
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="SciXcom on Instagram"
+          aria-label={instagram ? `${scixcom.label} on Instagram` : scixcom.label}
         >
-          <InstagramMark />
-          <span className="council-year-chip__label">SciXcom</span>
+          {instagram ? <InstagramMark /> : null}
+          <span className="council-year-chip__label">{scixcom.label}</span>
         </a>,
       );
     }

@@ -74,9 +74,10 @@ export default async function SettingsPage() {
         </div>
       </section>
       <section className="mt-12">
-        <h2 className="text-xl font-medium">Instagram</h2>
+        <h2 className="text-xl font-medium">Links</h2>
         <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-          The campus account is the main one. SciXcom is listed beside it.
+          Change the name and address for the school website, Instagram, and the council account. Add any other links
+          the footer and about page should list.
         </p>
         <div className="mt-4">
           <SocialForm social={social} />

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
+import { PreviewAchievement } from "@/components/preview/preview-provider";
 import { TiltSurface } from "@/components/home/tilt-surface";
 import { MediaFrame } from "@/components/media/media-frame";
 import { categoryById, formatEventDate } from "@/lib/data/catalog";
@@ -30,6 +31,7 @@ export function AchievementCards({
               <RevealOnScroll key={item.id} delay={index * 70}>
                 <TiltSurface>
                   <article className="overflow-hidden rounded-2xl border border-line bg-background">
+                    <PreviewAchievement achievement={item} className="block w-full text-left">
                     <MediaFrame
                       url={item.imageUrl}
                       alt={item.imageAlt}
@@ -50,6 +52,7 @@ export function AchievementCards({
                         </p>
                       ) : null}
                     </div>
+                    </PreviewAchievement>
                   </article>
                 </TiltSurface>
               </RevealOnScroll>
