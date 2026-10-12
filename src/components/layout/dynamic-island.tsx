@@ -1,10 +1,10 @@
 "use client";
 
 import { Home, Images, CalendarDays, Users, Newspaper } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { CouncilLogo } from "@/components/brand/council-logo";
 import { primaryNav } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +30,7 @@ export function HomeLink() {
   );
 }
 
-export function SiteChrome() {
+export function SiteChrome({ logoUrl }: { logoUrl?: string | null }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
@@ -89,7 +89,7 @@ export function SiteChrome() {
         >
           <div className="nav-island__bar">
             <Link href="/" aria-label="Home" className="nav-island__logo" onClick={closeMenu}>
-              <Image src="/brand/student-council.png" alt="" width={32} height={32} unoptimized className="h-full w-full object-cover" priority />
+              <CouncilLogo url={logoUrl} width={32} height={32} className="h-full w-full object-cover" priority />
             </Link>
             <Link href="/" onClick={closeMenu} className="rounded-full px-2.5 py-1.5 text-sm font-medium text-ink">
               Home

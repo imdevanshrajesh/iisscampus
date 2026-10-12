@@ -3,12 +3,31 @@ import { unstable_cache } from "next/cache";
 import { selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "@/lib/data/catalog";
 import { readContentStore, readNewsletter, readSocial } from "@/lib/data/file-content";
 import { defaultSocialLinks } from "@/lib/config";
-import { groupCouncilRows, mapAchievement, mapCategory, mapEvent, mapImage } from "@/lib/data/map";
+import {
+  groupCouncilRows,
+  mapAchievement,
+  mapAnnouncement,
+  mapCategory,
+  mapEvent,
+  mapFaq,
+  mapImage,
+} from "@/lib/data/map";
 import { contentMode } from "@/lib/data/content-mode";
 import { seedMediaHosts } from "@/lib/data/seed";
 import { logPostgrestUnlessMissing } from "@/lib/supabase/errors";
 import { createPublicClient } from "@/lib/supabase/public";
-import type { Achievement, CampusEvent, Category, CouncilYear, Newsletter, PublicCatalog, SocialLinks } from "@/lib/types";
+import type {
+  Achievement,
+  Announcement,
+  CampusEvent,
+  Category,
+  CouncilYear,
+  Faq,
+  Newsletter,
+  PublicCatalog,
+  SiteBrand,
+  SocialLinks,
+} from "@/lib/types";
 
 function localCatalog(): PublicCatalog {
   const store = readContentStore();
@@ -19,6 +38,7 @@ function localCatalog(): PublicCatalog {
     achievements: selectPublicAchievements(store.achievements),
     councilYears: selectPublicCouncil(store.councilYears),
     mediaHosts: seedMediaHosts,
+    councilLogoUrl: store.councilLogoUrl ?? null,
   };
 }
 
@@ -36,19 +56,31 @@ async function supabaseCatalog(): Promise<PublicCatalog> {
   const supabase = createPublicClient();
   if (!supabase) return localCatalog();
 
-  const [eventsResult, imagesResult, relationsResult, categoriesResult, achievementsResult, settingsResult, councilYearsResult, councilPhotosResult, councilPostsResult, councilMembersResult] =
-    await Promise.all([
-      supabase.from("campus_events").select("*").eq("publication_status", "published"),
-      supabase.from("campus_event_images").select("*"),
-      supabase.from("campus_event_relations").select("*"),
-      supabase.from("campus_categories").select("*").order("sort_order"),
-      supabase.from("campus_achievements").select("*").eq("publication_status", "published"),
-      supabase.from("campus_settings").select("media_hosts").eq("id", true).maybeSingle(),
-      supabase.from("campus_council_years").select("*").eq("publication_status", "published").order("sort_order"),
-      supabase.from("campus_council_photos").select("*"),
-      supabase.from("campus_council_posts").select("*"),
-      supabase.from("campus_council_members").select("*"),
-    ]);
+  const [
+    eventsResult,
+    imagesResult,
+    relationsResult,
+    eventCategoriesResult,
+    categoriesResult,
+    achievementsResult,
+    settingsResult,
+    councilYearsResult,
+    councilPhotosResult,
+    councilPostsResult,
+    councilMembersResult,
+  ] = await Promise.all([
+    supabase.from("campus_events").select("*").eq("publication_status", "published"),
+    supabase.from("campus_event_images").select("*"),
+    supabase.from("campus_event_relations").select("*"),
+    supabase.from("campus_event_categories").select("*"),
+    supabase.from("campus_categories").select("*").order("sort_order"),
+    supabase.from("campus_achievements").select("*").eq("publication_status", "published"),
+    supabase.from("campus_settings").select("media_hosts, council_logo_url").eq("id", true).maybeSingle(),
+    supabase.from("campus_council_years").select("*").eq("publication_status", "published").order("sort_order"),
+    supabase.from("campus_council_photos").select("*"),
+    supabase.from("campus_council_posts").select("*"),
+    supabase.from("campus_council_members").select("*"),
+  ]);
 
   logPostgrestUnlessMissing(eventsResult.error);
   logPostgrestUnlessMissing(categoriesResult.error);
@@ -76,15 +108,26 @@ async function supabaseCatalog(): Promise<PublicCatalog> {
     relatedByEvent.set(record.event_id, list);
   }
 
-  const events = (eventsResult.data ?? []).map((row) =>
-    mapEvent(
+  const categoriesByEvent = new Map<string, string[]>();
+  for (const row of eventCategoriesResult.error ? [] : (eventCategoriesResult.data ?? [])) {
+    const record = row as { event_id: string; category_id: string };
+    const list = categoriesByEvent.get(record.event_id) ?? [];
+    list.push(record.category_id);
+    categoriesByEvent.set(record.event_id, list);
+  }
+
+  const events = (eventsResult.data ?? []).map((row) => {
+    const id = String((row as { id: string }).id);
+    return mapEvent(
       row as Record<string, unknown>,
-      imagesByEvent.get(String((row as { id: string }).id)) ?? [],
-      relatedByEvent.get(String((row as { id: string }).id)) ?? [],
-    ),
-  );
+      imagesByEvent.get(id) ?? [],
+      relatedByEvent.get(id) ?? [],
+      categoriesByEvent.get(id) ?? [],
+    );
+  });
 
   const hosts = settingsResult.error ? [] : settingsResult.data?.media_hosts;
+  const logoRaw = settingsResult.error ? null : settingsResult.data?.council_logo_url;
   const councilYears = councilYearsResult.error
     ? selectPublicCouncil(readContentStore().councilYears)
     : publishedCouncil(
@@ -102,6 +145,7 @@ async function supabaseCatalog(): Promise<PublicCatalog> {
     ),
     councilYears,
     mediaHosts: Array.isArray(hosts) ? hosts.map(String) : [],
+    councilLogoUrl: logoRaw ? String(logoRaw) : null,
   };
 }
 
@@ -186,6 +230,121 @@ export async function getPublicSocial(): Promise<SocialLinks> {
     console.error(error);
   }
   return readSocial() ?? { ...defaultSocialLinks };
+}
+
+export async function getSiteBrand(): Promise<SiteBrand> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const row = await supabase
+          .from("campus_settings")
+          .select("council_logo_url, contact_email")
+          .eq("id", true)
+          .maybeSingle();
+        if (!row.error) {
+          return {
+            councilLogoUrl: row.data?.council_logo_url ? String(row.data.council_logo_url) : null,
+            contactEmail: row.data?.contact_email ? String(row.data.contact_email) : null,
+          };
+        }
+        const logoOnly = await supabase
+          .from("campus_settings")
+          .select("council_logo_url")
+          .eq("id", true)
+          .maybeSingle();
+        if (!logoOnly.error) {
+          return {
+            councilLogoUrl: logoOnly.data?.council_logo_url ? String(logoOnly.data.council_logo_url) : null,
+            contactEmail: null,
+          };
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  const store = readContentStore();
+  return {
+    councilLogoUrl: store.councilLogoUrl ?? null,
+    contactEmail: store.contactEmail ?? null,
+  };
+}
+
+export async function getPublicAnnouncements(): Promise<Announcement[]> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const result = await supabase
+          .from("campus_announcements")
+          .select("*")
+          .eq("enabled", true)
+          .order("sort_order");
+        if (!result.error) {
+          return (result.data ?? []).map((row) => mapAnnouncement(row as Record<string, unknown>));
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return (readContentStore().announcements ?? []).filter((item) => item.enabled);
+}
+
+export async function getEditableAnnouncements(): Promise<Announcement[]> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const result = await supabase.from("campus_announcements").select("*").order("sort_order");
+        if (!result.error) {
+          return (result.data ?? []).map((row) => mapAnnouncement(row as Record<string, unknown>));
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return readContentStore().announcements ?? [];
+}
+
+export async function getPublicFaqs(): Promise<Faq[]> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const result = await supabase
+          .from("campus_faqs")
+          .select("*")
+          .eq("published", true)
+          .order("sort_order");
+        if (!result.error) {
+          return (result.data ?? []).map((row) => mapFaq(row as Record<string, unknown>));
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return (readContentStore().faqs ?? []).filter((item) => item.published);
+}
+
+export async function getEditableFaqs(): Promise<Faq[]> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const result = await supabase.from("campus_faqs").select("*").order("sort_order");
+        if (!result.error) {
+          return (result.data ?? []).map((row) => mapFaq(row as Record<string, unknown>));
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return readContentStore().faqs ?? [];
 }
 
 export const getPublicCatalog = cache(

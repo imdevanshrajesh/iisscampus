@@ -1,17 +1,20 @@
 import { ArrowUpRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { siteConfig } from "@/lib/config";
+import { contactMailto, siteConfig } from "@/lib/config";
 import { primaryNav } from "@/lib/nav";
 import type { SocialLinks } from "@/lib/types";
 
 export function SiteFooter({
   showSampleNote,
   social,
+  contactEmail,
 }: {
   showSampleNote: boolean;
   social: SocialLinks;
+  contactEmail?: string | null;
 }) {
+  const contactHref = contactMailto(contactEmail) ?? siteConfig.contactUrl;
   return (
     <footer className="mt-auto bg-navy text-white">
       <div className="mx-auto max-w-[90rem] px-5 pt-16 pb-28 md:px-8 md:pt-20 md:pb-10">
@@ -77,13 +80,14 @@ export function SiteFooter({
                   SciXcom
                 </a>
               </li>
-              {siteConfig.contactUrl ? (
+              {contactHref ? (
                 <li>
                   <a
-                    href={siteConfig.contactUrl}
+                    href={contactHref}
                     className="text-link text-white/85"
-                    rel="noopener noreferrer"
-                    target="_blank"
+                    {...(contactHref.startsWith("mailto:")
+                      ? {}
+                      : { rel: "noopener noreferrer", target: "_blank" })}
                   >
                     Contact
                   </a>

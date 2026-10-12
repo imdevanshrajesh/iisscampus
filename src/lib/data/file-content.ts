@@ -3,7 +3,18 @@ import path from "node:path";
 import { canDelete, canEditPublication, canTransition, type Actor } from "@/lib/auth/permissions";
 import { councilMemberSlugs } from "@/lib/data/catalog";
 import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "@/lib/data/seed";
-import type { Achievement, CampusEvent, Category, CouncilMember, CouncilYear, Newsletter, PublicationStatus, SocialLinks } from "@/lib/types";
+import type {
+  Achievement,
+  Announcement,
+  CampusEvent,
+  Category,
+  CouncilMember,
+  CouncilYear,
+  Faq,
+  Newsletter,
+  PublicationStatus,
+  SocialLinks,
+} from "@/lib/types";
 import type { AchievementInput, CouncilInput, EventInput } from "@/lib/validation/content";
 
 type Store = {
@@ -13,6 +24,10 @@ type Store = {
   councilYears: CouncilYear[];
   newsletter?: Newsletter | null;
   social?: SocialLinks | null;
+  councilLogoUrl?: string | null;
+  contactEmail?: string | null;
+  announcements?: Announcement[];
+  faqs?: Faq[];
 };
 
 function contentFilePath() {
@@ -26,9 +41,34 @@ function normalizeCouncilMembers(members: CouncilMember[]) {
     about: member.about ?? null,
     work: member.work ?? null,
     slug: member.slug ?? "",
+    board: member.board === "junior" ? ("junior" as const) : ("main" as const),
   }));
   const slugs = councilMemberSlugs(normalized);
   return normalized.map((member, index) => ({ ...member, slug: slugs[index] ?? member.slug }));
+}
+
+function normalizeEvent(event: CampusEvent): CampusEvent {
+  const categoryIds = event.categoryIds?.length ? event.categoryIds : [event.categoryId];
+  return {
+    ...event,
+    categoryIds,
+    listing: event.listing === "competition" ? "competition" : "event",
+    startTime: event.startTime ?? null,
+    endTime: event.endTime ?? null,
+    locationName: event.locationName ?? null,
+    locationMapUrl: event.locationMapUrl ?? null,
+    gradeFrom: event.gradeFrom ?? null,
+    gradeTo: event.gradeTo ?? null,
+    feeAed: event.feeAed ?? null,
+    capacity: event.capacity ?? null,
+    packingList: event.packingList ?? null,
+    registrationProvider:
+      event.registrationProvider === "arigo" ||
+      event.registrationProvider === "page" ||
+      event.registrationProvider === "google_form"
+        ? event.registrationProvider
+        : null,
+  };
 }
 
 function initialStore(): Store {
@@ -44,12 +84,13 @@ export function readContentStore(): Store {
   try {
     const parsed = JSON.parse(readFileSync(contentFilePath(), "utf8")) as Partial<Store>;
     return {
-      events: Array.isArray(parsed.events) ? parsed.events : seedEvents,
+      events: Array.isArray(parsed.events) ? parsed.events.map(normalizeEvent) : seedEvents,
       achievements: Array.isArray(parsed.achievements) ? parsed.achievements : seedAchievements,
       categories: Array.isArray(parsed.categories) ? parsed.categories : seedCategories,
       councilYears: Array.isArray(parsed.councilYears)
         ? parsed.councilYears.map((year) => ({
             ...year,
+            juniorHeading: year.juniorHeading?.trim() || "Junior Student Council",
             members: normalizeCouncilMembers(year.members ?? []),
             photos: year.photos ?? [],
             posts: year.posts ?? [],
@@ -57,6 +98,10 @@ export function readContentStore(): Store {
         : seedCouncilYears,
       newsletter: parsed.newsletter ?? null,
       social: parsed.social ?? null,
+      councilLogoUrl: parsed.councilLogoUrl ?? null,
+      contactEmail: parsed.contactEmail ?? null,
+      announcements: Array.isArray(parsed.announcements) ? parsed.announcements : [],
+      faqs: Array.isArray(parsed.faqs) ? parsed.faqs : [],
     };
   } catch {
     return initialStore();
@@ -124,6 +169,7 @@ export function saveEventToStore(
   }
 
   const nextId = existing?.id ?? crypto.randomUUID();
+  const categoryIds = [...new Set([input.categoryId, ...(input.categoryIds ?? [])])];
   const record: CampusEvent = {
     id: nextId,
     title: input.title,
@@ -131,11 +177,22 @@ export function saveEventToStore(
     shortDescription: input.shortDescription,
     fullDescription: input.fullDescription,
     categoryId: input.categoryId,
+    categoryIds,
+    listing: input.listing ?? "event",
     coverImageUrl: input.coverImageUrl,
     coverAlt: input.coverAlt,
     coverAttribution: input.coverAttribution,
     eventDate: input.eventDate,
     endDate: input.endDate,
+    startTime: input.startTime,
+    endTime: input.endTime,
+    locationName: input.locationName,
+    locationMapUrl: input.locationMapUrl,
+    gradeFrom: input.gradeFrom,
+    gradeTo: input.gradeTo,
+    feeAed: input.feeAed,
+    capacity: input.capacity,
+    packingList: input.packingList,
     publicationStatus: status,
     eventStatus: input.eventStatus,
     featured,
@@ -287,6 +344,7 @@ export function saveCouncilToStore(actor: Actor, input: CouncilInput, intent: st
     slug: input.slug,
     kind: input.kind,
     summary: input.summary,
+    juniorHeading: input.juniorHeading?.trim() || "Junior Student Council",
     publicationStatus: publication.status,
     sortOrder: input.sortOrder,
     isSample: existing?.isSample ?? false,
@@ -302,6 +360,7 @@ export function saveCouncilToStore(actor: Actor, input: CouncilInput, intent: st
         about: member.about,
         work: member.work,
         slug: slugs[index] ?? "",
+        board: member.board === "junior" ? ("junior" as const) : ("main" as const),
         sortOrder: index,
       }));
     })(),
@@ -411,5 +470,73 @@ export function readSocial(): SocialLinks | null {
 export function saveSocialToStore(social: SocialLinks) {
   const store = readContentStore();
   store.social = social;
+  return writeContentStore(store);
+}
+
+export function saveCouncilLogoToStore(councilLogoUrl: string | null) {
+  const store = readContentStore();
+  store.councilLogoUrl = councilLogoUrl;
+  return writeContentStore(store);
+}
+
+export function saveContactEmailToStore(contactEmail: string | null) {
+  const store = readContentStore();
+  store.contactEmail = contactEmail;
+  return writeContentStore(store);
+}
+
+export function saveAnnouncementToStore(input: {
+  id?: string;
+  message: string;
+  eventId: string | null;
+  enabled: boolean;
+  sortOrder: number;
+}) {
+  const store = readContentStore();
+  const list = store.announcements ?? [];
+  const existing = input.id ? list.find((item) => item.id === input.id) : undefined;
+  const record: Announcement = {
+    id: existing?.id ?? crypto.randomUUID(),
+    message: input.message,
+    eventId: input.eventId,
+    enabled: input.enabled,
+    sortOrder: input.sortOrder,
+  };
+  store.announcements = existing
+    ? list.map((item) => (item.id === existing.id ? record : item))
+    : [...list, record];
+  return writeContentStore(store);
+}
+
+export function deleteAnnouncementFromStore(id: string) {
+  const store = readContentStore();
+  store.announcements = (store.announcements ?? []).filter((item) => item.id !== id);
+  return writeContentStore(store);
+}
+
+export function saveFaqToStore(input: {
+  id?: string;
+  question: string;
+  answer: string;
+  published: boolean;
+  sortOrder: number;
+}) {
+  const store = readContentStore();
+  const list = store.faqs ?? [];
+  const existing = input.id ? list.find((item) => item.id === input.id) : undefined;
+  const record: Faq = {
+    id: existing?.id ?? crypto.randomUUID(),
+    question: input.question,
+    answer: input.answer,
+    published: input.published,
+    sortOrder: input.sortOrder,
+  };
+  store.faqs = existing ? list.map((item) => (item.id === existing.id ? record : item)) : [...list, record];
+  return writeContentStore(store);
+}
+
+export function deleteFaqFromStore(id: string) {
+  const store = readContentStore();
+  store.faqs = (store.faqs ?? []).filter((item) => item.id !== id);
   return writeContentStore(store);
 }

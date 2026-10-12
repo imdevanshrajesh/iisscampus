@@ -1,4 +1,5 @@
 import { classifyNavigationUrl } from "./media/url.ts";
+import type { RegistrationProvider } from "@/lib/types";
 
 export type RegistrationState =
   | { state: "hidden" }
@@ -10,7 +11,7 @@ type RegistrationFields = {
   registrationEnabled: boolean;
   registrationUrl: string | null;
   registrationLabel: string | null;
-  registrationProvider: string | null;
+  registrationProvider: RegistrationProvider | string | null;
   registrationDeadline: string | null;
 };
 
@@ -26,6 +27,40 @@ function arigoSignupUrl() {
   }
 }
 
+/** Three modes: Arigo signup, a page on this site, or a Google Form. */
+function resolveRegistrationHref(
+  provider: RegistrationProvider | string | null,
+  registrationUrl: string | null,
+): string | null {
+  const mode = provider === "page" || provider === "google_form" ? provider : "arigo";
+
+  if (mode === "arigo") {
+    if (registrationUrl) {
+      const classified = classifyNavigationUrl(registrationUrl);
+      if (classified.ok) return classified.url;
+    }
+    return arigoSignupUrl();
+  }
+
+  if (!registrationUrl) return null;
+
+  if (mode === "page") {
+    if (registrationUrl.startsWith("/")) return registrationUrl;
+    const classified = classifyNavigationUrl(registrationUrl);
+    return classified.ok ? classified.url : null;
+  }
+
+  const classified = classifyNavigationUrl(registrationUrl);
+  if (!classified.ok) return null;
+  try {
+    const host = new URL(classified.url).hostname.replace(/^www\./, "");
+    if (host !== "docs.google.com" && host !== "forms.gle") return null;
+  } catch {
+    return null;
+  }
+  return classified.url;
+}
+
 export function registrationState(
   event: RegistrationFields,
   today = new Date().toISOString().slice(0, 10),
@@ -36,14 +71,7 @@ export function registrationState(
     return { state: "closed" };
   }
 
-  let href: string | null = null;
-  if (event.registrationUrl) {
-    const classified = classifyNavigationUrl(event.registrationUrl);
-    if (!classified.ok) return { state: "unavailable" };
-    href = classified.url;
-  } else {
-    href = arigoSignupUrl();
-  }
+  const href = resolveRegistrationHref(event.registrationProvider, event.registrationUrl);
   if (!href) return { state: "unavailable" };
 
   const label = event.registrationLabel?.trim() || "Register now";

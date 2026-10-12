@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { AchievementCards } from "@/components/home/achievement-cards";
+import { AnnouncementBar } from "@/components/home/announcement-bar";
 import { BoardCard } from "@/components/home/board-card";
 import { ComingUp } from "@/components/home/coming-up";
 import { CouncilPreview } from "@/components/home/council-preview";
@@ -13,7 +14,7 @@ import { Today } from "@/components/home/today";
 import { siteConfig } from "@/lib/config";
 import { compareCampusEvents } from "@/lib/data/catalog";
 import { classifyNavigationUrl } from "@/lib/media/url";
-import type { Achievement, CampusEvent, Category } from "@/lib/types";
+import type { Achievement, Announcement, CampusEvent, Category } from "@/lib/types";
 
 const pageAnchors = [
   { href: "/events", label: "Events" },
@@ -31,11 +32,15 @@ export function HomePage({
   categories,
   achievements,
   hosts,
+  logoUrl,
+  announcements = [],
 }: {
   events: CampusEvent[];
   categories: Category[];
   achievements: Achievement[];
   hosts: readonly string[];
+  logoUrl?: string | null;
+  announcements?: Announcement[];
 }) {
   const featured = events.filter((event) => event.featured);
   const lead = (featured.length ? featured : events).slice(0, 5);
@@ -51,6 +56,7 @@ export function HomePage({
 
   return (
     <>
+      <AnnouncementBar announcements={announcements} events={events} />
       <section className="home-hero">
         <div className="mx-auto max-w-[90rem] px-5 pt-4 md:px-8 md:pt-8">
           <div
@@ -227,7 +233,7 @@ export function HomePage({
         </ol>
       </section>
 
-      <CouncilPreview />
+      <CouncilPreview logoUrl={logoUrl} />
 
       <section className="mx-auto grid max-w-[90rem] gap-16 px-5 py-20 md:px-8 md:py-28 lg:grid-cols-2 lg:gap-12">
         <AchievementCards achievements={achievements} categories={categories} hosts={hosts} />

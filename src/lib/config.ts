@@ -35,6 +35,20 @@ export const defaultSocialLinks = {
   scixcomInstagramUrl: "https://www.instagram.com/scixcom.27/",
 };
 
+const emailPattern = /^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}$/i;
+
+export function normalizeContactEmail(value: string | null | undefined) {
+  const email = value?.trim().toLowerCase() ?? "";
+  if (!email || !emailPattern.test(email)) return null;
+  return email;
+}
+
+/** Builds a mailto: link for About and the footer when an admin contact email is set. */
+export function contactMailto(email: string | null | undefined) {
+  const normalized = normalizeContactEmail(email);
+  return normalized ? `mailto:${normalized}` : null;
+}
+
 export const siteConfig = {
   name: "IISS x Student Council Boys",
   shortName: "IISS x Student Council Boys",

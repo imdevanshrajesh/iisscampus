@@ -1,10 +1,25 @@
-import type { Achievement, CampusEvent, Category, CouncilKind, CouncilMember, CouncilYear, EventStatus } from "@/lib/types";
+import type {
+  Achievement,
+  CampusEvent,
+  Category,
+  CouncilBoard,
+  CouncilKind,
+  CouncilMember,
+  CouncilYear,
+  EventListing,
+  EventStatus,
+} from "@/lib/types";
 
 export type EventQuery = {
   query?: string;
   category?: string;
   year?: string;
   status?: string;
+  grade?: string;
+  from?: string;
+  to?: string;
+  fee?: string;
+  listing?: EventListing;
 };
 
 export function selectPublicEvents(events: CampusEvent[]) {
@@ -76,9 +91,14 @@ export function councilMemberSlugs(members: { name: string; role: string; slug?:
 export function findPublicCouncilMember(years: CouncilYear[], yearSlug: string, memberSlug: string) {
   const year = years.find((item) => item.slug === yearSlug);
   if (!year) return null;
-  const member = year.members.find((item) => item.slug === memberSlug);
+  // Junior posts stay on the year page only; they have no profile route.
+  const member = year.members.find((item) => item.slug === memberSlug && item.board !== "junior");
   if (!member) return null;
   return { year, member };
+}
+
+export function councilMembersOnBoard(members: CouncilMember[], board: CouncilBoard) {
+  return members.filter((member) => (member.board ?? "main") === board);
 }
 
 export function isCouncilStaffRole(role: string) {
@@ -198,6 +218,11 @@ export function categoryBySlug(categories: Category[], slug: string) {
   return categories.find((category) => category.slug === slug) ?? null;
 }
 
+export function eventCategoryIds(event: CampusEvent) {
+  const ids = event.categoryIds?.length ? event.categoryIds : [event.categoryId];
+  return [...new Set(ids.filter(Boolean))];
+}
+
 export function filterPublishedEvents(
   events: CampusEvent[],
   categories: Category[],
@@ -206,18 +231,36 @@ export function filterPublishedEvents(
   const query = filters.query?.trim().toLowerCase() ?? "";
   const year = filters.year?.trim() ?? "";
   const status = filters.status?.trim() ?? "";
+  const grade = Number(filters.grade?.trim() ?? "");
+  const from = filters.from?.trim() ?? "";
+  const to = filters.to?.trim() ?? "";
+  const fee = filters.fee?.trim() ?? "";
+  const listing = filters.listing;
   const category = categoryBySlug(categories, filters.category?.trim() ?? "");
 
-  return selectPublicEvents(events).filter((event) => {
-    if (category && event.categoryId !== category.id) return false;
-    if (status && event.eventStatus !== status) return false;
-    if (year) {
-      if (!event.eventDate?.startsWith(`${year}-`)) return false;
-    }
-    if (!query) return true;
-    const haystack = `${event.title} ${event.shortDescription} ${event.fullDescription}`.toLowerCase();
-    return haystack.includes(query);
-  }).sort(compareCampusEvents);
+  return selectPublicEvents(events)
+    .filter((event) => {
+      if (listing && (event.listing ?? "event") !== listing) return false;
+      if (category && !eventCategoryIds(event).includes(category.id)) return false;
+      if (status && event.eventStatus !== status) return false;
+      if (year && !event.eventDate?.startsWith(`${year}-`)) return false;
+      if (from && (event.eventDate ?? "") < from) return false;
+      if (to && (event.eventDate ?? "9999-99-99") > to) return false;
+      if (Number.isFinite(grade) && grade > 0) {
+        if (event.gradeFrom == null || event.gradeTo == null) return false;
+        if (grade < event.gradeFrom || grade > event.gradeTo) return false;
+      }
+      if (fee === "free" && !(event.feeAed == null || event.feeAed === 0)) return false;
+      if (fee === "paid" && !(event.feeAed != null && event.feeAed > 0)) return false;
+      if (!query) return true;
+      const haystack = `${event.title} ${event.shortDescription} ${event.fullDescription}`.toLowerCase();
+      return haystack.includes(query);
+    })
+    .sort(compareCampusEvents);
+}
+
+export function selectByListing(events: CampusEvent[], listing: EventListing) {
+  return selectPublicEvents(events).filter((event) => (event.listing ?? "event") === listing);
 }
 
 export function publishedYears(events: CampusEvent[]) {

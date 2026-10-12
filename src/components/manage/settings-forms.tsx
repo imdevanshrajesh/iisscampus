@@ -1,9 +1,16 @@
 "use client";
 
 import { useActionState } from "react";
-import { grantRole, saveSettings, saveSocial, type ActionState } from "@/lib/manage/actions";
+import {
+  grantRole,
+  saveContactEmail,
+  saveCouncilLogo,
+  saveSettings,
+  saveSocial,
+  type ActionState,
+} from "@/lib/manage/actions";
 import type { SocialLinks } from "@/lib/types";
-import { RECOMMENDED_IMAGE_HOST } from "@/lib/media/guide";
+import { IMAGE_URL_EXAMPLE, RECOMMENDED_IMAGE_HOST } from "@/lib/media/guide";
 
 const fieldClass = "w-full rounded-md border border-line bg-white px-3 py-2 text-sm";
 
@@ -29,6 +36,58 @@ export function HostForm({ hosts }: { hosts: string[] }) {
       {state.error ? <p className="text-sm">{state.error}</p> : null}
       {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
       <button type="submit" disabled={pending} className="justify-self-start rounded-md bg-ink px-4 py-2 text-sm text-white">Save hosts</button>
+    </form>
+  );
+}
+
+export function CouncilLogoForm({ logoUrl }: { logoUrl: string | null }) {
+  const [state, action, pending] = useActionState(saveCouncilLogo, {} as ActionState);
+  return (
+    <form action={action} className="grid max-w-xl gap-3">
+      <label className="grid gap-1.5 text-sm">
+        Council logo URL
+        <input
+          name="councilLogoUrl"
+          defaultValue={logoUrl ?? ""}
+          className={fieldClass}
+          placeholder={IMAGE_URL_EXAMPLE}
+        />
+      </label>
+      <p className="text-xs leading-5 text-muted">
+        Used in the navigation, admin bar, intro, council page, and site icon. Leave blank to use the logo saved in the project. The host must be listed under image hosts.
+      </p>
+      {state.error ? <p className="text-sm">{state.error}</p> : null}
+      {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
+      <button type="submit" disabled={pending} className="justify-self-start rounded-md bg-ink px-4 py-2 text-sm text-white">
+        Save logo
+      </button>
+    </form>
+  );
+}
+
+export function ContactEmailForm({ contactEmail }: { contactEmail: string | null }) {
+  const [state, action, pending] = useActionState(saveContactEmail, {} as ActionState);
+  return (
+    <form action={action} className="grid max-w-xl gap-3">
+      <label className="grid gap-1.5 text-sm">
+        Contact email
+        <input
+          name="contactEmail"
+          type="email"
+          defaultValue={contactEmail ?? ""}
+          className={fieldClass}
+          placeholder="council@example.com"
+          autoComplete="email"
+        />
+      </label>
+      <p className="text-xs leading-5 text-muted">
+        Shown on the About page and in the footer as Send feedback. Visitors open their mail app to write to this address. Leave blank to hide the link.
+      </p>
+      {state.error ? <p className="text-sm">{state.error}</p> : null}
+      {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
+      <button type="submit" disabled={pending} className="justify-self-start rounded-md bg-ink px-4 py-2 text-sm text-white">
+        Save contact email
+      </button>
     </form>
   );
 }

@@ -1,19 +1,17 @@
-import Image from "next/image";
+import { CouncilLogo } from "@/components/brand/council-logo";
 import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
 import { RingLink } from "@/components/home/ring-link";
 
-export function CouncilPreview() {
+export function CouncilPreview({ logoUrl }: { logoUrl?: string | null }) {
   return (
     <section className="mx-auto max-w-[90rem] px-5 md:px-8">
       <RevealOnScroll>
         <div className="relative rounded-[1.75rem] bg-council text-white shadow-[0_40px_80px_-30px_rgba(8,39,75,0.55)]">
           <div className="grid items-center gap-10 px-6 py-14 md:grid-cols-[18rem_1fr] md:px-14 md:py-20">
-            <Image
-              src="/brand/student-council.png"
-              alt=""
+            <CouncilLogo
+              url={logoUrl}
               width={640}
               height={640}
-              unoptimized
               className="mx-auto h-auto w-48 max-w-full object-contain md:w-full md:max-w-[17rem]"
             />
             <div>

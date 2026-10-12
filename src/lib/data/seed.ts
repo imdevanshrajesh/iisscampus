@@ -51,8 +51,39 @@ const councilRoster: [string, string][] = [
   ["Steam Vice Captain", "ASWAS JOY"],
 ];
 
+const juniorRoster: [string, string][] = [
+  ["Art And Craft Club Captain", "RISHON ZACCARIA"],
+  ["Art And Craft Club Vice Captain", "MOHAMMED AHYAN"],
+  ["Cyber Club Captain", "MAHARAJA VELCHAMY"],
+  ["Cyber Club Vice Captain", "ALWIN BIJU VARGHESE"],
+  ["Eco Club Captain", "MOHAMED SUHAIL"],
+  ["Eco Club Vice Captain", "AIDEN VELATHIPARAMBIL"],
+  ["Happiness Club Captain", "YAZEED MOHAMED YUNUS"],
+  ["Happiness Club Vice Captain", "SACHIT INDIRAKUMAR"],
+  ["Health And Fitness Club Captain", "MUHAMMED EHAN"],
+  ["Health And Fitness Club Vice Captain", "MUFASSIR AMAAN MOHAMMED"],
+  ["Heritage Club Captain", "MOHAMMED JASIM SHEIK"],
+  ["Heritage Club Vice Captain", "THARUN PALANI"],
+  ["Invention And Research Club Captain", "MOHD SHOIAB"],
+  ["Invention And Research Club Vice Captain", "MOHAMMED UBAIR"],
+  ["Islamic Club Captain", "ANWAR AMEEN"],
+  ["Islamic Club Vice Captain", "ANWAR AMER"],
+  ["Math Club Captain", "ALAN THOMAS"],
+  ["Math Club Vice Captain", "AYUSH PRAMANIK"],
+  ["Media Club Captain", "MUHAMMAD FEZIN"],
+  ["Media Club Vice Captain", "SIJIN SHAN"],
+  ["Quiz Club Captain", "ATHIF BIN SAMEER"],
+  ["Quiz Club Vice Captain", "ABDUL MANNAN"],
+  ["Science Club Captain", "MOHAMMAD HABIBUR RAHMAN"],
+  ["Science Club Vice Captain", "AASAAD SHABANDRI"],
+  ["Literary Club Captain", "VENKATA SESHASAI"],
+  ["Literary Club Vice Captain", "ZAID ABDUL KALEEM"],
+  ["Community Club Captain", "MUHAMMED ARSALAN"],
+  ["Community Club Vice Captain", "MUHAMMAD MUZZAMMIL"],
+];
+
 function councilMembers(): CouncilMember[] {
-  const members = councilRoster.map(([role, name], index): CouncilMember => ({
+  const main = councilRoster.map(([role, name], index): CouncilMember => ({
     id: `31000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
     role,
     name,
@@ -62,8 +93,23 @@ function councilMembers(): CouncilMember[] {
     about: null,
     work: null,
     slug: "",
+    board: "main",
     sortOrder: index,
   }));
+  const junior = juniorRoster.map(([role, name], index): CouncilMember => ({
+    id: `32000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+    role,
+    name,
+    imageUrl: null,
+    imageAlt: null,
+    quote: null,
+    about: null,
+    work: null,
+    slug: "",
+    board: "junior",
+    sortOrder: 100 + index,
+  }));
+  const members = [...main, ...junior];
   const slugs = councilMemberSlugs(members);
   return members.map((member, index) => ({ ...member, slug: slugs[index] ?? "" }));
 }
@@ -75,6 +121,7 @@ export const seedCouncilYears: CouncilYear[] = [
     slug: "2026-27",
     kind: "current",
     summary: "Boys' student council for 2026–27.",
+    juniorHeading: "Junior Student Council",
     publicationStatus: "published",
     sortOrder: 0,
     isSample: false,
@@ -161,12 +208,24 @@ function sampleEvent(
   partial: Pick<CampusEvent, "id" | "title" | "slug" | "shortDescription" | "fullDescription" | "categoryId" | "purpose" | "activities"> &
     Partial<CampusEvent>,
 ): CampusEvent {
+  const categoryId = partial.categoryId;
+  const { categoryIds: explicitCategories, ...rest } = partial;
   return {
+    listing: "event",
     coverImageUrl: null,
     coverAlt: null,
     coverAttribution: null,
     eventDate: null,
     endDate: null,
+    startTime: null,
+    endTime: null,
+    locationName: null,
+    locationMapUrl: null,
+    gradeFrom: null,
+    gradeTo: null,
+    feeAed: null,
+    capacity: null,
+    packingList: null,
     publicationStatus: "published",
     eventStatus: null,
     featured: false,
@@ -187,7 +246,8 @@ function sampleEvent(
     createdAt: now,
     updatedAt: now,
     publishedAt: now,
-    ...partial,
+    ...rest,
+    categoryIds: explicitCategories ?? [categoryId],
   };
 }
 

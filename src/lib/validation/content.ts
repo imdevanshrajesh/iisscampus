@@ -93,6 +93,47 @@ export const resourceSchema = z
     }
   });
 
+const timeSchema = z
+  .string()
+  .trim()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM.")
+  .optional()
+  .or(z.literal(""))
+  .transform((value) => value || null);
+
+const optionalGrade = z
+  .union([z.string(), z.number()])
+  .optional()
+  .or(z.literal(""))
+  .transform((value) => {
+    if (value === "" || value === undefined || value === null) return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  })
+  .pipe(z.number().int().min(1).max(12).nullable());
+
+const optionalMoney = z
+  .union([z.string(), z.number()])
+  .optional()
+  .or(z.literal(""))
+  .transform((value) => {
+    if (value === "" || value === undefined || value === null) return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  })
+  .pipe(z.number().min(0).nullable());
+
+const optionalCapacity = z
+  .union([z.string(), z.number()])
+  .optional()
+  .or(z.literal(""))
+  .transform((value) => {
+    if (value === "" || value === undefined || value === null) return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  })
+  .pipe(z.number().int().min(1).nullable());
+
 export const eventInputSchema = z
   .object({
     title: z.string().trim().min(2).max(140),
@@ -100,15 +141,30 @@ export const eventInputSchema = z
     shortDescription: z.string().trim().min(10).max(280),
     fullDescription: z.string().trim().min(20).max(12000),
     categoryId: z.string().uuid(),
+    categoryIds: z.array(z.string().uuid()).max(12).default([]),
+    listing: z.enum(["event", "competition"]).default("event"),
     coverImageUrl: optionalText(2048),
     coverAlt: optionalText(200),
     coverAttribution: optionalText(160),
     eventDate: dateSchema,
     endDate: dateSchema,
+    startTime: timeSchema,
+    endTime: timeSchema,
+    locationName: optionalText(160),
+    locationMapUrl: optionalText(2048),
+    gradeFrom: optionalGrade,
+    gradeTo: optionalGrade,
+    feeAed: optionalMoney,
+    capacity: optionalCapacity,
+    packingList: optionalText(4000),
     eventStatus: z.enum(["upcoming", "ongoing", "completed"]).optional().or(z.literal("")).transform((value) => value || null),
     featured: z.boolean().default(false),
     registrationEnabled: z.boolean().default(false),
-    registrationProvider: optionalText(40),
+    registrationProvider: z
+      .enum(["arigo", "page", "google_form"])
+      .optional()
+      .or(z.literal(""))
+      .transform((value) => value || null),
     registrationUrl: optionalText(2048),
     registrationLabel: optionalText(80),
     registrationDeadline: dateSchema,
@@ -131,14 +187,77 @@ export const eventInputSchema = z
         message: "The end date must be on or after the start date.",
       });
     }
-    if (value.registrationEnabled && value.registrationUrl) {
-      const classified = classifyNavigationUrl(value.registrationUrl);
+    if ((value.gradeFrom == null) !== (value.gradeTo == null)) {
+      context.addIssue({
+        code: "custom",
+        path: ["gradeTo"],
+        message: "Set both grade from and grade to, or leave both blank.",
+      });
+    }
+    if (value.gradeFrom != null && value.gradeTo != null && value.gradeTo < value.gradeFrom) {
+      context.addIssue({
+        code: "custom",
+        path: ["gradeTo"],
+        message: "Grade to must be on or after grade from.",
+      });
+    }
+    if (value.locationMapUrl) {
+      const classified = classifyNavigationUrl(value.locationMapUrl);
       if (!classified.ok) {
         context.addIssue({
           code: "custom",
-          path: ["registrationUrl"],
-          message: "Use a valid https:// registration link, or leave the field blank to use Arigo signup.",
+          path: ["locationMapUrl"],
+          message: "Use a valid https:// map link.",
         });
+      }
+    }
+    if (value.registrationEnabled) {
+      const provider = value.registrationProvider ?? "arigo";
+      if (provider === "page" || provider === "google_form") {
+        if (!value.registrationUrl) {
+          context.addIssue({
+            code: "custom",
+            path: ["registrationUrl"],
+            message: provider === "page" ? "Add the page path or https:// link." : "Add the Google Form link.",
+          });
+        } else if (provider === "google_form") {
+          try {
+            const host = new URL(value.registrationUrl).hostname.replace(/^www\./, "");
+            if (host !== "docs.google.com" && host !== "forms.gle") {
+              context.addIssue({
+                code: "custom",
+                path: ["registrationUrl"],
+                message: "Use a docs.google.com/forms or forms.gle link.",
+              });
+            }
+          } catch {
+            context.addIssue({
+              code: "custom",
+              path: ["registrationUrl"],
+              message: "Use a valid Google Form https:// link.",
+            });
+          }
+        } else if (provider === "page") {
+          const raw = value.registrationUrl;
+          if (raw.startsWith("/")) {
+            if (!/^\/[a-z0-9/_\-?=&%.]*$/i.test(raw)) {
+              context.addIssue({
+                code: "custom",
+                path: ["registrationUrl"],
+                message: "Use a path that starts with /.",
+              });
+            }
+          } else {
+            const classified = classifyNavigationUrl(raw);
+            if (!classified.ok) {
+              context.addIssue({
+                code: "custom",
+                path: ["registrationUrl"],
+                message: "Use a path starting with / or a valid https:// link.",
+              });
+            }
+          }
+        }
       }
     }
   });
@@ -173,11 +292,19 @@ export function validateEventMedia(input: EventInput, allowedHosts: readonly str
     errors.videoUrl = error instanceof Error ? error.message : "Invalid video URL.";
   }
 
-  if (input.registrationEnabled && input.registrationUrl) {
+  if (input.registrationEnabled && input.registrationUrl && input.registrationProvider !== "page") {
     try {
       optionalHttps(input.registrationUrl, "Registration URL");
     } catch (error) {
       errors.registrationUrl = error instanceof Error ? error.message : "Invalid registration URL.";
+    }
+  }
+
+  if (input.locationMapUrl) {
+    try {
+      optionalHttps(input.locationMapUrl, "Map URL");
+    } catch (error) {
+      errors.locationMapUrl = error instanceof Error ? error.message : "Invalid map URL.";
     }
   }
 
@@ -220,6 +347,7 @@ const councilMemberSchema = z.object({
   quote: optionalText(400),
   about: optionalText(4000),
   work: optionalText(4000),
+  board: z.enum(["main", "junior"]).default("main"),
 });
 
 const councilPhotoSchema = z.object({
@@ -243,8 +371,9 @@ export const councilInputSchema = z.object({
   slug: slugSchema,
   kind: z.enum(["current", "upcoming", "past"]),
   summary: z.string().trim().max(800).default(""),
+  juniorHeading: z.string().trim().min(2).max(80).default("Junior Student Council"),
   sortOrder: z.coerce.number().int().min(0).max(999).default(0),
-  members: z.array(councilMemberSchema).max(80).default([]),
+  members: z.array(councilMemberSchema).max(120).default([]),
   photos: z.array(councilPhotoSchema).max(40).default([]),
   posts: z.array(councilPostSchema).max(40).default([]),
 });
@@ -269,6 +398,7 @@ export function councilInputFromForm(formData: FormData) {
     const role = String(formData.get(`members.${index}.role`) ?? "").trim();
     const name = String(formData.get(`members.${index}.name`) ?? "").trim();
     if (!role && !name) return [];
+    const boardRaw = String(formData.get(`members.${index}.board`) ?? "main").trim();
     return [
       {
         id: optionalId(String(formData.get(`members.${index}.id`) ?? "")),
@@ -279,6 +409,7 @@ export function councilInputFromForm(formData: FormData) {
         quote: String(formData.get(`members.${index}.quote`) ?? ""),
         about: String(formData.get(`members.${index}.about`) ?? ""),
         work: String(formData.get(`members.${index}.work`) ?? ""),
+        board: boardRaw === "junior" ? "junior" : "main",
       },
     ];
   });
@@ -317,6 +448,7 @@ export function councilInputFromForm(formData: FormData) {
     slug: formData.get("slug"),
     kind: formData.get("kind"),
     summary: formData.get("summary"),
+    juniorHeading: formData.get("juniorHeading") || "Junior Student Council",
     sortOrder: formData.get("sortOrder") || 0,
     members,
     photos,

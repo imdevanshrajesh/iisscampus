@@ -1,16 +1,21 @@
 import { councilMemberSlugs } from "@/lib/data/catalog";
 import type {
   Achievement,
+  Announcement,
   CampusEvent,
   Category,
   ContentResource,
+  CouncilBoard,
   CouncilKind,
   CouncilMember,
   CouncilPhoto,
   CouncilPost,
   CouncilYear,
+  EventListing,
+  Faq,
   GalleryImage,
   ParticipatingGroup,
+  RegistrationProvider,
   ScheduleItem,
 } from "@/lib/types";
 
@@ -58,29 +63,69 @@ export function mapImage(row: Record<string, unknown>): GalleryImage {
   };
 }
 
+function asRegistrationProvider(value: unknown): RegistrationProvider | null {
+  const text = String(value ?? "").trim();
+  if (text === "arigo" || text === "page" || text === "google_form") return text;
+  return null;
+}
+
+function asListing(value: unknown): EventListing {
+  return value === "competition" ? "competition" : "event";
+}
+
+function asBoard(value: unknown): CouncilBoard {
+  return value === "junior" ? "junior" : "main";
+}
+
+function optionalNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function optionalTime(value: unknown): string | null {
+  if (!value) return null;
+  const text = String(value);
+  return text.length >= 5 ? text.slice(0, 5) : text;
+}
+
 export function mapEvent(
   row: Record<string, unknown>,
   images: GalleryImage[] = [],
   relatedIds: string[] = [],
+  categoryIds: string[] = [],
 ): CampusEvent {
+  const categoryId = String(row.category_id);
+  const extras = categoryIds.filter((id) => id && id !== categoryId);
   return {
     id: String(row.id),
     title: String(row.title),
     slug: String(row.slug),
     shortDescription: String(row.short_description ?? ""),
     fullDescription: String(row.full_description ?? ""),
-    categoryId: String(row.category_id),
+    categoryId,
+    categoryIds: [categoryId, ...extras],
+    listing: asListing(row.listing),
     coverImageUrl: row.cover_image_url ? String(row.cover_image_url) : null,
     coverAlt: row.cover_alt ? String(row.cover_alt) : null,
     coverAttribution: row.cover_attribution ? String(row.cover_attribution) : null,
     eventDate: row.event_date ? String(row.event_date) : null,
     endDate: row.end_date ? String(row.end_date) : null,
+    startTime: optionalTime(row.start_time),
+    endTime: optionalTime(row.end_time),
+    locationName: row.location_name ? String(row.location_name) : null,
+    locationMapUrl: row.location_map_url ? String(row.location_map_url) : null,
+    gradeFrom: optionalNumber(row.grade_from),
+    gradeTo: optionalNumber(row.grade_to),
+    feeAed: optionalNumber(row.fee_aed),
+    capacity: optionalNumber(row.capacity),
+    packingList: row.packing_list ? String(row.packing_list) : null,
     publicationStatus: row.publication_status as CampusEvent["publicationStatus"],
     eventStatus: (row.event_status as CampusEvent["eventStatus"]) ?? null,
     featured: Boolean(row.featured),
     isSample: Boolean(row.is_sample),
     registrationEnabled: Boolean(row.registration_enabled),
-    registrationProvider: row.registration_provider ? String(row.registration_provider) : null,
+    registrationProvider: asRegistrationProvider(row.registration_provider),
     registrationUrl: row.registration_url ? String(row.registration_url) : null,
     registrationLabel: row.registration_label ? String(row.registration_label) : null,
     registrationDeadline: row.registration_deadline ? String(row.registration_deadline) : null,
@@ -113,6 +158,7 @@ export function mapCouncilMember(row: Record<string, unknown>): CouncilMember {
     about: row.about ? String(row.about) : null,
     work: row.work ? String(row.work) : null,
     slug: row.slug ? String(row.slug) : "",
+    board: asBoard(row.board),
     sortOrder: Number(row.sort_order ?? 0),
   };
 }
@@ -152,6 +198,7 @@ export function mapCouncilYear(
     slug: String(row.slug),
     kind: (kind === "current" || kind === "upcoming" || kind === "past" ? kind : "past") as CouncilKind,
     summary: String(row.summary ?? ""),
+    juniorHeading: String(row.junior_heading ?? "Junior Student Council").trim() || "Junior Student Council",
     publicationStatus: row.publication_status as CouncilYear["publicationStatus"],
     sortOrder: Number(row.sort_order ?? 0),
     isSample: Boolean(row.is_sample),
@@ -161,6 +208,26 @@ export function mapCouncilYear(
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     publishedAt: row.published_at ? String(row.published_at) : null,
+  };
+}
+
+export function mapAnnouncement(row: Record<string, unknown>): Announcement {
+  return {
+    id: String(row.id),
+    message: String(row.message ?? ""),
+    eventId: row.event_id ? String(row.event_id) : null,
+    enabled: Boolean(row.enabled),
+    sortOrder: Number(row.sort_order ?? 0),
+  };
+}
+
+export function mapFaq(row: Record<string, unknown>): Faq {
+  return {
+    id: String(row.id),
+    question: String(row.question ?? ""),
+    answer: String(row.answer ?? ""),
+    sortOrder: Number(row.sort_order ?? 0),
+    published: Boolean(row.published),
   };
 }
 

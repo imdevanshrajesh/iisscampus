@@ -1,12 +1,13 @@
 import { ArrowUpRight } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
-import { siteConfig } from "@/lib/config";
-import { getPublicSocial } from "@/lib/data/queries";
+import { contactMailto, siteConfig } from "@/lib/config";
+import { paragraphs } from "@/lib/data/catalog";
+import { getPublicFaqs, getPublicSocial, getSiteBrand } from "@/lib/data/queries";
 
 export const metadata: Metadata = {
-  title: "About",
-  description: "What the campus archive is for at IISS x Student Council Boys.",
+  title: "FAQ & About",
+  description: "About the campus archive and common questions for IISS x Student Council Boys.",
   alternates: { canonical: "/about" },
 };
 
@@ -20,12 +21,13 @@ const kinds = [
 ];
 
 export default async function AboutPage() {
-  const social = await getPublicSocial();
+  const [social, faqs, brand] = await Promise.all([getPublicSocial(), getPublicFaqs(), getSiteBrand()]);
+  const contactHref = contactMailto(brand.contactEmail) ?? siteConfig.contactUrl;
   return (
     <div className="mx-auto max-w-[90rem] px-5 py-10 md:px-8 md:py-16">
       <div className="council-hero grid gap-12 md:grid-cols-[1fr_20rem] md:gap-20">
         <div>
-          <p className="kicker text-accent">About</p>
+          <p className="kicker text-accent">FAQ & About</p>
           <h1 className="font-display mt-4 max-w-[12ch] text-[clamp(3.2rem,7vw,6.5rem)] leading-[0.86] text-ink">
             A record of <span className="italic">school life.</span>
           </h1>
@@ -70,17 +72,18 @@ export default async function AboutPage() {
 
           <p className="kicker mt-10 text-muted">Contact</p>
           <p className="mt-3 text-sm leading-6 text-muted">
-            {siteConfig.contactUrl ? (
+            {contactHref ? (
               <a
-                href={siteConfig.contactUrl}
+                href={contactHref}
                 className="text-link text-ink"
-                rel="noopener noreferrer"
-                target="_blank"
+                {...(contactHref.startsWith("mailto:")
+                  ? {}
+                  : { rel: "noopener noreferrer", target: "_blank" })}
               >
                 Send feedback
               </a>
             ) : (
-              "A contact link has not been configured."
+              "A contact email has not been set yet. An administrator can add it in Settings."
             )}
             {" · "}
             <a
@@ -103,6 +106,30 @@ export default async function AboutPage() {
           </p>
         </aside>
       </div>
+
+      {faqs.length ? (
+        <section className="mt-16 border-t border-line pt-12 md:mt-20">
+          <p className="kicker text-accent">FAQ</p>
+          <h2 className="font-display mt-3 text-4xl text-ink md:text-5xl">Common questions</h2>
+          <div className="mt-8 max-w-3xl divide-y divide-line border-t border-line">
+            {faqs.map((item) => (
+              <details key={item.id} className="group py-5">
+                <summary className="cursor-pointer list-none text-lg font-medium text-ink marker:content-none">
+                  <span className="flex items-start justify-between gap-4">
+                    {item.question}
+                    <span className="text-accent transition group-open:rotate-45">+</span>
+                  </span>
+                </summary>
+                <div className="mt-3 space-y-3 text-base leading-7 text-muted">
+                  {paragraphs(item.answer).map((paragraph) => (
+                    <p key={paragraph}>{paragraph}</p>
+                  ))}
+                </div>
+              </details>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

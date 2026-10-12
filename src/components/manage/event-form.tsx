@@ -115,13 +115,35 @@ export function EventForm({
           <textarea name="fullDescription" defaultValue={event?.fullDescription} required rows={8} className={fieldClass} />
         </label>
         <label className="grid gap-1.5 text-sm">
-          Category
+          Listing
+          <select name="listing" defaultValue={event?.listing ?? "event"} className={fieldClass}>
+            <option value="event">Event</option>
+            <option value="competition">Competition</option>
+          </select>
+        </label>
+        <p className="text-sm text-muted">Move a finished competition to Events, or an event to Competitions, without changing its address.</p>
+        <label className="grid gap-1.5 text-sm">
+          Primary category
           <select name="categoryId" defaultValue={event?.categoryId ?? categories[0]?.id} className={fieldClass}>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>{category.name}</option>
             ))}
           </select>
         </label>
+        <label className="grid gap-1.5 text-sm">
+          Extra categories
+          <select
+            name="categoryIds"
+            multiple
+            defaultValue={(event?.categoryIds ?? []).filter((id) => id !== event?.categoryId)}
+            className={`${fieldClass} min-h-28`}
+          >
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>{category.name}</option>
+            ))}
+          </select>
+        </label>
+        <p className="text-sm text-muted">Hold Ctrl or Cmd to select more than one. The primary category is always included.</p>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-1.5 text-sm">
             Start date
@@ -132,6 +154,48 @@ export function EventForm({
             <input type="date" name="endDate" defaultValue={event?.endDate ?? ""} className={fieldClass} />
           </label>
         </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="grid gap-1.5 text-sm">
+            Start time
+            <input type="time" name="startTime" defaultValue={event?.startTime ?? ""} className={fieldClass} />
+          </label>
+          <label className="grid gap-1.5 text-sm">
+            End time
+            <input type="time" name="endTime" defaultValue={event?.endTime ?? ""} className={fieldClass} />
+          </label>
+        </div>
+        <label className="grid gap-1.5 text-sm">
+          Place
+          <input name="locationName" defaultValue={event?.locationName ?? ""} className={fieldClass} placeholder="School hall, ground, room" />
+        </label>
+        <label className="grid gap-1.5 text-sm">
+          Map link
+          <input name="locationMapUrl" defaultValue={event?.locationMapUrl ?? ""} className={fieldClass} placeholder="https://maps.google.com/..." />
+        </label>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="grid gap-1.5 text-sm">
+            Grade from
+            <input type="number" min={1} max={12} name="gradeFrom" defaultValue={event?.gradeFrom ?? ""} className={fieldClass} />
+          </label>
+          <label className="grid gap-1.5 text-sm">
+            Grade to
+            <input type="number" min={1} max={12} name="gradeTo" defaultValue={event?.gradeTo ?? ""} className={fieldClass} />
+          </label>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="grid gap-1.5 text-sm">
+            Fee (AED)
+            <input type="number" min={0} step="0.01" name="feeAed" defaultValue={event?.feeAed ?? ""} className={fieldClass} placeholder="Blank = not set" />
+          </label>
+          <label className="grid gap-1.5 text-sm">
+            Places available
+            <input type="number" min={1} name="capacity" defaultValue={event?.capacity ?? ""} className={fieldClass} />
+          </label>
+        </div>
+        <label className="grid gap-1.5 text-sm">
+          What to bring
+          <textarea name="packingList" defaultValue={event?.packingList ?? ""} rows={4} className={fieldClass} />
+        </label>
         <label className="grid gap-1.5 text-sm">
           Status
           <select name="eventStatus" defaultValue={event?.eventStatus ?? ""} className={fieldClass}>
@@ -274,15 +338,24 @@ export function EventForm({
             Show Register now
           </label>
           <p className="text-sm text-muted">
-            When checked, the public page shows Register now. Leave the URL blank to send visitors to Arigo signup, or paste a specific registration page.
+            Choose Arigo signup, a page on this site, or a Google Form. The public page uses that choice for the Register now button.
           </p>
           <label className="grid gap-1.5 text-sm">
-            Provider
-            <input name="registrationProvider" defaultValue={event?.registrationProvider ?? ""} placeholder="Arigo" className={fieldClass} />
+            How to register
+            <select name="registrationProvider" defaultValue={event?.registrationProvider ?? "arigo"} className={fieldClass}>
+              <option value="arigo">Arigo</option>
+              <option value="page">Page on this site</option>
+              <option value="google_form">Google Form</option>
+            </select>
           </label>
           <label className="grid gap-1.5 text-sm">
-            Registration URL
-            <input name="registrationUrl" defaultValue={event?.registrationUrl ?? ""} placeholder="https:// (optional)" className={fieldClass} />
+            Registration URL or path
+            <input
+              name="registrationUrl"
+              defaultValue={event?.registrationUrl ?? ""}
+              placeholder="Blank for Arigo · /events/... · https://forms.gle/..."
+              className={fieldClass}
+            />
           </label>
           <label className="grid gap-1.5 text-sm">
             Button label

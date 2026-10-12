@@ -1,6 +1,12 @@
-import { HostForm, RoleForm, SocialForm } from "@/components/manage/settings-forms";
+import {
+  ContactEmailForm,
+  CouncilLogoForm,
+  HostForm,
+  RoleForm,
+  SocialForm,
+} from "@/components/manage/settings-forms";
 import { ManageUnavailable } from "@/components/manage/unavailable";
-import { getPublicSocial } from "@/lib/data/queries";
+import { getPublicSocial, getSiteBrand } from "@/lib/data/queries";
 import { requireAdministrator } from "@/lib/manage/access";
 import { IMAGE_HOSTS_GUIDE } from "@/lib/media/guide";
 import { createStaffClient } from "@/lib/supabase/server";
@@ -8,7 +14,7 @@ import { createStaffClient } from "@/lib/supabase/server";
 export default async function SettingsPage() {
   const access = await requireAdministrator();
   if (!access.ready) return <ManageUnavailable />;
-  const social = await getPublicSocial();
+  const [social, brand] = await Promise.all([getPublicSocial(), getSiteBrand()]);
 
   const supabase = await createStaffClient();
   const audit = supabase
@@ -47,6 +53,24 @@ export default async function SettingsPage() {
         </p>
         <div className="mt-4">
           <HostForm hosts={access.workspace.mediaHosts} />
+        </div>
+      </section>
+      <section className="mt-12">
+        <h2 className="text-xl font-medium">Council logo</h2>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
+          Paste an HTTPS image address when the logo changes. It updates everywhere the council mark is shown.
+        </p>
+        <div className="mt-4">
+          <CouncilLogoForm logoUrl={brand.councilLogoUrl} />
+        </div>
+      </section>
+      <section className="mt-12">
+        <h2 className="text-xl font-medium">Contact email</h2>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
+          The address students and parents use for feedback. It opens as an email link on About and in the footer.
+        </p>
+        <div className="mt-4">
+          <ContactEmailForm contactEmail={brand.contactEmail} />
         </div>
       </section>
       <section className="mt-12">

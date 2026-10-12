@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { can, canDelete, canEditPublication, canTransition } from "@/lib/auth/permissions";
 import { consumeRateLimit } from "@/lib/auth/rate-limit";
 import { getCampusActor, getCampusSession, sessionActionError } from "@/lib/auth/session";
-import { defaultSocialLinks, isSupabaseConfigured } from "@/lib/config";
+import { defaultSocialLinks, isSupabaseConfigured, normalizeContactEmail } from "@/lib/config";
 import { councilMemberSlugs } from "@/lib/data/catalog";
 import { contentMode } from "@/lib/data/content-mode";
 import {
@@ -148,6 +148,14 @@ async function fileActor(
   return { actor: session.actor };
 }
 
+function registrationUrlForSave(input: EventInput) {
+  if (!input.registrationEnabled) return null;
+  const provider = input.registrationProvider ?? "arigo";
+  if (!input.registrationUrl) return null;
+  if (provider === "page" && input.registrationUrl.startsWith("/")) return input.registrationUrl;
+  return httpsOrNull(input.registrationUrl);
+}
+
 function eventRecord(input: EventInput, status: PublicationStatus, featured: boolean) {
   return {
     title: input.title,
@@ -155,16 +163,26 @@ function eventRecord(input: EventInput, status: PublicationStatus, featured: boo
     short_description: input.shortDescription,
     full_description: input.fullDescription,
     category_id: input.categoryId,
+    listing: input.listing ?? "event",
     cover_image_url: input.coverImageUrl,
     cover_alt: input.coverAlt,
     cover_attribution: input.coverAttribution,
     event_date: input.eventDate,
     end_date: input.endDate,
+    start_time: input.startTime,
+    end_time: input.endTime,
+    location_name: input.locationName,
+    location_map_url: httpsOrNull(input.locationMapUrl),
+    grade_from: input.gradeFrom,
+    grade_to: input.gradeTo,
+    fee_aed: input.feeAed,
+    capacity: input.capacity,
+    packing_list: input.packingList,
     event_status: input.eventStatus,
     featured,
     registration_enabled: input.registrationEnabled,
-    registration_provider: input.registrationProvider,
-    registration_url: input.registrationEnabled ? httpsOrNull(input.registrationUrl) : null,
+    registration_provider: input.registrationEnabled ? (input.registrationProvider ?? "arigo") : null,
+    registration_url: registrationUrlForSave(input),
     registration_label: input.registrationLabel,
     registration_deadline: input.registrationDeadline,
     registration_instructions: input.registrationInstructions,
@@ -225,6 +243,21 @@ async function replaceChildren(
       throw new Error(databaseError(inserted.error, "Related events could not be saved."));
     }
   }
+
+  const removedCategories = await supabase.from("campus_event_categories").delete().eq("event_id", eventId);
+  if (removedCategories.error && !isMissingTableError(removedCategories.error)) {
+    throw new Error(databaseError(removedCategories.error, "Categories could not be saved."));
+  }
+  if (!removedCategories.error) {
+    const categoryIds = [...new Set([input.categoryId, ...(input.categoryIds ?? [])])];
+    const categoryRows = categoryIds.map((categoryId) => ({ event_id: eventId, category_id: categoryId }));
+    if (categoryRows.length) {
+      const inserted = await supabase.from("campus_event_categories").insert(categoryRows);
+      if (inserted.error) {
+        throw new Error(databaseError(inserted.error, "Categories could not be saved."));
+      }
+    }
+  }
 }
 
 async function writeAudit(
@@ -266,11 +299,22 @@ function readEventInput(formData: FormData) {
     shortDescription: formData.get("shortDescription"),
     fullDescription: formData.get("fullDescription"),
     categoryId: formData.get("categoryId"),
+    categoryIds: formData.getAll("categoryIds").map(String).filter(Boolean),
+    listing: formData.get("listing") || "event",
     coverImageUrl: formData.get("coverImageUrl"),
     coverAlt: formData.get("coverAlt"),
     coverAttribution: formData.get("coverAttribution"),
     eventDate: formData.get("eventDate"),
     endDate: formData.get("endDate"),
+    startTime: formData.get("startTime"),
+    endTime: formData.get("endTime"),
+    locationName: formData.get("locationName"),
+    locationMapUrl: formData.get("locationMapUrl"),
+    gradeFrom: formData.get("gradeFrom"),
+    gradeTo: formData.get("gradeTo"),
+    feeAed: formData.get("feeAed"),
+    capacity: formData.get("capacity"),
+    packingList: formData.get("packingList"),
     eventStatus: formData.get("eventStatus"),
     featured: formData.get("featured") === "on",
     registrationEnabled: formData.get("registrationEnabled") === "on",
@@ -492,6 +536,7 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
 
   revalidatePath("/");
   revalidatePath("/events");
+  revalidatePath("/competitions");
   revalidatePath(`/events/${parsed.input.slug}`);
   revalidatePath("/gallery");
   revalidatePath("/manage");
@@ -913,6 +958,7 @@ async function replaceCouncilChildren(
       about: member.about,
       work: member.work,
       slug: slugs[index],
+      board: member.board === "junior" ? "junior" : "main",
       sort_order: index,
     }));
     const inserted = await supabase.from("campus_council_members").insert(rows);
@@ -925,6 +971,7 @@ async function replaceCouncilChildren(
           image_url: member.image_url,
           image_alt: member.image_alt,
           quote: member.quote,
+          board: member.board,
           sort_order: member.sort_order,
         })),
       );
@@ -939,7 +986,16 @@ async function replaceCouncilChildren(
       throw new Error("Run supabase/MEMBER_PROFILES.sql in the database, then save again.");
     }
     if (inserted.error) {
-      const missingQuote = (inserted.error.message ?? "").toLowerCase().includes("quote");
+      const message = (inserted.error.message ?? "").toLowerCase();
+      if (message.includes("board")) {
+        const withoutBoard = await supabase.from("campus_council_members").insert(
+          rows.map(({ board: _board, ...member }) => member),
+        );
+        if (!withoutBoard.error) {
+          throw new Error("Run supabase/JUNIOR_COUNCIL_AND_ACTIVITIES.sql in the database, then save again.");
+        }
+      }
+      const missingQuote = message.includes("quote");
       throw new Error(
         missingQuote
           ? "Run supabase/QUOTES_AND_SOCIAL.sql in the database, then save again."
@@ -1054,17 +1110,34 @@ export async function saveCouncilYear(_state: ActionState, formData: FormData): 
     slug: parsed.data.slug,
     kind: parsed.data.kind,
     summary: parsed.data.summary,
+    junior_heading: parsed.data.juniorHeading?.trim() || "Junior Student Council",
     sort_order: parsed.data.sortOrder,
     publication_status: status,
     published_at: publishedAt,
     is_sample: false,
   };
 
-  const saved = id
+  let saved = id
     ? await context.supabase.from("campus_council_years").update(record).eq("id", id).select("id").maybeSingle()
     : await context.supabase.from("campus_council_years").insert(record).select("id").maybeSingle();
+  if (saved.error && (saved.error.message ?? "").toLowerCase().includes("junior_heading")) {
+    const { junior_heading: _juniorHeading, ...withoutHeading } = record;
+    saved = id
+      ? await context.supabase.from("campus_council_years").update(withoutHeading).eq("id", id).select("id").maybeSingle()
+      : await context.supabase.from("campus_council_years").insert(withoutHeading).select("id").maybeSingle();
+    if (!saved.error) {
+      return {
+        error: "Run supabase/JUNIOR_COUNCIL_AND_ACTIVITIES.sql in the database, then save again to store the junior heading.",
+      };
+    }
+  }
   if (saved.error) {
-    return { error: databaseError(saved.error, "The council year could not be saved.") };
+    const missingBoard = (saved.error.message ?? "").toLowerCase().includes("board");
+    return {
+      error: missingBoard
+        ? "Run supabase/JUNIOR_COUNCIL_AND_ACTIVITIES.sql in the database, then save again."
+        : databaseError(saved.error, "The council year could not be saved."),
+    };
   }
 
   let yearId = saved.data?.id ?? null;
@@ -1271,4 +1344,244 @@ export async function saveSocial(_state: ActionState, formData: FormData): Promi
   revalidatePath("/about");
   revalidatePath("/manage/settings");
   return { ok: "Instagram links saved." };
+}
+
+export async function saveCouncilLogo(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const raw = String(formData.get("councilLogoUrl") ?? "").trim();
+  let councilLogoUrl: string | null = null;
+  if (raw) {
+    const classified = classifyNavigationUrl(raw);
+    if (!classified.ok) return { error: "Council logo must be a valid https:// image link." };
+    councilLogoUrl = classified.url;
+  }
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor(() => true);
+    if ("error" in access) return access;
+    const { saveCouncilLogoToStore } = await import("@/lib/data/file-content");
+    if (!saveCouncilLogoToStore(councilLogoUrl)) return { error: "The logo could not be saved." };
+    revalidatePath("/", "layout");
+    revalidatePath("/council");
+    revalidatePath("/manage/settings");
+    return { ok: "Council logo saved." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  if (councilLogoUrl) {
+    const hostsRow = await context.supabase.from("campus_settings").select("media_hosts").eq("id", true).maybeSingle();
+    const hosts = Array.isArray(hostsRow.data?.media_hosts) ? hostsRow.data.media_hosts.map(String) : [];
+    const image = classifyMediaUrl(councilLogoUrl, hosts);
+    if (!image.ok) return { error: image.message };
+    councilLogoUrl = image.url;
+  }
+
+  const saved = await context.supabase
+    .from("campus_settings")
+    .update({ council_logo_url: councilLogoUrl })
+    .eq("id", true);
+  if (saved.error) {
+    const missing = (saved.error.message ?? "").toLowerCase().includes("council_logo");
+    return {
+      error: missing
+        ? "Run supabase/JUNIOR_COUNCIL_AND_ACTIVITIES.sql in the database, then save again."
+        : databaseError(saved.error, "The logo could not be saved."),
+    };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, "update_council_logo", "campus_settings", null);
+  revalidatePath("/", "layout");
+  revalidatePath("/council");
+  revalidatePath("/manage/settings");
+  return { ok: "Council logo saved." };
+}
+
+export async function saveContactEmail(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const raw = String(formData.get("contactEmail") ?? "").trim();
+  let contactEmail: string | null = null;
+  if (raw) {
+    contactEmail = normalizeContactEmail(raw);
+    if (!contactEmail) return { error: "Enter a valid email address." };
+  }
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor(() => true);
+    if ("error" in access) return access;
+    const { saveContactEmailToStore } = await import("@/lib/data/file-content");
+    if (!saveContactEmailToStore(contactEmail)) return { error: "The contact email could not be saved." };
+    revalidatePath("/", "layout");
+    revalidatePath("/about");
+    revalidatePath("/manage/settings");
+    return { ok: "Contact email saved." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const saved = await context.supabase
+    .from("campus_settings")
+    .update({ contact_email: contactEmail })
+    .eq("id", true);
+  if (saved.error) {
+    const missing = (saved.error.message ?? "").toLowerCase().includes("contact_email");
+    return {
+      error: missing
+        ? "Run supabase/CONTACT_EMAIL.sql in the database, then save again."
+        : databaseError(saved.error, "The contact email could not be saved."),
+    };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, "update_contact_email", "campus_settings", null);
+  revalidatePath("/", "layout");
+  revalidatePath("/about");
+  revalidatePath("/manage/settings");
+  return { ok: "Contact email saved." };
+}
+
+export async function saveAnnouncement(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  const message = String(formData.get("message") ?? "").trim();
+  const eventIdRaw = String(formData.get("eventId") ?? "").trim();
+  const enabled = formData.get("enabled") === "on";
+  const sortOrder = Number(formData.get("sortOrder") ?? 0) || 0;
+  if (message.length < 2 || message.length > 500) return { error: "Enter a message between 2 and 500 characters." };
+  const eventId = /^[0-9a-f-]{36}$/i.test(eventIdRaw) ? eventIdRaw : null;
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { saveAnnouncementToStore } = await import("@/lib/data/file-content");
+    if (!saveAnnouncementToStore({ id: id || undefined, message, eventId, enabled, sortOrder })) {
+      return { error: "The announcement could not be saved." };
+    }
+    revalidatePath("/");
+    revalidatePath("/manage/announcements");
+    return { ok: "Announcement saved." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const record = {
+    message,
+    event_id: eventId,
+    enabled,
+    sort_order: sortOrder,
+  };
+  const saved = id
+    ? await context.supabase.from("campus_announcements").update(record).eq("id", id).select("id").maybeSingle()
+    : await context.supabase.from("campus_announcements").insert(record).select("id").maybeSingle();
+  if (saved.error) {
+    const missing = isMissingTableError(saved.error) || (saved.error.message ?? "").toLowerCase().includes("announcement");
+    return {
+      error: missing
+        ? "Run supabase/JUNIOR_COUNCIL_AND_ACTIVITIES.sql in the database, then save again."
+        : databaseError(saved.error, "The announcement could not be saved."),
+    };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, id ? "update" : "create", "campus_announcements", saved.data?.id ?? null);
+  revalidatePath("/");
+  revalidatePath("/manage/announcements");
+  return { ok: "Announcement saved." };
+}
+
+export async function deleteAnnouncement(_state: ActionState, formData: FormData): Promise<ActionState> {
+  if (formData.get("confirm") !== "yes") return { error: "Confirm the delete, then try again." };
+  const id = String(formData.get("id") ?? "");
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { deleteAnnouncementFromStore } = await import("@/lib/data/file-content");
+    if (!deleteAnnouncementFromStore(id)) return { error: deleteFailed };
+    revalidatePath("/");
+    revalidatePath("/manage/announcements");
+    return { ok: "Deleted." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const removed = await context.supabase.from("campus_announcements").delete().eq("id", id);
+  if (removed.error) return { error: databaseError(removed.error, deleteFailed) };
+  await writeAudit(context.supabase, context.actor.userId, "delete", "campus_announcements", id);
+  revalidatePath("/");
+  revalidatePath("/manage/announcements");
+  return { ok: "Deleted." };
+}
+
+export async function saveFaq(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  const question = String(formData.get("question") ?? "").trim();
+  const answer = String(formData.get("answer") ?? "").trim();
+  const published = formData.get("published") === "on";
+  const sortOrder = Number(formData.get("sortOrder") ?? 0) || 0;
+  if (question.length < 2 || question.length > 200) return { error: "Enter a question." };
+  if (answer.length < 2 || answer.length > 4000) return { error: "Enter an answer." };
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { saveFaqToStore } = await import("@/lib/data/file-content");
+    if (!saveFaqToStore({ id: id || undefined, question, answer, published, sortOrder })) {
+      return { error: "The FAQ could not be saved." };
+    }
+    revalidatePath("/about");
+    revalidatePath("/manage/faq");
+    return { ok: "FAQ saved." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const record = { question, answer, published, sort_order: sortOrder };
+  const saved = id
+    ? await context.supabase.from("campus_faqs").update(record).eq("id", id).select("id").maybeSingle()
+    : await context.supabase.from("campus_faqs").insert(record).select("id").maybeSingle();
+  if (saved.error) {
+    const missing = isMissingTableError(saved.error) || (saved.error.message ?? "").toLowerCase().includes("faq");
+    return {
+      error: missing
+        ? "Run supabase/JUNIOR_COUNCIL_AND_ACTIVITIES.sql in the database, then save again."
+        : databaseError(saved.error, "The FAQ could not be saved."),
+    };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, id ? "update" : "create", "campus_faqs", saved.data?.id ?? null);
+  revalidatePath("/about");
+  revalidatePath("/manage/faq");
+  return { ok: "FAQ saved." };
+}
+
+export async function deleteFaq(_state: ActionState, formData: FormData): Promise<ActionState> {
+  if (formData.get("confirm") !== "yes") return { error: "Confirm the delete, then try again." };
+  const id = String(formData.get("id") ?? "");
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { deleteFaqFromStore } = await import("@/lib/data/file-content");
+    if (!deleteFaqFromStore(id)) return { error: deleteFailed };
+    revalidatePath("/about");
+    revalidatePath("/manage/faq");
+    return { ok: "Deleted." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const removed = await context.supabase.from("campus_faqs").delete().eq("id", id);
+  if (removed.error) return { error: databaseError(removed.error, deleteFailed) };
+  await writeAudit(context.supabase, context.actor.userId, "delete", "campus_faqs", id);
+  revalidatePath("/about");
+  revalidatePath("/manage/faq");
+  return { ok: "Deleted." };
 }

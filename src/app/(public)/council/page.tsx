@@ -13,5 +13,12 @@ export default async function CouncilPage() {
   const [catalog, social] = await Promise.all([getPublicCatalog(), getPublicSocial()]);
   const years = selectPublicCouncil(catalog.councilYears);
 
-  return <CouncilPageView years={years} hosts={catalog.mediaHosts} scixcomUrl={social.scixcomInstagramUrl} />;
+  return (
+    <CouncilPageView
+      years={years}
+      hosts={catalog.mediaHosts}
+      scixcomUrl={social.scixcomInstagramUrl}
+      logoUrl={catalog.councilLogoUrl}
+    />
+  );
 }

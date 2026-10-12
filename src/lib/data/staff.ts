@@ -1,10 +1,18 @@
 import { contentMode } from "@/lib/data/content-mode";
 import { readContentStore } from "@/lib/data/file-content";
-import { groupCouncilRows, mapAchievement, mapCategory, mapEvent, mapImage } from "@/lib/data/map";
+import {
+  groupCouncilRows,
+  mapAchievement,
+  mapAnnouncement,
+  mapCategory,
+  mapEvent,
+  mapFaq,
+  mapImage,
+} from "@/lib/data/map";
 import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "@/lib/data/seed";
 import { logPostgrestUnlessMissing } from "@/lib/supabase/errors";
 import { createStaffClient } from "@/lib/supabase/server";
-import type { Achievement, CampusEvent, Category, CouncilYear } from "@/lib/types";
+import type { Achievement, Announcement, CampusEvent, Category, CouncilYear, Faq } from "@/lib/types";
 
 function workspaceFromStore() {
   const store = readContentStore();
@@ -14,6 +22,9 @@ function workspaceFromStore() {
     achievements: store.achievements,
     councilYears: store.councilYears,
     mediaHosts: [] as string[],
+    councilLogoUrl: store.councilLogoUrl ?? null,
+    announcements: store.announcements ?? [],
+    faqs: store.faqs ?? [],
   };
 }
 
@@ -24,6 +35,9 @@ function seedWorkspace() {
     achievements: seedAchievements,
     councilYears: seedCouncilYears,
     mediaHosts: [] as string[],
+    councilLogoUrl: null as string | null,
+    announcements: [] as Announcement[],
+    faqs: [] as Faq[],
   };
 }
 
@@ -48,19 +62,35 @@ async function loadStaffWorkspace() {
   const supabase = await createStaffClient();
   if (!supabase) return null;
 
-  const [eventsResult, imagesResult, relationsResult, categoriesResult, achievementsResult, settingsResult, councilYearsResult, councilPhotosResult, councilPostsResult, councilMembersResult] =
-    await Promise.all([
-      supabase.from("campus_events").select("*").order("updated_at", { ascending: false }),
-      supabase.from("campus_event_images").select("*"),
-      supabase.from("campus_event_relations").select("*"),
-      supabase.from("campus_categories").select("*").order("sort_order"),
-      supabase.from("campus_achievements").select("*").order("updated_at", { ascending: false }),
-      supabase.from("campus_settings").select("media_hosts").eq("id", true).maybeSingle(),
-      supabase.from("campus_council_years").select("*").order("sort_order"),
-      supabase.from("campus_council_photos").select("*"),
-      supabase.from("campus_council_posts").select("*"),
-      supabase.from("campus_council_members").select("*"),
-    ]);
+  const [
+    eventsResult,
+    imagesResult,
+    relationsResult,
+    eventCategoriesResult,
+    categoriesResult,
+    achievementsResult,
+    settingsResult,
+    councilYearsResult,
+    councilPhotosResult,
+    councilPostsResult,
+    councilMembersResult,
+    announcementsResult,
+    faqsResult,
+  ] = await Promise.all([
+    supabase.from("campus_events").select("*").order("updated_at", { ascending: false }),
+    supabase.from("campus_event_images").select("*"),
+    supabase.from("campus_event_relations").select("*"),
+    supabase.from("campus_event_categories").select("*"),
+    supabase.from("campus_categories").select("*").order("sort_order"),
+    supabase.from("campus_achievements").select("*").order("updated_at", { ascending: false }),
+    supabase.from("campus_settings").select("media_hosts, council_logo_url").eq("id", true).maybeSingle(),
+    supabase.from("campus_council_years").select("*").order("sort_order"),
+    supabase.from("campus_council_photos").select("*"),
+    supabase.from("campus_council_posts").select("*"),
+    supabase.from("campus_council_members").select("*"),
+    supabase.from("campus_announcements").select("*").order("sort_order"),
+    supabase.from("campus_faqs").select("*").order("sort_order"),
+  ]);
 
   logPostgrestUnlessMissing(eventsResult.error);
   logPostgrestUnlessMissing(categoriesResult.error);
@@ -88,12 +118,25 @@ async function loadStaffWorkspace() {
     relatedByEvent.set(record.event_id, list);
   }
 
+  const categoriesByEvent = new Map<string, string[]>();
+  for (const row of eventCategoriesResult.error ? [] : (eventCategoriesResult.data ?? [])) {
+    const record = row as { event_id: string; category_id: string };
+    const list = categoriesByEvent.get(record.event_id) ?? [];
+    list.push(record.category_id);
+    categoriesByEvent.set(record.event_id, list);
+  }
+
   const events = eventsResult.error
     ? []
     : (eventsResult.data ?? []).map((row) => {
         const record = row as Record<string, unknown>;
         const id = String(record.id);
-        return mapEvent(record, imagesByEvent.get(id) ?? [], relatedByEvent.get(id) ?? []);
+        return mapEvent(
+          record,
+          imagesByEvent.get(id) ?? [],
+          relatedByEvent.get(id) ?? [],
+          categoriesByEvent.get(id) ?? [],
+        );
       });
 
   const hosts = settingsResult.data?.media_hosts;
@@ -105,6 +148,7 @@ async function loadStaffWorkspace() {
         councilPostsResult.error ? [] : ((councilPostsResult.data ?? []) as Record<string, unknown>[]),
         councilMembersResult.error ? [] : ((councilMembersResult.data ?? []) as Record<string, unknown>[]),
       );
+
   return {
     events,
     categories: categoriesResult.error
@@ -115,6 +159,13 @@ async function loadStaffWorkspace() {
       : (achievementsResult.data ?? []).map((row) => mapAchievement(row as Record<string, unknown>)),
     councilYears,
     mediaHosts: Array.isArray(hosts) ? hosts.map(String) : [],
+    councilLogoUrl: settingsResult.data?.council_logo_url ? String(settingsResult.data.council_logo_url) : null,
+    announcements: announcementsResult.error
+      ? []
+      : (announcementsResult.data ?? []).map((row) => mapAnnouncement(row as Record<string, unknown>)),
+    faqs: faqsResult.error
+      ? []
+      : (faqsResult.data ?? []).map((row) => mapFaq(row as Record<string, unknown>)),
   };
 }
 

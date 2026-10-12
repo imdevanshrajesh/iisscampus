@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, type Dispatch, type SetStateAction } from "react";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
 import { councilMemberSlugs, isCouncilStaffRole } from "@/lib/data/catalog";
 import { saveCouncilYear, type ActionState } from "@/lib/manage/actions";
@@ -26,6 +26,7 @@ type MemberDraft = {
   quote: string;
   about: string;
   work: string;
+  board: "main" | "junior";
 };
 type PhotoDraft = { key: string; url: string; alt: string; caption: string };
 type PostDraft = {
@@ -67,8 +68,10 @@ export function CouncilForm({
       quote: member.quote ?? "",
       about: member.about ?? "",
       work: member.work ?? "",
+      board: member.board === "junior" ? "junior" : "main",
     })) ?? [],
   );
+  const [juniorHeading, setJuniorHeading] = useState(year?.juniorHeading ?? "Junior Student Council");
   const [photos, setPhotos] = useState<PhotoDraft[]>(
     year?.photos.map((photo) => ({
       key: photo.id,
@@ -150,196 +153,44 @@ export function CouncilForm({
           Order
           <input name="sortOrder" type="number" min={0} max={999} defaultValue={year?.sortOrder ?? 0} className={fieldClass} />
         </label>
+        <label className="grid gap-1.5 text-sm">
+          Junior section heading
+          <input
+            name="juniorHeading"
+            value={juniorHeading}
+            disabled={locked}
+            className={fieldClass}
+            onChange={(event) => setJuniorHeading(event.target.value)}
+          />
+        </label>
+        <p className="text-sm text-muted">Shown above the junior roster on the public council page. Change it here when the label needs updating.</p>
       </fieldset>
 
-      <section className="grid gap-3">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-medium">Council posts</h2>
-            <p className="mt-1 text-sm text-muted">
-              Role, then name. The photograph is shown large on their page. The message stays on the roster card. About me and what they have done appear only on their own page.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="text-sm text-accent"
-            disabled={locked}
-            onClick={() =>
-              setMembers((current) => [
-                ...current,
-                { key: crypto.randomUUID(), role: "", name: "", imageUrl: "", imageAlt: "", quote: "", about: "", work: "" },
-              ])
-            }
-          >
-            Add a post
-          </button>
-        </div>
-        {members.map((member, index) =>
-          isCouncilStaffRole(member.role) ? null : (
-          <div key={member.key} className="grid gap-3 rounded-xl border border-line bg-background p-4">
-            <input type="hidden" name={`members.${index}.id`} value={member.key} />
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="grid gap-1.5 text-sm">
-                Post
-                <input
-                  name={`members.${index}.role`}
-                  value={member.role}
-                  disabled={locked}
-                  className={fieldClass}
-                  onChange={(event) =>
-                    setMembers((current) =>
-                      current.map((item) => (item.key === member.key ? { ...item, role: event.target.value } : item)),
-                    )
-                  }
-                />
-              </label>
-              <label className="grid gap-1.5 text-sm">
-                Name
-                <input
-                  name={`members.${index}.name`}
-                  value={member.name}
-                  disabled={locked}
-                  className={fieldClass}
-                  onChange={(event) =>
-                    setMembers((current) =>
-                      current.map((item) => (item.key === member.key ? { ...item, name: event.target.value } : item)),
-                    )
-                  }
-                />
-              </label>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="grid gap-1.5 text-sm">
-                Photograph URL
-                <input
-                  name={`members.${index}.imageUrl`}
-                  value={member.imageUrl}
-                  disabled={locked}
-                  className={fieldClass}
-                  placeholder={IMAGE_URL_EXAMPLE}
-                  onChange={(event) =>
-                    setMembers((current) =>
-                      current.map((item) => (item.key === member.key ? { ...item, imageUrl: event.target.value } : item)),
-                    )
-                  }
-                />
-              </label>
-              <label className="grid gap-1.5 text-sm">
-                Photograph description
-                <input
-                  name={`members.${index}.imageAlt`}
-                  value={member.imageAlt}
-                  disabled={locked}
-                  className={fieldClass}
-                  onChange={(event) =>
-                    setMembers((current) =>
-                      current.map((item) => (item.key === member.key ? { ...item, imageAlt: event.target.value } : item)),
-                    )
-                  }
-                />
-              </label>
-            </div>
-            <label className="grid gap-1.5 text-sm">
-              Message for students
-              <textarea
-                name={`members.${index}.quote`}
-                value={member.quote}
-                disabled={locked}
-                rows={3}
-                maxLength={400}
-                className={fieldClass}
-                placeholder="What they want to share. Shown when someone hovers this card."
-                onChange={(event) =>
-                  setMembers((current) =>
-                    current.map((item) => (item.key === member.key ? { ...item, quote: event.target.value } : item)),
-                  )
-                }
-              />
-            </label>
-            <label className="grid gap-1.5 text-sm">
-              About me
-              <textarea
-                name={`members.${index}.about`}
-                value={member.about}
-                disabled={locked}
-                rows={5}
-                maxLength={4000}
-                className={fieldClass}
-                placeholder="A short introduction, shown on this student's own page."
-                onChange={(event) =>
-                  setMembers((current) =>
-                    current.map((item) => (item.key === member.key ? { ...item, about: event.target.value } : item)),
-                  )
-                }
-              />
-            </label>
-            <label className="grid gap-1.5 text-sm">
-              What I have done
-              <textarea
-                name={`members.${index}.work`}
-                value={member.work}
-                disabled={locked}
-                rows={5}
-                maxLength={4000}
-                className={fieldClass}
-                placeholder="The work of this post: duties, events, and what they have taken on."
-                onChange={(event) =>
-                  setMembers((current) =>
-                    current.map((item) => (item.key === member.key ? { ...item, work: event.target.value } : item)),
-                  )
-                }
-              />
-            </label>
-            <div className="flex flex-wrap gap-4 text-sm text-muted">
-              {slug && member.name.trim() && memberSlugs[index] ? (
-                <a
-                  href={`/council/${slug}/${memberSlugs[index]}${memberPageQuery}`}
-                  className="text-accent"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open page
-                </a>
-              ) : null}
-              <button
-                type="button"
-                disabled={locked || index === 0}
-                onClick={() =>
-                  setMembers((current) => {
-                    const next = [...current];
-                    const [item] = next.splice(index, 1);
-                    next.splice(index - 1, 0, item);
-                    return next;
-                  })
-                }
-              >
-                Move up
-              </button>
-              <button
-                type="button"
-                disabled={locked || index === members.length - 1}
-                onClick={() =>
-                  setMembers((current) => {
-                    const next = [...current];
-                    const [item] = next.splice(index, 1);
-                    next.splice(index + 1, 0, item);
-                    return next;
-                  })
-                }
-              >
-                Move down
-              </button>
-              <button
-                type="button"
-                disabled={locked}
-                onClick={() => setMembers((current) => current.filter((item) => item.key !== member.key))}
-              >
-                Remove
-              </button>
-            </div>
-          </div>
-        ))}
-      </section>
+      <MemberBoard
+        title="Student Council"
+        hint="Role, then name. The photograph is shown large on their page. The message stays on the roster card. About me and what they have done appear only on their own page."
+        board="main"
+        members={members}
+        setMembers={setMembers}
+        locked={locked}
+        slug={slug}
+        memberSlugs={memberSlugs}
+        memberPageQuery={memberPageQuery}
+        showProfileFields
+      />
+
+      <MemberBoard
+        title={juniorHeading || "Junior Student Council"}
+        hint="Same captain and vice captain pairing. Photograph and message are optional. Junior posts stay on the year page and do not get a profile page."
+        board="junior"
+        members={members}
+        setMembers={setMembers}
+        locked={locked}
+        slug={slug}
+        memberSlugs={memberSlugs}
+        memberPageQuery={memberPageQuery}
+        showProfileFields={false}
+      />
 
       <section className="grid gap-3">
         <div className="flex items-end justify-between gap-4">
@@ -356,7 +207,17 @@ export function CouncilForm({
             onClick={() =>
               setMembers((current) => [
                 ...current,
-                { key: crypto.randomUUID(), role: "CCA Coordinator", name: "", imageUrl: "", imageAlt: "", quote: "", about: "", work: "" },
+                {
+                  key: crypto.randomUUID(),
+                  role: "CCA Coordinator",
+                  name: "",
+                  imageUrl: "",
+                  imageAlt: "",
+                  quote: "",
+                  about: "",
+                  work: "",
+                  board: "main",
+                },
               ])
             }
           >
@@ -370,6 +231,7 @@ export function CouncilForm({
           isCouncilStaffRole(member.role) ? (
             <div key={member.key} className="grid gap-3 rounded-xl border border-line bg-background p-4">
               <input type="hidden" name={`members.${index}.id`} value={member.key} />
+              <input type="hidden" name={`members.${index}.board`} value="main" />
               <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
               <label className="grid gap-1.5 text-sm">
                 Role
@@ -726,5 +588,236 @@ export function CouncilForm({
         ) : null}
       </div>
     </form>
+  );
+}
+
+function MemberBoard({
+  title,
+  hint,
+  board,
+  members,
+  setMembers,
+  locked,
+  slug,
+  memberSlugs,
+  memberPageQuery,
+  showProfileFields,
+}: {
+  title: string;
+  hint: string;
+  board: "main" | "junior";
+  members: MemberDraft[];
+  setMembers: Dispatch<SetStateAction<MemberDraft[]>>;
+  locked: boolean;
+  slug: string;
+  memberSlugs: string[];
+  memberPageQuery: string;
+  showProfileFields: boolean;
+}) {
+  const emptyMember = (): MemberDraft => ({
+    key: crypto.randomUUID(),
+    role: "",
+    name: "",
+    imageUrl: "",
+    imageAlt: "",
+    quote: "",
+    about: "",
+    work: "",
+    board,
+  });
+
+  return (
+    <section className="grid gap-3">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-medium">{title}</h2>
+          <p className="mt-1 text-sm text-muted">{hint}</p>
+        </div>
+        <button
+          type="button"
+          className="text-sm text-accent"
+          disabled={locked}
+          onClick={() => setMembers((current) => [...current, emptyMember()])}
+        >
+          Add a post
+        </button>
+      </div>
+      {members.map((member, index) => {
+        if (isCouncilStaffRole(member.role)) return null;
+        if ((member.board ?? "main") !== board) return null;
+        return (
+          <div key={member.key} className="grid gap-3 rounded-xl border border-line bg-background p-4">
+            <input type="hidden" name={`members.${index}.id`} value={member.key} />
+            <input type="hidden" name={`members.${index}.board`} value={board} />
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="grid gap-1.5 text-sm">
+                Post
+                <input
+                  name={`members.${index}.role`}
+                  value={member.role}
+                  disabled={locked}
+                  className={fieldClass}
+                  onChange={(event) =>
+                    setMembers((current) =>
+                      current.map((item) => (item.key === member.key ? { ...item, role: event.target.value } : item)),
+                    )
+                  }
+                />
+              </label>
+              <label className="grid gap-1.5 text-sm">
+                Name
+                <input
+                  name={`members.${index}.name`}
+                  value={member.name}
+                  disabled={locked}
+                  className={fieldClass}
+                  onChange={(event) =>
+                    setMembers((current) =>
+                      current.map((item) => (item.key === member.key ? { ...item, name: event.target.value } : item)),
+                    )
+                  }
+                />
+              </label>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="grid gap-1.5 text-sm">
+                Photograph URL
+                <input
+                  name={`members.${index}.imageUrl`}
+                  value={member.imageUrl}
+                  disabled={locked}
+                  className={fieldClass}
+                  placeholder={IMAGE_URL_EXAMPLE}
+                  onChange={(event) =>
+                    setMembers((current) =>
+                      current.map((item) => (item.key === member.key ? { ...item, imageUrl: event.target.value } : item)),
+                    )
+                  }
+                />
+              </label>
+              <label className="grid gap-1.5 text-sm">
+                Photograph description
+                <input
+                  name={`members.${index}.imageAlt`}
+                  value={member.imageAlt}
+                  disabled={locked}
+                  className={fieldClass}
+                  onChange={(event) =>
+                    setMembers((current) =>
+                      current.map((item) => (item.key === member.key ? { ...item, imageAlt: event.target.value } : item)),
+                    )
+                  }
+                />
+              </label>
+            </div>
+            <label className="grid gap-1.5 text-sm">
+              Message for students
+              <textarea
+                name={`members.${index}.quote`}
+                value={member.quote}
+                disabled={locked}
+                rows={3}
+                maxLength={400}
+                className={fieldClass}
+                placeholder={showProfileFields ? "Shown when someone hovers this card." : "Optional message on the roster card."}
+                onChange={(event) =>
+                  setMembers((current) =>
+                    current.map((item) => (item.key === member.key ? { ...item, quote: event.target.value } : item)),
+                  )
+                }
+              />
+            </label>
+            {showProfileFields ? (
+              <>
+                <label className="grid gap-1.5 text-sm">
+                  About me
+                  <textarea
+                    name={`members.${index}.about`}
+                    value={member.about}
+                    disabled={locked}
+                    rows={5}
+                    maxLength={4000}
+                    className={fieldClass}
+                    onChange={(event) =>
+                      setMembers((current) =>
+                        current.map((item) => (item.key === member.key ? { ...item, about: event.target.value } : item)),
+                      )
+                    }
+                  />
+                </label>
+                <label className="grid gap-1.5 text-sm">
+                  What I have done
+                  <textarea
+                    name={`members.${index}.work`}
+                    value={member.work}
+                    disabled={locked}
+                    rows={5}
+                    maxLength={4000}
+                    className={fieldClass}
+                    onChange={(event) =>
+                      setMembers((current) =>
+                        current.map((item) => (item.key === member.key ? { ...item, work: event.target.value } : item)),
+                      )
+                    }
+                  />
+                </label>
+              </>
+            ) : (
+              <>
+                <input type="hidden" name={`members.${index}.about`} value={member.about} />
+                <input type="hidden" name={`members.${index}.work`} value={member.work} />
+              </>
+            )}
+            <div className="flex flex-wrap gap-4 text-sm text-muted">
+              {showProfileFields && slug && member.name.trim() && memberSlugs[index] ? (
+                <a
+                  href={`/council/${slug}/${memberSlugs[index]}${memberPageQuery}`}
+                  className="text-accent"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open page
+                </a>
+              ) : null}
+              <button
+                type="button"
+                disabled={locked || index === 0}
+                onClick={() =>
+                  setMembers((current) => {
+                    const next = [...current];
+                    const [item] = next.splice(index, 1);
+                    next.splice(index - 1, 0, item);
+                    return next;
+                  })
+                }
+              >
+                Move up
+              </button>
+              <button
+                type="button"
+                disabled={locked || index === members.length - 1}
+                onClick={() =>
+                  setMembers((current) => {
+                    const next = [...current];
+                    const [item] = next.splice(index, 1);
+                    next.splice(index + 1, 0, item);
+                    return next;
+                  })
+                }
+              >
+                Move down
+              </button>
+              <button
+                type="button"
+                disabled={locked}
+                onClick={() => setMembers((current) => current.filter((item) => item.key !== member.key))}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </section>
   );
 }

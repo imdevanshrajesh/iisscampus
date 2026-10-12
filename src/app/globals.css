@@ -1081,4 +1081,33 @@ html[data-intro="play"] .hero-scribble path {
   .tilt-surface {
     transform: none;
   }
+
+  .announcement-bar__track {
+    animation: none;
+  }
+}
+
+.announcement-bar {
+  overflow: hidden;
+}
+
+.announcement-bar__track {
+  display: flex;
+  width: max-content;
+  animation: announcement-marquee 28s linear infinite;
+  white-space: nowrap;
+  padding: 0.7rem 0;
+}
+
+.announcement-bar:hover .announcement-bar__track {
+  animation-play-state: paused;
+}
+
+@keyframes announcement-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }

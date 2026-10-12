@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { campusPulse, compareCampusEvents, councilMemberSlugs, filterPublishedEvents, findPublicCouncilMember, isCouncilStaffRole, pairCouncilMembers, selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "../src/lib/data/catalog.ts";
+import { campusPulse, compareCampusEvents, councilMemberSlugs, councilMembersOnBoard, filterPublishedEvents, findPublicCouncilMember, isCouncilStaffRole, pairCouncilMembers, selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "../src/lib/data/catalog.ts";
 import type { CouncilYear } from "../src/lib/types.ts";
 import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "../src/lib/data/seed.ts";
 import type { CampusEvent } from "../src/lib/types.ts";
@@ -60,6 +60,7 @@ describe("public catalog", () => {
       slug: "2025-26",
       kind: "current",
       summary: "",
+      juniorHeading: "Junior Student Council",
       publicationStatus: "draft",
       sortOrder: 0,
       isSample: false,
@@ -75,7 +76,7 @@ describe("public catalog", () => {
   });
 
   it("places the council secretary after head boy and before activity", () => {
-    const pairs = pairCouncilMembers(seedCouncilYears[0].members);
+    const pairs = pairCouncilMembers(councilMembersOnBoard(seedCouncilYears[0].members, "main"));
     const roles = pairs.map((pair) => pair.lead.role);
     const head = roles.indexOf("Head Boy");
     const secretary = roles.indexOf("Council Secretary");
@@ -89,7 +90,7 @@ describe("public catalog", () => {
     assert.equal(isCouncilStaffRole("CCA Coordinator"), true);
     assert.equal(isCouncilStaffRole("Teacher in charge"), true);
     assert.equal(isCouncilStaffRole("Head Boy"), false);
-    const pairs = pairCouncilMembers(seedCouncilYears[0].members);
+    const pairs = pairCouncilMembers(councilMembersOnBoard(seedCouncilYears[0].members, "main"));
     assert.equal(
       pairs.some((pair) => isCouncilStaffRole(pair.lead.role) || (pair.deputy && isCouncilStaffRole(pair.deputy.role))),
       false,
@@ -98,12 +99,16 @@ describe("public catalog", () => {
     assert.equal(seedCouncilYears[0].members[0]?.name, "JANATHUL FIRTHOSE");
   });
 
-  it("opens a page for a student and for the CCA coordinator", () => {
+  it("opens a page for a student and for the CCA coordinator, and keeps junior posts off profile routes", () => {
     const year = seedCouncilYears[0];
     const head = year.members.find((member) => member.role === "Head Boy");
     assert.equal(head?.slug, "mohammed-rehaan");
     assert.equal(findPublicCouncilMember(seedCouncilYears, year.slug, "mohammed-rehaan")?.member.name, "MOHAMMED REHAAN");
     assert.equal(findPublicCouncilMember(seedCouncilYears, year.slug, "janathul-firthose")?.member.role, "CCA Coordinator");
+    const junior = year.members.find((member) => member.board === "junior");
+    assert.ok(junior?.slug);
+    assert.equal(findPublicCouncilMember(seedCouncilYears, year.slug, junior!.slug), null);
+    assert.equal(councilMembersOnBoard(year.members, "junior").length, 28);
     const [first, second] = councilMemberSlugs([
       { name: "MOHAMMED ALI", role: "Ethos Captain" },
       { name: "Mohammed Ali", role: "Sports Captain" },

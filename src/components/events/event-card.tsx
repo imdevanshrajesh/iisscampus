@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { MediaFrame } from "@/components/media/media-frame";
-import { categoryById, eventStatusLabel, formatEventDate } from "@/lib/data/catalog";
+import { categoryById, eventCategoryIds, eventStatusLabel, formatEventDate } from "@/lib/data/catalog";
 import { classifyMediaUrl } from "@/lib/media/url";
 import type { CampusEvent, Category } from "@/lib/types";
 
@@ -15,7 +15,10 @@ export function EventCard({
   hosts: readonly string[];
   priority?: boolean;
 }) {
-  const category = categoryById(categories, event.categoryId);
+  const categoryNames = eventCategoryIds(event)
+    .map((id) => categoryById(categories, id)?.name)
+    .filter(Boolean);
+  const primary = categoryById(categories, event.categoryId);
   const date = formatEventDate(event.eventDate);
   const status = event.isSample ? null : eventStatusLabel(event.eventStatus);
   const pictured = Boolean(event.coverImageUrl && classifyMediaUrl(event.coverImageUrl, hosts).ok);
@@ -28,13 +31,14 @@ export function EventCard({
           alt={event.coverAlt}
           hosts={hosts}
           title={event.title}
-          kicker={category?.name}
+          kicker={primary?.name}
           priority={priority}
         />
       </Link>
       <div className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs uppercase tracking-[0.14em] text-muted">
-          {category ? <span>{category.name}</span> : null}
+          {event.listing === "competition" ? <span>Competition</span> : null}
+          {categoryNames.length ? <span>{categoryNames.join(" · ")}</span> : null}
           {date ? <span>{date}</span> : null}
           {event.isSample ? <span>Sample</span> : null}
           {status ? <span className={event.eventStatus === "ongoing" ? "text-accent" : ""}>{status}</span> : null}

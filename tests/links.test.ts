@@ -66,6 +66,26 @@ describe("registration and redirects", () => {
     );
   });
 
+  it("opens a page path and a Google Form when those modes are set", () => {
+    const page = registrationState(
+      { ...base, registrationProvider: "page", registrationUrl: "/events/fifa-fever" },
+      "2026-01-01",
+    );
+    assert.equal(page.state, "open");
+    if (page.state === "open") assert.equal(page.href, "/events/fifa-fever");
+
+    const form = registrationState(
+      {
+        ...base,
+        registrationProvider: "google_form",
+        registrationUrl: "https://forms.gle/abcd",
+      },
+      "2026-01-01",
+    );
+    assert.equal(form.state, "open");
+    if (form.state === "open") assert.equal(form.href, "https://forms.gle/abcd");
+  });
+
   it("allows only the site and the configured Arigo origin", () => {
     assert.equal(isAllowedReturnUrl("/events/fifa-fever", "https://iisscampus.com", "https://arigo.example"), true);
     assert.equal(isAllowedReturnUrl("https://arigo.example/login", "https://iisscampus.com", "https://arigo.example"), true);

@@ -4,7 +4,17 @@ import { getPublicCatalog } from "@/lib/data/queries";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const catalog = await getPublicCatalog();
-  const staticRoutes = ["", "/events", "/council", "/achievements", "/gallery", "/newsletter", "/about", "/privacy"].map((path) => ({
+  const staticRoutes = [
+    "",
+    "/events",
+    "/competitions",
+    "/council",
+    "/achievements",
+    "/gallery",
+    "/newsletter",
+    "/about",
+    "/privacy",
+  ].map((path) => ({
     url: `${siteConfig.url}${path || "/"}`,
   }));
   const events = catalog.events.map((event) => ({
@@ -12,7 +22,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
   const councilMembers = catalog.councilYears.flatMap((year) =>
     year.members
-      .filter((member) => member.slug)
+      .filter((member) => member.slug && member.board !== "junior")
       .map((member) => ({
         url: `${siteConfig.url}/council/${year.slug}/${member.slug}`,
       })),

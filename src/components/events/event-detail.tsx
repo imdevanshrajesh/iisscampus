@@ -2,8 +2,9 @@ import Link from "next/link";
 import { ResourceCards } from "@/components/content/resource-cards";
 import { GalleryView } from "@/components/gallery/gallery-view";
 import { MediaFrame } from "@/components/media/media-frame";
+import { ActivityFacts } from "@/components/events/activity-facts";
 import { EventCard } from "@/components/events/event-card";
-import { categoryById, formatEventDate, paragraphs, relatedPublishedEvents } from "@/lib/data/catalog";
+import { categoryById, eventCategoryIds, formatEventDate, paragraphs, relatedPublishedEvents } from "@/lib/data/catalog";
 import { classifyMediaUrl, classifyNavigationUrl } from "@/lib/media/url";
 import { presentVideo } from "@/lib/media/video";
 import { registrationState } from "@/lib/registration";
@@ -33,7 +34,10 @@ export function EventDetail({
   hosts: readonly string[];
   preview?: boolean;
 }) {
-  const category = categoryById(categories, event.categoryId);
+  const categoryNames = eventCategoryIds(event)
+    .map((id) => categoryById(categories, id)?.name)
+    .filter(Boolean);
+  const primaryCategory = categoryById(categories, event.categoryId);
   const date = formatEventDate(event.eventDate);
   const end = formatEventDate(event.endDate);
   const registration = registrationState(event);
@@ -42,6 +46,7 @@ export function EventDetail({
   const related = relatedPublishedEvents(events, event);
   const results = achievements.filter((item) => item.eventId === event.id && item.publicationStatus === "published");
   const galleryImages = event.images.filter((image) => classifyMediaUrl(image.url, hosts).ok);
+  const listingLabel = event.listing === "competition" ? "Competition" : null;
 
   return (
     <article>
@@ -57,7 +62,7 @@ export function EventDetail({
             alt={event.coverAlt}
             hosts={hosts}
             title={event.title}
-            kicker={category?.name}
+            kicker={primaryCategory?.name}
             priority
           />
           {event.coverAttribution ? (
@@ -66,7 +71,12 @@ export function EventDetail({
         </div>
         <div className="lg:col-span-7 lg:pt-4">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-accent">
-            {[category?.name, event.isSample ? "Sample" : null, event.eventStatus && !event.isSample ? event.eventStatus : null]
+            {[
+              listingLabel,
+              categoryNames.join(", ") || null,
+              event.isSample ? "Sample" : null,
+              event.eventStatus && !event.isSample ? event.eventStatus : null,
+            ]
               .filter(Boolean)
               .join(" · ")}
           </p>
@@ -110,6 +120,7 @@ export function EventDetail({
       </div>
 
       <div className="mx-auto max-w-6xl px-5 md:px-8">
+        <ActivityFacts event={event} />
         <Section title="Overview">
           {paragraphs(event.fullDescription).map((paragraph) => (
             <p key={paragraph}>{paragraph}</p>

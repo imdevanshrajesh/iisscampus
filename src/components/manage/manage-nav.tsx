@@ -10,6 +10,8 @@ const links = [
   { href: "/manage/council", label: "Council" },
   { href: "/manage/achievements", label: "Achievements" },
   { href: "/manage/gallery", label: "Gallery" },
+  { href: "/manage/announcements", label: "Announcements" },
+  { href: "/manage/faq", label: "FAQ" },
   { href: "/manage/newsletter", label: "Newsletter" },
 ];
 

@@ -2,7 +2,13 @@ export type PublicationStatus = "draft" | "in_review" | "published" | "archived"
 
 export type EventStatus = "upcoming" | "ongoing" | "completed";
 
+export type EventListing = "event" | "competition";
+
+export type RegistrationProvider = "arigo" | "page" | "google_form";
+
 export type CouncilKind = "current" | "upcoming" | "past";
+
+export type CouncilBoard = "main" | "junior";
 
 export type CampusRole = "editor" | "administrator";
 
@@ -52,17 +58,28 @@ export type CampusEvent = {
   shortDescription: string;
   fullDescription: string;
   categoryId: string;
+  categoryIds: string[];
+  listing: EventListing;
   coverImageUrl: string | null;
   coverAlt: string | null;
   coverAttribution: string | null;
   eventDate: string | null;
   endDate: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  locationName: string | null;
+  locationMapUrl: string | null;
+  gradeFrom: number | null;
+  gradeTo: number | null;
+  feeAed: number | null;
+  capacity: number | null;
+  packingList: string | null;
   publicationStatus: PublicationStatus;
   eventStatus: EventStatus | null;
   featured: boolean;
   isSample: boolean;
   registrationEnabled: boolean;
-  registrationProvider: string | null;
+  registrationProvider: RegistrationProvider | null;
   registrationUrl: string | null;
   registrationLabel: string | null;
   registrationDeadline: string | null;
@@ -111,6 +128,7 @@ export type CouncilMember = {
   about: string | null;
   work: string | null;
   slug: string;
+  board: CouncilBoard;
   sortOrder: number;
 };
 
@@ -138,6 +156,7 @@ export type CouncilYear = {
   slug: string;
   kind: CouncilKind;
   summary: string;
+  juniorHeading: string;
   publicationStatus: PublicationStatus;
   sortOrder: number;
   isSample: boolean;
@@ -162,6 +181,27 @@ export type SocialLinks = {
   scixcomInstagramUrl: string;
 };
 
+export type SiteBrand = {
+  councilLogoUrl: string | null;
+  contactEmail: string | null;
+};
+
+export type Announcement = {
+  id: string;
+  message: string;
+  eventId: string | null;
+  enabled: boolean;
+  sortOrder: number;
+};
+
+export type Faq = {
+  id: string;
+  question: string;
+  answer: string;
+  sortOrder: number;
+  published: boolean;
+};
+
 export type PublicCatalog = {
   source: "local" | "supabase";
   categories: Category[];
@@ -169,4 +209,5 @@ export type PublicCatalog = {
   achievements: Achievement[];
   councilYears: CouncilYear[];
   mediaHosts: string[];
+  councilLogoUrl: string | null;
 };

@@ -3,13 +3,14 @@
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { CouncilLogo } from "@/components/brand/council-logo";
 
 type Phase = "school" | "councilBg" | "council" | "out" | "done";
 type Sequence = "full" | "council";
 
 const introSeenKey = "iisscampus-intro";
 
-export function IntroSplash() {
+export function IntroSplash({ logoUrl }: { logoUrl?: string | null }) {
   const pathname = usePathname();
   const onHome = pathname === "/";
   const [phase, setPhase] = useState<Phase>("done");
@@ -124,12 +125,10 @@ export function IntroSplash() {
       ) : null}
 
       <div className={councilClass}>
-        <Image
-          src="/brand/student-council.png"
-          alt=""
+        <CouncilLogo
+          url={logoUrl}
           width={260}
           height={260}
-          unoptimized
           className="h-44 w-44 object-contain md:h-52 md:w-52"
           priority
         />

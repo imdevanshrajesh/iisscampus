@@ -1,12 +1,12 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import type { ReactNode } from "react";
+import { CouncilLogo } from "@/components/brand/council-logo";
+import { CouncilBoardSection } from "@/components/council/council-board";
 import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
-import { formatEventDate, isCouncilStaffRole, pairCouncilMembers, paragraphs } from "@/lib/data/catalog";
+import { councilMembersOnBoard, formatEventDate, paragraphs } from "@/lib/data/catalog";
 import { classifyMediaUrl } from "@/lib/media/url";
-import type { CouncilKind, CouncilMember, CouncilYear } from "@/lib/types";
+import type { CouncilKind, CouncilYear } from "@/lib/types";
 
 const kindLabel: Record<CouncilKind, string> = {
   current: "This year",
@@ -18,21 +18,22 @@ export function CouncilPageView({
   years,
   hosts,
   scixcomUrl,
+  logoUrl,
 }: {
   years: CouncilYear[];
   hosts: readonly string[];
   scixcomUrl: string;
+  logoUrl?: string | null;
 }) {
   return (
     <div className="council-page">
       <section className="council-hero relative mx-auto max-w-[90rem] px-5 py-8 md:px-8 md:py-14">
         <div className="grid items-end gap-10 md:grid-cols-[18rem_1fr] md:gap-16">
-          <Image
-            src="/brand/student-council.png"
-            alt="Seniors Student Council, Boys"
+          <CouncilLogo
+            url={logoUrl}
+            alt="Student Council, Boys"
             width={640}
             height={640}
-            unoptimized
             className="mx-auto h-auto w-full max-w-[16rem] object-contain md:mx-0"
             priority
           />
@@ -122,11 +123,9 @@ function CouncilYearSection({
   delay: number;
 }) {
   const photos = year.photos.filter((photo) => classifyMediaUrl(photo.url, hosts).ok);
-  const staff = (year.members ?? [])
-    .filter((member) => isCouncilStaffRole(member.role))
-    .slice()
-    .sort((a, b) => a.sortOrder - b.sortOrder);
-  const pairs = pairCouncilMembers(year.members ?? []);
+  const main = councilMembersOnBoard(year.members ?? [], "main");
+  const junior = councilMembersOnBoard(year.members ?? [], "junior");
+  const juniorHeading = year.juniorHeading?.trim() || "Junior Student Council";
 
   return (
     <section id={year.slug} className="council-year-block border-t border-line">
@@ -137,38 +136,21 @@ function CouncilYearSection({
           {year.summary ? <p className="mt-4 max-w-2xl text-base leading-7 text-muted">{year.summary}</p> : null}
         </RevealOnScroll>
 
-        {staff.length ? (
-          <div className="mt-8">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Teacher in charge</p>
-            <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {staff.map((person) => (
-                <div key={person.id} className="council-member-card">
-                  <MemberFace member={person} hosts={hosts} yearSlug={year.slug} />
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
+        <CouncilBoardSection
+          title="Student Council"
+          members={main}
+          hosts={hosts}
+          yearSlug={year.slug}
+          board="main"
+        />
 
-        {pairs.length ? (
-          <div className="mt-12 border-t border-line pt-8">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Council members</p>
-            <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {pairs.map(({ lead, deputy }, index) => (
-              <RevealOnScroll key={lead.id} delay={80 + index * 50}>
-                <div className="council-member-card">
-                  <MemberFace member={lead} hosts={hosts} yearSlug={year.slug} />
-                  {deputy ? (
-                    <div className="mt-4 border-t border-line/60 pt-4">
-                      <MemberFace member={deputy} hosts={hosts} yearSlug={year.slug} compact />
-                    </div>
-                  ) : null}
-                </div>
-              </RevealOnScroll>
-            ))}
-            </div>
-          </div>
-        ) : null}
+        <CouncilBoardSection
+          title={juniorHeading}
+          members={junior}
+          hosts={hosts}
+          yearSlug={year.slug}
+          board="junior"
+        />
 
         {photos.length ? (
           <div className="gallery-mosaic mt-12">
@@ -220,48 +202,5 @@ function CouncilYearSection({
         ) : null}
       </div>
     </section>
-  );
-}
-
-function MemberFace({
-  member,
-  hosts,
-  yearSlug,
-  compact = false,
-}: {
-  member: CouncilMember;
-  hosts: readonly string[];
-  yearSlug: string;
-  compact?: boolean;
-}) {
-  const portrait = member.imageUrl ? classifyMediaUrl(member.imageUrl, hosts) : null;
-
-  return (
-    <div className="council-person">
-      <Link href={`/council/${yearSlug}/${member.slug}`} className="council-person__link flex items-center gap-3">
-        <div className={`${compact ? "h-12 w-12" : "h-16 w-16"} overflow-hidden rounded-xl bg-white/5`}>
-          {portrait?.ok ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={portrait.url} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full items-end p-2">
-              <span className="font-display text-lg text-ink/30">{member.name.slice(0, 1)}</span>
-            </div>
-          )}
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs uppercase tracking-[0.14em] text-muted">{member.role}</p>
-          <p className={`council-person__name font-medium text-ink ${compact ? "text-sm" : "text-base"}`}>{member.name}</p>
-        </div>
-      </Link>
-      {member.quote ? (
-        <>
-          <p className="council-person__hint">Message</p>
-          <p className="council-person__quote">
-            <span>{member.quote}</span>
-          </p>
-        </>
-      ) : null}
-    </div>
   );
 }
