@@ -1,8 +1,8 @@
 import { HomePage } from "@/components/home/home-page";
-import { getPublicAnnouncements, getPublicCatalog } from "@/lib/data/queries";
+import { getPublicCatalog } from "@/lib/data/queries";
 
 export default async function Page() {
-  const [catalog, announcements] = await Promise.all([getPublicCatalog(), getPublicAnnouncements()]);
+  const catalog = await getPublicCatalog();
   return (
     <HomePage
       events={catalog.events}
@@ -10,7 +10,6 @@ export default async function Page() {
       achievements={catalog.achievements}
       hosts={catalog.mediaHosts}
       logoUrl={catalog.councilLogoUrl}
-      announcements={announcements}
     />
   );
 }

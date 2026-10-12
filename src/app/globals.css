@@ -1083,20 +1083,31 @@ html[data-intro="play"] .hero-scribble path {
   }
 
   .announcement-bar__track {
-    animation: none;
+    animation: none !important;
+    transform: none !important;
   }
 }
 
 .announcement-bar {
   overflow: hidden;
+  width: 100%;
 }
 
 .announcement-bar__track {
   display: flex;
   width: max-content;
-  animation: announcement-marquee 28s linear infinite;
+  animation-name: announcement-marquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
   white-space: nowrap;
   padding: 0.7rem 0;
+  will-change: transform;
+}
+
+.announcement-bar__group {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
 }
 
 .announcement-bar:hover .announcement-bar__track {
@@ -1105,9 +1116,9 @@ html[data-intro="play"] .hero-scribble path {
 
 @keyframes announcement-marquee {
   from {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   to {
-    transform: translateX(-50%);
+    transform: translate3d(var(--marquee-shift, -50%), 0, 0);
   }
 }

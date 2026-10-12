@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { AchievementCards } from "@/components/home/achievement-cards";
-import { AnnouncementBar } from "@/components/home/announcement-bar";
 import { BoardCard } from "@/components/home/board-card";
 import { ComingUp } from "@/components/home/coming-up";
 import { CouncilPreview } from "@/components/home/council-preview";
@@ -14,7 +13,7 @@ import { Today } from "@/components/home/today";
 import { siteConfig } from "@/lib/config";
 import { compareCampusEvents } from "@/lib/data/catalog";
 import { classifyNavigationUrl } from "@/lib/media/url";
-import type { Achievement, Announcement, CampusEvent, Category } from "@/lib/types";
+import type { Achievement, CampusEvent, Category } from "@/lib/types";
 
 const pageAnchors = [
   { href: "/events", label: "Events" },
@@ -33,14 +32,12 @@ export function HomePage({
   achievements,
   hosts,
   logoUrl,
-  announcements = [],
 }: {
   events: CampusEvent[];
   categories: Category[];
   achievements: Achievement[];
   hosts: readonly string[];
   logoUrl?: string | null;
-  announcements?: Announcement[];
 }) {
   const featured = events.filter((event) => event.featured);
   const lead = (featured.length ? featured : events).slice(0, 5);
@@ -56,7 +53,6 @@ export function HomePage({
 
   return (
     <>
-      <AnnouncementBar announcements={announcements} events={events} />
       <section className="home-hero">
         <div className="mx-auto max-w-[90rem] px-5 pt-4 md:px-8 md:pt-8">
           <div
