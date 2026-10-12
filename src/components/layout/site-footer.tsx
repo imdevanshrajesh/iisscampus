@@ -25,6 +25,9 @@ export function SiteFooter({
             <p className="font-display max-w-[15ch] text-[clamp(2.4rem,4.5vw,4rem)] leading-[0.9]">
               IISS x Student Council <span className="italic text-gold">Boys.</span>
             </p>
+            <p className="mt-5 max-w-sm text-sm leading-6 text-white/60">
+              Events, competitions, the boys&apos; student council, and the achievements they publish.
+            </p>
             {showSampleNote ? (
               <p className="mt-3 max-w-sm text-sm leading-6 text-white/45">
                 Some records are demonstration content and are not verified historical accounts.
