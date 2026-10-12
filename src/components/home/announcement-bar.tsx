@@ -6,7 +6,7 @@ import { useEffect, useEffectEvent, useRef, useState, type CSSProperties } from 
 import { renderAnnouncementMessage } from "@/lib/announcements";
 import type { Announcement, CampusEvent } from "@/lib/types";
 
-const SPEED_PX_PER_SEC = 55;
+const SPEED_PX_PER_SEC = 32;
 
 function AnnouncementItems({
   items,
