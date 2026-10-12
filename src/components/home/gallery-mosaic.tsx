@@ -11,19 +11,19 @@ export function GalleryMosaic({
   hosts: readonly string[];
 }) {
   const tiles = events
-    .filter((event) => event.coverImageUrl || event.images.length)
-    .slice(0, 6)
-    .map((event, index) => {
-      const image = event.images[0];
-      return {
-        id: event.id,
+    .flatMap((event) => {
+      const pinned = event.images.filter((image) => image.pinned);
+      if (!pinned.length) return [];
+      return pinned.slice(0, 2).map((image) => ({
+        id: `${event.id}-${image.id}`,
         slug: event.slug,
         title: event.title,
-        url: image?.url ?? event.coverImageUrl,
-        alt: image?.alt ?? event.coverAlt,
-        tall: index % 3 === 1,
-      };
-    });
+        url: image.url,
+        alt: image.alt,
+      }));
+    })
+    .slice(0, 6)
+    .map((tile, index) => ({ ...tile, tall: index % 3 === 1 }));
 
   return (
     <div>
@@ -54,7 +54,7 @@ export function GalleryMosaic({
                 <span className="font-display text-4xl italic text-accent">{String(index + 1).padStart(2, "0")}</span>
                 <div>
                   <p className="kicker text-muted">{label}</p>
-                  <p className="mt-2 text-sm leading-6 text-ink/75">Photographs appear once published.</p>
+                  <p className="mt-2 text-sm leading-6 text-ink/75">Pinned photographs appear once published.</p>
                 </div>
               </div>
             </RevealOnScroll>

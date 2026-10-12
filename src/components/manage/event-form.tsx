@@ -21,6 +21,7 @@ type ImageDraft = {
   alt: string;
   caption: string;
   attribution: string;
+  pinned: boolean;
 };
 
 const fieldClass = "w-full rounded-md border border-line bg-background px-3 py-2 text-sm";
@@ -50,6 +51,7 @@ export function EventForm({
       alt: image.alt,
       caption: image.caption ?? "",
       attribution: image.attribution ?? "",
+      pinned: Boolean(image.pinned),
     })) ?? [],
   );
   const [schedule, setSchedule] = useState<ScheduleItem[]>(event?.schedule ?? []);
@@ -247,8 +249,17 @@ export function EventForm({
 
         <div className="grid gap-4 border-t border-line pt-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">Gallery</h2>
-            <button type="button" className="inline-flex items-center gap-1 text-sm text-accent" onClick={() => setImages((current) => [...current, { url: "", alt: "", caption: "", attribution: "" }])}>
+            <div>
+              <h2 className="text-lg font-medium">Gallery</h2>
+              <p className="mt-1 text-sm text-muted">Pin photographs to show them on the public Gallery page.</p>
+            </div>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-sm text-accent"
+              onClick={() =>
+                setImages((current) => [...current, { url: "", alt: "", caption: "", attribution: "", pinned: false }])
+              }
+            >
               <Plus size={16} aria-hidden="true" /> Add image
             </button>
           </div>
@@ -282,6 +293,14 @@ export function EventForm({
                 <label className="grid gap-1.5 text-sm">
                   Attribution
                   <input value={image.attribution} onChange={(event) => updateImage(index, { attribution: event.target.value })} className={fieldClass} />
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={image.pinned}
+                    onChange={(event) => updateImage(index, { pinned: event.target.checked })}
+                  />
+                  Pin on Gallery page
                 </label>
                 <div className="flex gap-2">
                   <button type="button" aria-label="Move image up" onClick={() => moveImage(index, -1)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-line"><ArrowUp size={16} /></button>

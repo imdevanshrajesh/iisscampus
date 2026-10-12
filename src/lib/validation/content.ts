@@ -40,6 +40,7 @@ export const galleryImageSchema = z.object({
   alt: z.string().trim().min(1).max(200),
   caption: z.string().trim().max(240).optional().or(z.literal("")).transform((value) => value || null),
   attribution: z.string().trim().max(160).optional().or(z.literal("")).transform((value) => value || null),
+  pinned: z.boolean().default(false),
   sortOrder: z.number().int().min(0).max(500).optional().default(0),
 });
 

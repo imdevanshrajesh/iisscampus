@@ -37,6 +37,7 @@ export type GalleryImage = {
   alt: string;
   caption: string | null;
   attribution: string | null;
+  pinned: boolean;
   sortOrder: number;
 };
 

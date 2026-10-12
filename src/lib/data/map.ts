@@ -59,6 +59,7 @@ export function mapImage(row: Record<string, unknown>): GalleryImage {
     alt: String(row.alt ?? ""),
     caption: row.caption ? String(row.caption) : null,
     attribution: row.attribution ? String(row.attribution) : null,
+    pinned: Boolean(row.pinned),
     sortOrder: Number(row.sort_order ?? 0),
   };
 }

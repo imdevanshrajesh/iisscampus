@@ -19,6 +19,13 @@ alter table public.campus_settings
 alter table public.campus_settings
   add column if not exists contact_email text;
 
+alter table public.campus_event_images
+  add column if not exists pinned boolean not null default false;
+
+create index if not exists campus_event_images_pinned_idx
+  on public.campus_event_images (pinned, event_id)
+  where pinned = true;
+
 alter table public.campus_settings
   drop constraint if exists campus_settings_contact_email_format;
 

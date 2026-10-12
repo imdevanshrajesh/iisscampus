@@ -212,6 +212,7 @@ async function replaceChildren(
       alt: image.alt,
       caption: image.caption,
       attribution: image.attribution,
+      pinned: Boolean(image.pinned),
       sort_order: index,
     };
   });
@@ -223,6 +224,15 @@ async function replaceChildren(
   if (images.length) {
     const inserted = await supabase.from("campus_event_images").insert(images);
     if (inserted.error) {
+      const missingPinned = (inserted.error.message ?? "").toLowerCase().includes("pinned");
+      if (missingPinned) {
+        const withoutPinned = await supabase.from("campus_event_images").insert(
+          images.map(({ pinned: _pinned, ...image }) => image),
+        );
+        if (!withoutPinned.error) {
+          throw new Error("Run supabase/GALLERY_PINNED.sql in the database, then save again to pin photographs.");
+        }
+      }
       throw new Error(databaseError(inserted.error, "The gallery could not be saved."));
     }
   }

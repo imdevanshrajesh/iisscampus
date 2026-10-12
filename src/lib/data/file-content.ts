@@ -216,6 +216,7 @@ export function saveEventToStore(
       alt: image.alt,
       caption: image.caption,
       attribution: image.attribution,
+      pinned: Boolean(image.pinned),
       sortOrder: index,
     })),
     relatedIds: input.relatedIds.filter((relatedId) => relatedId !== nextId),

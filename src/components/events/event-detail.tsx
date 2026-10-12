@@ -197,7 +197,7 @@ export function EventDetail({
             )}
           </Section>
         ) : null}
-        <section className="border-t border-line py-10">
+        <section id="photographs" className="border-t border-line py-10 scroll-mt-24">
           <h2 className="text-2xl font-medium tracking-tight">Photographs</h2>
           <div className="mt-6">
             <GalleryView
@@ -205,6 +205,7 @@ export function EventDetail({
                 {
                   event,
                   images: galleryImages,
+                  totalCount: galleryImages.length,
                   placeholder: galleryImages.length
                     ? null
                     : event.isSample
