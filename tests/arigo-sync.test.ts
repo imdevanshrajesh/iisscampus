@@ -52,6 +52,7 @@ describe("campus event payload for Arigo", () => {
     assert.equal(body.endTime, "12:30");
     assert.equal(body.venueName, "Auditorium");
     assert.equal(body.campusUrl, "https://campus.buildkre.com/events/science-fair");
+    assert.equal(body.details.eventStatus, null);
     assert.equal(body.registrationDeadline, "2026-11-01");
     assert.equal(body.hostSlug, "india-international-school");
   });
@@ -71,6 +72,15 @@ describe("campus event payload for Arigo", () => {
     assert.equal(body.details.resources[0]?.kind, "pdf");
     assert.equal(body.details.resources[0]?.href, "https://campus.buildkre.com/rules.pdf");
     assert.equal(body.details.images[0]?.alt, "Hall");
+  });
+
+  it("sends a completed campus event as completed", () => {
+    const body = buildHostedEventPayload(event({ eventStatus: "completed" }), {
+      campusOrigin: "https://campus.buildkre.com",
+      hostSlug: "india-international-school",
+    });
+    assert.equal(body.details.eventStatus, "completed");
+    assert.equal(body.slug, "science-fair");
   });
 
   it("keeps the event visible when registration uses another method", () => {

@@ -19,6 +19,7 @@ export type ArigoCampusEvent = {
   registrationProvider: "arigo" | "page" | "google_form" | null;
   registrationDeadline: string | null;
   registrationInstructions: string | null;
+  eventStatus?: "upcoming" | "ongoing" | "completed" | null;
   publicationStatus: "draft" | "in_review" | "published" | "archived";
   coverImageUrl?: string | null;
   coverAlt?: string | null;
@@ -141,6 +142,7 @@ export function buildHostedEventPayload(
           if (!url) return [];
           return [{ url, alt: image.alt ?? "", caption: image.caption ?? null }];
         }),
+      eventStatus: event.eventStatus ?? null,
     },
   };
 }
