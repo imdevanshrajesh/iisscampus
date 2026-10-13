@@ -7,7 +7,7 @@ import { can, canDelete, canEditPublication, canTransition } from "@/lib/auth/pe
 import { consumeRateLimit } from "@/lib/auth/rate-limit";
 import { getCampusActor, getCampusSession, sessionActionError } from "@/lib/auth/session";
 import { shouldSendEventToArigo, toArigoCampusEvent } from "@/lib/arigo/event-payload";
-import { syncCampusEvent } from "@/lib/arigo/sync-event";
+import { removeCampusEventFromArigo, syncCampusEvent } from "@/lib/arigo/sync-event";
 import { defaultSocialLinks, isSupabaseConfigured, normalizeContactEmail } from "@/lib/config";
 import { councilMemberSlugs } from "@/lib/data/catalog";
 import { contentMode } from "@/lib/data/content-mode";
@@ -894,7 +894,10 @@ export async function deleteEvent(_state: ActionState, formData: FormData): Prom
   if ((await contentMode()) === "file") {
     const access = await fileActor(() => true);
     if ("error" in access) return access;
-    if (!deleteFromStore(access.actor, "events", String(formData.get("id") ?? ""))) return { error: deleteFailed };
+    const eventId = String(formData.get("id") ?? "");
+    const removedFromArigo = await removeCampusEventFromArigo(eventId);
+    if (!removedFromArigo.ok) return { error: removedFromArigo.error };
+    if (!deleteFromStore(access.actor, "events", eventId)) return { error: deleteFailed };
     revalidatePath("/");
     revalidatePath("/events");
     revalidatePath("/gallery");
@@ -916,6 +919,9 @@ export async function deleteEvent(_state: ActionState, formData: FormData): Prom
   if (!existing.data) return { error: deleteFailed };
   const status = existing.data.publication_status as PublicationStatus;
   if (!canDelete(context.actor, status)) return { error: genericDenial };
+
+  const removedFromArigo = await removeCampusEventFromArigo(id);
+  if (!removedFromArigo.ok) return { error: removedFromArigo.error };
 
   const removed = await context.supabase.from("campus_events").delete().eq("id", id).select("id");
   const gone = await finishDelete(removed, () =>

@@ -82,6 +82,56 @@ export async function sendCampusEventToArigo(event: ArigoCampusEvent) {
   }
 }
 
+export async function removeCampusEventFromArigo(eventId: string) {
+  const secret = process.env.ARIGO_HOST_SECRET?.trim() ?? "";
+  const origin = arigoOrigin();
+  const hostSlug = process.env.ARIGO_HOST_SLUG?.trim() || HOST_SLUG;
+
+  if (secret.length < 16) {
+    return {
+      ok: false as const,
+      error: "The event is still on Arigo. Set ARIGO_HOST_SECRET, then delete it again.",
+    };
+  }
+  if (!origin) {
+    return {
+      ok: false as const,
+      error: "The event is still on Arigo. Set NEXT_PUBLIC_ARIGO_URL, then delete it again.",
+    };
+  }
+
+  try {
+    const response = await fetch(`${origin}/api/hosted-events`, {
+      method: "DELETE",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${secret}`,
+        "idempotency-key": eventId,
+      },
+      body: JSON.stringify({
+        hostSlug,
+        source: "iisscampus",
+        externalId: eventId,
+      }),
+      cache: "no-store",
+    });
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    if (!response.ok) {
+      const reason = payload?.error?.trim() || "Try again.";
+      return {
+        ok: false as const,
+        error: `The event is still on Arigo. ${reason}`,
+      };
+    }
+    return { ok: true as const };
+  } catch {
+    return {
+      ok: false as const,
+      error: "The event is still on Arigo because Arigo could not be reached. Try again.",
+    };
+  }
+}
+
 export async function syncCampusEvent(
   event: ArigoCampusEvent,
   persistRegistrationUrl: (url: string) => Promise<boolean>,
