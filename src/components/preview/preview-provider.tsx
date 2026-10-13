@@ -225,8 +225,8 @@ function PreviewBody({
               </a>
             ) : null}
           </div>
-          <VenueBlock event={event} compact />
           <PreviewExtras event={event} hosts={hosts} />
+          <VenueBlock event={event} compact />
         </div>
       </div>
     </div>

@@ -97,7 +97,6 @@ export function EventDetail({
             </p>
           ) : null}
           <p className="mt-6 max-w-xl text-lg leading-8 text-muted">{event.shortDescription}</p>
-          <VenueBlock event={event} />
           <div className="mt-8 flex flex-wrap gap-3">
             {registration.state === "open" ? (
               <a
@@ -227,6 +226,11 @@ export function EventDetail({
             />
           </div>
         </section>
+        {event.locationName || event.locationMapUrl ? (
+          <section className="border-t border-line py-10">
+            <VenueBlock event={event} className="max-w-xl" />
+          </section>
+        ) : null}
         {related.length ? (
           <section className="border-t border-line py-10">
             <h2 className="text-2xl font-medium tracking-tight">Related</h2>

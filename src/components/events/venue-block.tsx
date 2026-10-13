@@ -2,13 +2,21 @@ import { mapEmbedSrc } from "@/lib/media/map";
 import { classifyNavigationUrl } from "@/lib/media/url";
 import type { CampusEvent } from "@/lib/types";
 
-export function VenueBlock({ event, compact = false }: { event: CampusEvent; compact?: boolean }) {
+export function VenueBlock({
+  event,
+  compact = false,
+  className,
+}: {
+  event: CampusEvent;
+  compact?: boolean;
+  className?: string;
+}) {
   const map = classifyNavigationUrl(event.locationMapUrl);
   const embed = mapEmbedSrc(map.ok ? map.url : null);
   if (!event.locationName && !map.ok && !embed) return null;
 
   return (
-    <div className={compact ? "mt-5" : "mt-8 max-w-xl"}>
+    <div className={className ?? (compact ? "mt-5" : "mt-8 max-w-xl")}>
       <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted">Venue</p>
       {event.locationName ? <p className="mt-2 text-base text-ink">{event.locationName}</p> : null}
       {map.ok ? (
