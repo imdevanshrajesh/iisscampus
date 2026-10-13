@@ -173,6 +173,7 @@ export const eventInputSchema = z
     eventStatus: z.enum(["upcoming", "ongoing", "completed"]).optional().or(z.literal("")).transform((value) => value || null),
     featured: z.boolean().default(false),
     registrationEnabled: z.boolean().default(false),
+    pushToArigo: z.boolean().default(false),
     registrationProvider: z
       .enum(["arigo", "page", "google_form"])
       .optional()
@@ -237,6 +238,13 @@ export const eventInputSchema = z
     }
     if (value.registrationEnabled) {
       const provider = value.registrationProvider ?? "arigo";
+      if (provider === "arigo" && !value.pushToArigo) {
+        context.addIssue({
+          code: "custom",
+          path: ["pushToArigo"],
+          message: "Tick Push to Arigo when registration uses Arigo.",
+        });
+      }
       if (provider === "page" || provider === "google_form") {
         if (!value.registrationUrl) {
           context.addIssue({

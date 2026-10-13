@@ -11,6 +11,12 @@ function tone(event: CampusEvent) {
   return "bg-accent/10 text-accent";
 }
 
+function dotTone(event: CampusEvent) {
+  if (event.listing === "external") return "bg-sky";
+  if (event.listing === "competition") return "bg-navy";
+  return "bg-accent";
+}
+
 function monthLabel(year: number, month: number) {
   return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" }).format(
     new Date(Date.UTC(year, month, 1)),
@@ -83,49 +89,104 @@ export function ActivityCalendar({ events }: { events: CampusEvent[] }) {
   }
 
   return (
-    <section className="rounded-[1.5rem] border border-line bg-white p-5 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+    <section className="rounded-[1.5rem] border border-line bg-white p-3 sm:p-5 md:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <p className="text-xs uppercase tracking-[0.16em] text-muted">Calendar</p>
-          <h2 className="font-display mt-1 text-2xl text-ink">{monthLabel(cursor.year, cursor.month)}</h2>
+          <h2 className="font-display mt-1 truncate text-xl text-ink sm:text-2xl">
+            {monthLabel(cursor.year, cursor.month)}
+          </h2>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="mr-2 flex items-center gap-3 text-[0.65rem] uppercase tracking-[0.12em] text-muted">
-            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-accent" /> Event</span>
-            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-navy" /> Ours</span>
-            <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-sky" /> Other school</span>
+        <div className="flex flex-col gap-2 sm:items-end">
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.65rem] uppercase tracking-[0.12em] text-muted">
+            <span className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-accent" /> Event
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-navy" /> Ours
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-sky" /> Other school
+            </span>
           </p>
-          <button type="button" className="rounded-md border border-line px-3 py-1.5 text-sm" onClick={() => setMode("month")}>
-            Month
-          </button>
-          <button type="button" className="rounded-md border border-line px-3 py-1.5 text-sm" onClick={() => setMode("week")}>
-            Week
-          </button>
-          <button type="button" className="rounded-md border border-line px-3 py-1.5 text-sm" onClick={() => shift(-1)}>
-            Previous
-          </button>
-          <button type="button" className="rounded-md border border-line px-3 py-1.5 text-sm" onClick={() => shift(1)}>
-            Next
-          </button>
+          <div className="grid grid-cols-4 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
+            <button
+              type="button"
+              className={`rounded-md border px-2 py-1.5 text-xs sm:px-3 sm:text-sm ${
+                mode === "month" ? "border-navy bg-navy text-white" : "border-line"
+              }`}
+              onClick={() => setMode("month")}
+            >
+              Month
+            </button>
+            <button
+              type="button"
+              className={`rounded-md border px-2 py-1.5 text-xs sm:px-3 sm:text-sm ${
+                mode === "week" ? "border-navy bg-navy text-white" : "border-line"
+              }`}
+              onClick={() => setMode("week")}
+            >
+              Week
+            </button>
+            <button
+              type="button"
+              className="rounded-md border border-line px-2 py-1.5 text-xs sm:px-3 sm:text-sm"
+              onClick={() => shift(-1)}
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              className="rounded-md border border-line px-2 py-1.5 text-xs sm:px-3 sm:text-sm"
+              onClick={() => shift(1)}
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className={`mt-5 grid gap-2 ${mode === "week" ? "grid-cols-7" : "grid-cols-7"}`}>
+      <div className="mt-4 grid grid-cols-7 gap-1 sm:mt-5 sm:gap-2">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label) => (
-          <div key={label} className="text-center text-[0.65rem] uppercase tracking-[0.14em] text-muted">
-            {label}
+          <div
+            key={label}
+            className="text-center text-[0.65rem] uppercase tracking-[0.14em] text-muted"
+          >
+            <span className="sm:hidden">{label.slice(0, 1)}</span>
+            <span className="hidden sm:inline">{label}</span>
           </div>
         ))}
         {cells.map((cell, index) => {
-          if (!cell) return <div key={`blank-${index}`} className="min-h-20 rounded-xl bg-wash/40" />;
+          if (!cell) return <div key={`blank-${index}`} className="min-h-11 rounded-lg bg-wash/40 sm:min-h-20 sm:rounded-xl" />;
           const items = byDate.get(cell.key) ?? [];
           return (
             <div
               key={cell.key}
-              className={`min-h-20 rounded-xl border border-line/70 p-2 ${cell.inMonth ? "bg-white" : "bg-wash/50 opacity-70"}`}
+              className={`min-h-11 rounded-lg border border-line/70 p-1 sm:min-h-20 sm:rounded-xl sm:p-2 ${
+                cell.inMonth ? "bg-white" : "bg-wash/50 opacity-70"
+              }`}
             >
-              <p className="text-xs text-muted">{cell.day}</p>
-              <ul className="mt-1 space-y-1">
+              <p className="text-[0.65rem] text-muted sm:text-xs">{cell.day}</p>
+
+              {/* Mobile: dots only so the 7-day grid stays readable */}
+              {items.length ? (
+                <div className="mt-1 flex flex-wrap justify-center gap-0.5 sm:hidden">
+                  {items.slice(0, 4).map((event) => (
+                    <PreviewTrigger
+                      key={event.id}
+                      event={event}
+                      className={`block h-1.5 w-1.5 shrink-0 overflow-hidden rounded-full p-0 ${dotTone(event)}`}
+                    >
+                      <span className="sr-only">{event.title}</span>
+                    </PreviewTrigger>
+                  ))}
+                  {items.length > 4 ? (
+                    <span className="text-[0.55rem] leading-none text-muted">+</span>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <ul className="mt-1 hidden space-y-1 sm:block">
                 {items.slice(0, 3).map((event) => (
                   <li key={event.id} className="group relative z-10 hover:z-30 focus-within:z-30">
                     <PreviewTrigger

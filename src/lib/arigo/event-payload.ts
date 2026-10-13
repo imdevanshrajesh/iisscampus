@@ -16,6 +16,7 @@ export type ArigoCampusEvent = {
   feeAed: number | null;
   capacity: number | null;
   registrationEnabled: boolean;
+  pushToArigo: boolean;
   registrationProvider: "arigo" | "page" | "google_form" | null;
   registrationDeadline: string | null;
   registrationInstructions: string | null;
@@ -40,18 +41,50 @@ export type ArigoCampusEvent = {
   images?: Array<{ url: string; alt?: string | null; caption?: string | null }>;
 };
 
-export function shouldSendEventToArigo(status: ArigoCampusEvent["publicationStatus"], intent: string) {
-  return status === "published" || intent === "unpublish" || intent === "archive" || intent === "restore";
+export type ArigoSyncAction = "upsert" | "remove" | null;
+
+export function arigoSyncAction(
+  event: Pick<ArigoCampusEvent, "publicationStatus" | "listing" | "pushToArigo">,
+  intent: string,
+  options: { wasPushedToArigo?: boolean } = {},
+): ArigoSyncAction {
+  const publicOnCampus =
+    event.publicationStatus === "published" && event.listing !== "external";
+  if (event.pushToArigo && publicOnCampus) return "upsert";
+  if (
+    intent === "unpublish" ||
+    intent === "archive" ||
+    intent === "restore" ||
+    (options.wasPushedToArigo && !event.pushToArigo)
+  ) {
+    return "remove";
+  }
+  return null;
 }
 
-export function campusEventIsPublicOnArigo(event: Pick<ArigoCampusEvent, "publicationStatus" | "listing">) {
-  return event.publicationStatus === "published" && event.listing !== "external";
+export function shouldSendEventToArigo(
+  status: ArigoCampusEvent["publicationStatus"],
+  intent: string,
+  pushToArigo = false,
+) {
+  if (pushToArigo && status === "published") return true;
+  return intent === "unpublish" || intent === "archive" || intent === "restore";
+}
+
+export function campusEventIsPublicOnArigo(
+  event: Pick<ArigoCampusEvent, "publicationStatus" | "listing" | "pushToArigo">,
+) {
+  return (
+    Boolean(event.pushToArigo) &&
+    event.publicationStatus === "published" &&
+    event.listing !== "external"
+  );
 }
 
 export function campusRegistrationUsesArigo(
-  event: Pick<ArigoCampusEvent, "registrationEnabled" | "registrationProvider">,
+  event: Pick<ArigoCampusEvent, "registrationEnabled" | "registrationProvider" | "pushToArigo">,
 ) {
-  if (!event.registrationEnabled) return false;
+  if (!event.pushToArigo || !event.registrationEnabled) return false;
   return (event.registrationProvider ?? "arigo") === "arigo";
 }
 
@@ -65,6 +98,7 @@ export function toArigoCampusEvent(
     id,
     publicationStatus,
     listing: input.listing ?? "event",
+    pushToArigo: Boolean(input.pushToArigo),
   };
 }
 

@@ -232,6 +232,7 @@ function sampleEvent(
     featured: false,
     isSample: true,
     registrationEnabled: false,
+    pushToArigo: false,
     registrationProvider: null,
     registrationUrl: null,
     registrationLabel: null,

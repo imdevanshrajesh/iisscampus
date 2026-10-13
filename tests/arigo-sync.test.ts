@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  arigoSyncAction,
   buildHostedEventPayload,
   campusRegistrationUsesArigo,
   shouldSendEventToArigo,
@@ -28,6 +29,7 @@ function event(patch: Partial<ArigoCampusEvent> = {}): ArigoCampusEvent {
     feeAed: 25,
     capacity: 40,
     registrationEnabled: true,
+    pushToArigo: true,
     registrationProvider: "arigo",
     registrationDeadline: "2026-11-01",
     registrationInstructions: "Bring your project board.",
@@ -55,6 +57,15 @@ describe("campus event payload for Arigo", () => {
     assert.equal(body.details.eventStatus, null);
     assert.equal(body.registrationDeadline, "2026-11-01");
     assert.equal(body.hostSlug, "india-international-school");
+  });
+
+  it("keeps published events off Arigo until Push to Arigo is ticked", () => {
+    const body = buildHostedEventPayload(event({ pushToArigo: false }), {
+      campusOrigin: "https://campus.buildkre.com",
+      hostSlug: "india-international-school",
+    });
+    assert.equal(body.published, false);
+    assert.equal(body.registrationOpen, false);
   });
 
   it("sends the campus page details, including a pdf", () => {
@@ -107,11 +118,16 @@ describe("campus event payload for Arigo", () => {
     assert.equal(external.listing, "event");
   });
 
-  it("notifies Arigo when a published event is saved or taken down", () => {
-    assert.equal(shouldSendEventToArigo("draft", "save"), false);
-    assert.equal(shouldSendEventToArigo("published", "save"), true);
-    assert.equal(shouldSendEventToArigo("published", "publish"), true);
-    assert.equal(shouldSendEventToArigo("draft", "unpublish"), true);
-    assert.equal(shouldSendEventToArigo("archived", "archive"), true);
+  it("only upserts when Push to Arigo is ticked on a published event", () => {
+    assert.equal(arigoSyncAction(event(), "save"), "upsert");
+    assert.equal(arigoSyncAction(event({ pushToArigo: false }), "save"), null);
+    assert.equal(
+      arigoSyncAction(event({ pushToArigo: false }), "save", { wasPushedToArigo: true }),
+      "remove",
+    );
+    assert.equal(arigoSyncAction(event({ publicationStatus: "draft" }), "unpublish"), "remove");
+    assert.equal(shouldSendEventToArigo("published", "save", false), false);
+    assert.equal(shouldSendEventToArigo("published", "save", true), true);
+    assert.equal(shouldSendEventToArigo("draft", "unpublish", false), true);
   });
 });

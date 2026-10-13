@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { can, canDelete, canEditPublication, canTransition } from "@/lib/auth/permissions";
 import { consumeRateLimit } from "@/lib/auth/rate-limit";
 import { getCampusActor, getCampusSession, sessionActionError } from "@/lib/auth/session";
-import { shouldSendEventToArigo, toArigoCampusEvent } from "@/lib/arigo/event-payload";
+import { arigoSyncAction, toArigoCampusEvent } from "@/lib/arigo/event-payload";
 import { removeCampusEventFromArigo, syncCampusEvent } from "@/lib/arigo/sync-event";
 import { defaultSocialLinks, isSupabaseConfigured, normalizeContactEmail } from "@/lib/config";
 import { councilMemberSlugs } from "@/lib/data/catalog";
@@ -195,6 +195,7 @@ function eventRecord(input: EventInput, status: PublicationStatus, featured: boo
     event_status: input.eventStatus,
     featured,
     registration_enabled: input.registrationEnabled,
+    push_to_arigo: Boolean(input.pushToArigo),
     registration_provider: input.registrationEnabled ? (input.registrationProvider ?? "arigo") : null,
     registration_url: registrationUrlForSave(input),
     registration_label: input.registrationLabel,
@@ -347,6 +348,7 @@ function readEventInput(formData: FormData) {
     eventStatus: formData.get("eventStatus"),
     featured: formData.get("featured") === "on",
     registrationEnabled: formData.get("registrationEnabled") === "on",
+    pushToArigo: formData.get("pushToArigo") === "on",
     registrationProvider: formData.get("registrationProvider"),
     registrationUrl: formData.get("registrationUrl"),
     registrationLabel: formData.get("registrationLabel"),
@@ -438,11 +440,19 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
     const savedId = saved.id;
     const savedStatus = saved.status;
     const intentName = String(formData.get("intent") ?? "save");
-    const syncError = shouldSendEventToArigo(savedStatus, intentName)
-      ? await syncCampusEvent(toArigoCampusEvent(savedId, savedStatus, parsed.input), async (url) =>
-          rememberEventRegistrationUrl(savedId, url),
-        )
-      : null;
+    const arigoEvent = toArigoCampusEvent(savedId, savedStatus, parsed.input);
+    const syncKind = arigoSyncAction(arigoEvent, intentName, {
+      wasPushedToArigo: Boolean(saved.wasPushedToArigo),
+    });
+    let syncError: string | null = null;
+    if (syncKind === "upsert") {
+      syncError = await syncCampusEvent(arigoEvent, async (url) =>
+        rememberEventRegistrationUrl(savedId, url),
+      );
+    } else if (syncKind === "remove") {
+      const removed = await removeCampusEventFromArigo(savedId);
+      if (!removed.ok) syncError = removed.error;
+    }
     revalidatePath("/");
     revalidatePath("/events");
     revalidatePath(`/events/${saved.slug}`);
@@ -481,10 +491,11 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
   let featured = context.actor.role === "administrator" ? parsed.input.featured : false;
   let publishedAt: string | null = null;
 
+  let wasPushedToArigo = false;
   if (id) {
     const existing = await context.supabase
       .from("campus_events")
-      .select("publication_status, featured, published_at")
+      .select("publication_status, featured, published_at, push_to_arigo")
       .eq("id", id)
       .maybeSingle();
     if (existing.error || !existing.data) return { error: "That event could not be found." };
@@ -494,6 +505,9 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
     }
     featured = context.actor.role === "administrator" ? parsed.input.featured : Boolean(existing.data.featured);
     publishedAt = existing.data.published_at ? String(existing.data.published_at) : null;
+    wasPushedToArigo = Boolean(
+      (existing.data as { push_to_arigo?: boolean | null }).push_to_arigo,
+    );
     status = current;
 
     if (intent === "submit") {
@@ -548,7 +562,17 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
 
   let saved = await writeEvent(record);
   const firstMessage = (saved.error?.message ?? "").toLowerCase();
-  const needsExternalSql = firstMessage.includes("host_name") || firstMessage.includes("campus_event_listing");
+  if (saved.error && firstMessage.includes("push_to_arigo")) {
+    if (parsed.input.pushToArigo) {
+      return { error: "Run supabase/PUSH_TO_ARIGO.sql in the database, then save again." };
+    }
+    const { push_to_arigo: omittedPush, ...withoutPush } = record;
+    void omittedPush;
+    saved = await writeEvent(withoutPush);
+  }
+  const afterPushMessage = (saved.error?.message ?? "").toLowerCase();
+  const needsExternalSql =
+    afterPushMessage.includes("host_name") || afterPushMessage.includes("campus_event_listing");
   if (saved.error && needsExternalSql) {
     if (parsed.input.listing === "external" || parsed.input.hostName) {
       return { error: "Run supabase/EXTERNAL_COMPETITIONS.sql in the database, then save again." };
@@ -593,15 +617,28 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
     await writeAudit(context.supabase, context.actor.userId, intent, "campus_events", eventId);
   }
 
-  const syncError = shouldSendEventToArigo(status, intent)
-    ? await syncCampusEvent(toArigoCampusEvent(eventId, status, parsed.input), async (url) => {
-        const updated = await context.supabase
-          .from("campus_events")
-          .update({ registration_url: url })
-          .eq("id", eventId);
-        return !updated.error;
-      })
-    : null;
+  const arigoEvent = toArigoCampusEvent(eventId, status, parsed.input);
+  const syncKind = arigoSyncAction(arigoEvent, intent, { wasPushedToArigo });
+  let syncError: string | null = null;
+  if (syncKind === "upsert") {
+    syncError = await syncCampusEvent(arigoEvent, async (url) => {
+      const updated = await context.supabase
+        .from("campus_events")
+        .update({ registration_url: url })
+        .eq("id", eventId);
+      return !updated.error;
+    });
+  } else if (syncKind === "remove") {
+    const removed = await removeCampusEventFromArigo(eventId);
+    if (!removed.ok) syncError = removed.error;
+    else {
+      await context.supabase
+        .from("campus_events")
+        .update({ registration_url: null })
+        .eq("id", eventId)
+        .like("registration_url", "%/hosted/register/%");
+    }
+  }
 
   revalidatePath("/");
   revalidatePath("/events");

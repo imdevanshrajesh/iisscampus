@@ -427,8 +427,24 @@ export function EventForm({
             <input type="checkbox" name="registrationEnabled" defaultChecked={event?.registrationEnabled} />
             Show registration
           </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="pushToArigo"
+              defaultChecked={event?.pushToArigo}
+              className="mt-0.5"
+            />
+            <span>
+              Push to Arigo
+              <span className="mt-1 block text-muted">
+                Lists this on Arigo as a partnered school event when you publish. Untick to remove it from Arigo.
+              </span>
+            </span>
+          </label>
           <p className="text-sm text-muted">
-            Arigo builds the event page from these details when you publish. Register now opens that page. Visitors can read it without an account, and Arigo asks them to sign up only when they register.
+            With Push to Arigo ticked, Arigo builds the event page from these details when you publish. Register now
+            opens that page. Visitors can read it without an account, and Arigo asks them to sign up only when they
+            register.
           </p>
           <label className="grid gap-1.5 text-sm">
             How to register

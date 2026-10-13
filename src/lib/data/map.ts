@@ -131,6 +131,7 @@ export function mapEvent(
     featured: Boolean(row.featured),
     isSample: Boolean(row.is_sample),
     registrationEnabled: Boolean(row.registration_enabled),
+    pushToArigo: Boolean(row.push_to_arigo),
     registrationProvider: asRegistrationProvider(row.registration_provider),
     registrationUrl: row.registration_url ? String(row.registration_url) : null,
     registrationLabel: row.registration_label ? String(row.registration_label) : null,

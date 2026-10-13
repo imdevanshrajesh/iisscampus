@@ -225,7 +225,7 @@ h1.profile-name {
 }
 
 .nav-island[data-open="true"] {
-  width: min(100% - 1.5rem, 46rem);
+  width: min(100% - 1.5rem, 22rem);
   border-radius: 1.35rem;
 }
 
@@ -248,9 +248,15 @@ h1.profile-name {
   background: #0b1d4a;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .nav-island[data-open="true"] {
-    width: min(100% - 2rem, 52rem);
+    width: min(100% - 2rem, 58rem);
+  }
+}
+
+@media (min-width: 1100px) {
+  .nav-island[data-open="true"] {
+    width: min(100% - 2rem, 68rem);
   }
 }
 

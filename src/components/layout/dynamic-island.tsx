@@ -126,7 +126,10 @@ export function SiteChrome({
             )}
           >
             <div className="overflow-hidden" aria-hidden={!expanded} inert={!expanded}>
-              <nav className="flex flex-wrap gap-1 px-2 pt-1 pb-2.5" aria-label="Primary">
+              <nav
+                className="flex flex-col gap-0.5 px-2 pt-1 pb-2.5 md:flex-row md:flex-nowrap md:items-center md:gap-1 md:overflow-x-auto"
+                aria-label="Primary"
+              >
                 {nav.map((link) => {
                   const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
                   return (
@@ -135,7 +138,7 @@ export function SiteChrome({
                       href={link.href}
                       onClick={closeMenu}
                       className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm",
+                        "inline-flex w-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 text-sm md:w-auto md:py-1.5",
                         active ? "bg-navy text-white" : "text-ink/75 hover:bg-ink/5 hover:text-ink",
                       )}
                       aria-current={active ? "page" : undefined}
@@ -163,13 +166,13 @@ export function SiteChrome({
               key={item.href}
               href={item.href}
               className={cn(
-                "flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-1 text-[11px]",
+                "flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-0.5 text-[10px] leading-none whitespace-nowrap sm:text-[11px]",
                 active ? "bg-white text-navy" : "text-white/80",
               )}
               aria-current={active ? "page" : undefined}
             >
-              <Icon aria-hidden="true" size={16} />
-              {item.label}
+              <Icon aria-hidden="true" size={16} className="shrink-0" />
+              <span className="max-w-full truncate">{item.label}</span>
             </Link>
           );
         })}

@@ -81,6 +81,7 @@ export type CampusEvent = {
   featured: boolean;
   isSample: boolean;
   registrationEnabled: boolean;
+  pushToArigo: boolean;
   registrationProvider: RegistrationProvider | null;
   registrationUrl: string | null;
   registrationLabel: string | null;

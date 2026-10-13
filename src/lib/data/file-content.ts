@@ -73,6 +73,7 @@ function normalizeEvent(event: CampusEvent): CampusEvent {
     registrationCount: Number.isFinite(event.registrationCount) ? event.registrationCount : 0,
     overflowRegistrationUrl: event.overflowRegistrationUrl ?? null,
     overflowRegistrationLabel: event.overflowRegistrationLabel ?? null,
+    pushToArigo: Boolean(event.pushToArigo),
     registrationProvider:
       event.registrationProvider === "arigo" ||
       event.registrationProvider === "page" ||
@@ -220,6 +221,7 @@ export function saveEventToStore(
     featured,
     isSample: existing?.isSample ?? false,
     registrationEnabled: input.registrationEnabled,
+    pushToArigo: Boolean(input.pushToArigo),
     registrationProvider: input.registrationProvider,
     registrationUrl: input.registrationEnabled ? input.registrationUrl : null,
     registrationLabel: input.registrationLabel,
@@ -255,7 +257,12 @@ export function saveEventToStore(
     ? store.events.map((event) => (event.id === existing.id ? record : event))
     : [record, ...store.events];
   if (!writeContentStore(store)) return { error: "The event could not be saved." };
-  return { id: record.id, slug: record.slug, status };
+  return {
+    id: record.id,
+    slug: record.slug,
+    status,
+    wasPushedToArigo: Boolean(existing?.pushToArigo),
+  };
 }
 
 export function rememberEventRegistrationUrl(id: string, registrationUrl: string) {

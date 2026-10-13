@@ -21,3 +21,6 @@ set site_links = jsonb_build_object(
 )
 where id = true
   and site_links is null;
+
+alter table public.campus_events
+  add column if not exists push_to_arigo boolean not null default false;
