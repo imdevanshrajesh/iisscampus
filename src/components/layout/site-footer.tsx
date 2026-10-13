@@ -4,17 +4,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { contactMailto, siteConfig } from "@/lib/config";
 import { NavMark } from "@/components/layout/nav-marks";
-import { primaryNav } from "@/lib/nav";
+import { primaryNav, type NavLink } from "@/lib/nav";
 import type { SocialLinks } from "@/lib/types";
 
 export function SiteFooter({
   showSampleNote,
   social,
   contactEmail,
+  nav = primaryNav,
 }: {
   showSampleNote: boolean;
   social: SocialLinks;
   contactEmail?: string | null;
+  nav?: NavLink[];
 }) {
   const contactHref = contactMailto(contactEmail) ?? siteConfig.contactUrl;
   return (
@@ -37,7 +39,7 @@ export function SiteFooter({
           <nav className="md:col-span-3" aria-label="Footer">
             <p className="kicker text-white/45">Explore</p>
             <ul className="mt-4 space-y-2.5 text-sm">
-              {primaryNav.map((link) => (
+              {nav.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="inline-flex items-center gap-2 text-white/85">
                     <NavMark href={link.href} size={15} />

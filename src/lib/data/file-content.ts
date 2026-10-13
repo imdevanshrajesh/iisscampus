@@ -14,6 +14,8 @@ import type {
   Newsletter,
   PublicationStatus,
   SocialLinks,
+  WellnessItem,
+  WellnessPageSettings,
 } from "@/lib/types";
 import type { AchievementInput, CouncilInput, EventInput } from "@/lib/validation/content";
 
@@ -28,6 +30,8 @@ type Store = {
   contactEmail?: string | null;
   announcements?: Announcement[];
   faqs?: Faq[];
+  wellnessItems?: WellnessItem[];
+  wellnessPage?: WellnessPageSettings | null;
 };
 
 function contentFilePath() {
@@ -107,6 +111,8 @@ export function readContentStore(): Store {
       contactEmail: parsed.contactEmail ?? null,
       announcements: Array.isArray(parsed.announcements) ? parsed.announcements : [],
       faqs: Array.isArray(parsed.faqs) ? parsed.faqs : [],
+      wellnessItems: Array.isArray(parsed.wellnessItems) ? parsed.wellnessItems : [],
+      wellnessPage: parsed.wellnessPage ?? null,
     };
   } catch {
     return initialStore();
@@ -558,5 +564,61 @@ export function saveFaqToStore(input: {
 export function deleteFaqFromStore(id: string) {
   const store = readContentStore();
   store.faqs = (store.faqs ?? []).filter((item) => item.id !== id);
+  return writeContentStore(store);
+}
+
+export function readWellnessPageSettings(): WellnessPageSettings {
+  const stored = readContentStore().wellnessPage;
+  return {
+    pageTitle: stored?.pageTitle?.trim() || "Wellness Corner",
+    navLabel: stored?.navLabel?.trim() || "Wellness",
+  };
+}
+
+export function saveWellnessPageToStore(input: WellnessPageSettings) {
+  const store = readContentStore();
+  store.wellnessPage = {
+    pageTitle: input.pageTitle,
+    navLabel: input.navLabel,
+  };
+  return writeContentStore(store);
+}
+
+export function saveWellnessItemToStore(input: {
+  id?: string;
+  title: string;
+  body: string;
+  section: string;
+  imageUrl: string | null;
+  imageAlt: string;
+  imageOrientation: WellnessItem["imageOrientation"];
+  pdfUrl: string | null;
+  sortOrder: number;
+  published: boolean;
+}) {
+  const store = readContentStore();
+  const list = store.wellnessItems ?? [];
+  const existing = input.id ? list.find((item) => item.id === input.id) : undefined;
+  const record: WellnessItem = {
+    id: existing?.id ?? crypto.randomUUID(),
+    title: input.title,
+    body: input.body,
+    section: input.section,
+    imageUrl: input.imageUrl,
+    imageAlt: input.imageAlt,
+    imageOrientation: input.imageOrientation,
+    pdfUrl: input.pdfUrl,
+    sortOrder: input.sortOrder,
+    published: input.published,
+  };
+  store.wellnessItems = existing
+    ? list.map((item) => (item.id === existing.id ? record : item))
+    : [...list, record];
+  return writeContentStore(store);
+}
+
+export function deleteWellnessItemFromStore(id: string) {
+  const store = readContentStore();
+  store.wellnessItems = (store.wellnessItems ?? []).filter((item) => item.id !== id);
   return writeContentStore(store);
 }

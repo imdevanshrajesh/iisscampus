@@ -2,6 +2,7 @@ import {
   Award,
   CalendarDays,
   CircleHelp,
+  HeartPulse,
   Home,
   Images,
   Newspaper,
@@ -18,6 +19,7 @@ const icons: Record<string, LucideIcon> = {
   "/achievements": Award,
   "/gallery": Images,
   "/newsletter": Newspaper,
+  "/wellness": HeartPulse,
   "/about": CircleHelp,
 };
 

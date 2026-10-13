@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CouncilLogo } from "@/components/brand/council-logo";
 import { NavMark } from "@/components/layout/nav-marks";
-import { primaryNav } from "@/lib/nav";
+import { primaryNav, type NavLink } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
 const dock = [
@@ -31,7 +31,13 @@ export function HomeLink() {
   );
 }
 
-export function SiteChrome({ logoUrl }: { logoUrl?: string | null }) {
+export function SiteChrome({
+  logoUrl,
+  nav = primaryNav,
+}: {
+  logoUrl?: string | null;
+  nav?: NavLink[];
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
@@ -121,7 +127,7 @@ export function SiteChrome({ logoUrl }: { logoUrl?: string | null }) {
           >
             <div className="overflow-hidden" aria-hidden={!expanded} inert={!expanded}>
               <nav className="flex flex-wrap gap-1 px-2 pt-1 pb-2.5" aria-label="Primary">
-                {primaryNav.map((link) => {
+                {nav.map((link) => {
                   const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
                   return (
                     <Link

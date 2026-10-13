@@ -6,6 +6,6 @@ export const IMAGE_URL_EXAMPLE =
 export const IMAGE_HOSTS_GUIDE = [
   "Upload the photo to Cloudinary (free plan), then copy the secure delivery URL.",
   `Add ${RECOMMENDED_IMAGE_HOST} under Approved image hosts below and save.`,
-  "Paste the https:// address into the event, achievement, council, or newsletter form.",
+  "Paste the https:// address into the event, achievement, council, newsletter, or wellness form.",
   "Use alternative text to describe the photograph. Google Drive and Docs links stay blocked.",
 ] as const;

@@ -13,6 +13,8 @@ import type {
   CouncilYear,
   EventListing,
   Faq,
+  WellnessImageOrientation,
+  WellnessItem,
   GalleryImage,
   ParticipatingGroup,
   RegistrationProvider,
@@ -233,6 +235,27 @@ export function mapFaq(row: Record<string, unknown>): Faq {
     id: String(row.id),
     question: String(row.question ?? ""),
     answer: String(row.answer ?? ""),
+    sortOrder: Number(row.sort_order ?? 0),
+    published: Boolean(row.published),
+  };
+}
+
+function mapWellnessOrientation(value: unknown): WellnessImageOrientation {
+  const raw = String(value ?? "auto");
+  if (raw === "portrait" || raw === "landscape" || raw === "square") return raw;
+  return "auto";
+}
+
+export function mapWellnessItem(row: Record<string, unknown>): WellnessItem {
+  return {
+    id: String(row.id),
+    title: String(row.title ?? ""),
+    body: String(row.body ?? ""),
+    section: String(row.section ?? "").trim(),
+    imageUrl: row.image_url ? String(row.image_url).trim() || null : null,
+    imageAlt: String(row.image_alt ?? ""),
+    imageOrientation: mapWellnessOrientation(row.image_orientation),
+    pdfUrl: row.pdf_url ? String(row.pdf_url).trim() || null : null,
     sortOrder: Number(row.sort_order ?? 0),
     published: Boolean(row.published),
   };

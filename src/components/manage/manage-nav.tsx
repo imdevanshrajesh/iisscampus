@@ -24,6 +24,7 @@ const groups = [
       { href: "/manage/announcements", label: "Announcements" },
       { href: "/manage/faq", label: "FAQ" },
       { href: "/manage/newsletter", label: "Newsletter" },
+      { href: "/manage/wellness", label: "Wellness" },
     ],
   },
 ];

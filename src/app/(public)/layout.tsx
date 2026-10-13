@@ -10,7 +10,9 @@ import {
   getPublicCatalog,
   getPublicSocial,
   getSiteBrand,
+  getWellnessPageSettings,
 } from "@/lib/data/queries";
+import { withWellnessNavLabel } from "@/lib/nav";
 import type { Announcement, CampusEvent, Category } from "@/lib/types";
 
 export default async function PublicLayout({ children }: LayoutProps<"/">) {
@@ -22,11 +24,13 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
   let events: CampusEvent[] = [];
   let categories: Category[] = [];
   let hosts: string[] = [];
+  let nav = withWellnessNavLabel();
   try {
-    const [catalog, brand, publicAnnouncements] = await Promise.all([
+    const [catalog, brand, publicAnnouncements, wellness] = await Promise.all([
       getPublicCatalog(),
       getSiteBrand(),
       getPublicAnnouncements(),
+      getWellnessPageSettings(),
     ]);
     showSampleNote = catalog.events.some((event) => event.isSample);
     social = await getPublicSocial();
@@ -36,6 +40,7 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
     events = catalog.events;
     categories = catalog.categories;
     hosts = catalog.mediaHosts;
+    nav = withWellnessNavLabel(wellness.navLabel);
   } catch (error) {
     console.error(error);
   }
@@ -43,7 +48,7 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
   return (
     <>
       <IntroSplash logoUrl={logoUrl} />
-      <SiteChrome logoUrl={logoUrl} />
+      <SiteChrome logoUrl={logoUrl} nav={nav} />
       <PublicMain>
         <HomeLink />
         <AnnouncementBar announcements={announcements} events={events} />
@@ -51,7 +56,7 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
           {children}
         </PreviewProvider>
       </PublicMain>
-      <SiteFooter showSampleNote={showSampleNote} social={social} contactEmail={contactEmail} />
+      <SiteFooter showSampleNote={showSampleNote} social={social} contactEmail={contactEmail} nav={nav} />
     </>
   );
 }

@@ -1681,3 +1681,185 @@ export async function deleteFaq(_state: ActionState, formData: FormData): Promis
   revalidatePath("/manage/faq");
   return { ok: "Deleted." };
 }
+
+const wellnessOrientations = new Set(["auto", "portrait", "landscape", "square"]);
+
+function revalidateWellness() {
+  revalidatePath("/", "layout");
+  revalidatePath("/wellness");
+  revalidatePath("/manage/wellness");
+}
+
+export async function saveWellnessPageSettings(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const pageTitle = String(formData.get("pageTitle") ?? "").trim();
+  const navLabel = String(formData.get("navLabel") ?? "").trim();
+  if (pageTitle.length < 2 || pageTitle.length > 80) return { error: "Enter a page title (2–80 characters)." };
+  if (navLabel.length < 2 || navLabel.length > 40) return { error: "Enter a menu label (2–40 characters)." };
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { saveWellnessPageToStore } = await import("@/lib/data/file-content");
+    if (!saveWellnessPageToStore({ pageTitle, navLabel })) {
+      return { error: "The page name could not be saved." };
+    }
+    revalidateWellness();
+    return { ok: "Page name saved." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const saved = await context.supabase
+    .from("campus_settings")
+    .update({
+      wellness_page_title: pageTitle,
+      wellness_nav_label: navLabel,
+    })
+    .eq("id", true);
+  if (saved.error) {
+    const missing =
+      isMissingTableError(saved.error) ||
+      (saved.error.message ?? "").toLowerCase().includes("wellness_");
+    return {
+      error: missing
+        ? "Run supabase/WELLNESS.sql in the database, then save again."
+        : databaseError(saved.error, "The page name could not be saved."),
+    };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, "update_wellness_page", "campus_settings", null);
+  revalidateWellness();
+  return { ok: "Page name saved." };
+}
+
+export async function saveWellnessItem(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+  const section = String(formData.get("section") ?? "").trim();
+  const imageRaw = String(formData.get("imageUrl") ?? "").trim();
+  const imageAlt = String(formData.get("imageAlt") ?? "").trim();
+  const orientationRaw = String(formData.get("imageOrientation") ?? "auto").trim();
+  const pdfRaw = String(formData.get("pdfUrl") ?? "").trim();
+  const published = formData.get("published") === "on";
+  const sortOrder = Number(formData.get("sortOrder") ?? 0) || 0;
+
+  if (title.length < 2 || title.length > 120) return { error: "Enter a title (2–120 characters)." };
+  if (body.length > 8000) return { error: "Keep the text under 8000 characters." };
+  if (section.length > 80) return { error: "Keep the section name under 80 characters." };
+  if (imageAlt.length > 200) return { error: "Keep the image description under 200 characters." };
+  if (!wellnessOrientations.has(orientationRaw)) return { error: "Choose a valid image layout." };
+  const imageOrientation = orientationRaw as "auto" | "portrait" | "landscape" | "square";
+
+  let pdfUrl: string | null = null;
+  if (pdfRaw) {
+    const pdf = classifyNavigationUrl(pdfRaw);
+    if (!pdf.ok) return { error: "PDF must be a valid https:// link." };
+    pdfUrl = pdf.url;
+  }
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    let imageUrl: string | null = null;
+    if (imageRaw) {
+      const image = classifyNavigationUrl(imageRaw);
+      if (!image.ok) return { error: image.message };
+      imageUrl = image.url;
+    }
+    const { saveWellnessItemToStore } = await import("@/lib/data/file-content");
+    if (
+      !saveWellnessItemToStore({
+        id: id || undefined,
+        title,
+        body,
+        section,
+        imageUrl,
+        imageAlt,
+        imageOrientation,
+        pdfUrl,
+        sortOrder,
+        published,
+      })
+    ) {
+      return { error: "The wellness item could not be saved." };
+    }
+    revalidateWellness();
+    return { ok: id ? "Saved." : "Added." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  let imageUrl: string | null = null;
+  if (imageRaw) {
+    const hostsRow = await context.supabase.from("campus_settings").select("media_hosts").eq("id", true).maybeSingle();
+    const hosts = Array.isArray(hostsRow.data?.media_hosts) ? hostsRow.data.media_hosts.map(String) : [];
+    const image = classifyMediaUrl(imageRaw, hosts);
+    if (!image.ok) return { error: image.message };
+    imageUrl = image.url;
+  }
+
+  const record = {
+    title,
+    body,
+    section,
+    image_url: imageUrl,
+    image_alt: imageAlt,
+    image_orientation: imageOrientation,
+    pdf_url: pdfUrl,
+    sort_order: sortOrder,
+    published,
+  };
+
+  const saved = id
+    ? await context.supabase.from("campus_wellness_items").update(record).eq("id", id).select("id").maybeSingle()
+    : await context.supabase.from("campus_wellness_items").insert(record).select("id").maybeSingle();
+  if (saved.error) {
+    const missing =
+      isMissingTableError(saved.error) ||
+      (saved.error.message ?? "").toLowerCase().includes("wellness");
+    return {
+      error: missing
+        ? "Run supabase/WELLNESS.sql in the database, then save again."
+        : databaseError(saved.error, "The wellness item could not be saved."),
+    };
+  }
+
+  await writeAudit(
+    context.supabase,
+    context.actor.userId,
+    id ? "update" : "create",
+    "campus_wellness_items",
+    saved.data?.id ?? null,
+  );
+  revalidateWellness();
+  return { ok: id ? "Saved." : "Added." };
+}
+
+export async function deleteWellnessItem(_state: ActionState, formData: FormData): Promise<ActionState> {
+  if (formData.get("confirm") !== "yes") return { error: "Confirm the delete, then try again." };
+  const id = String(formData.get("id") ?? "");
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { deleteWellnessItemFromStore } = await import("@/lib/data/file-content");
+    if (!deleteWellnessItemFromStore(id)) return { error: deleteFailed };
+    revalidateWellness();
+    return { ok: "Deleted." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const removed = await context.supabase.from("campus_wellness_items").delete().eq("id", id);
+  if (removed.error) return { error: databaseError(removed.error, deleteFailed) };
+  await writeAudit(context.supabase, context.actor.userId, "delete", "campus_wellness_items", id);
+  revalidateWellness();
+  return { ok: "Deleted." };
+}

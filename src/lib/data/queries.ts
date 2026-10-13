@@ -1,7 +1,12 @@
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "@/lib/data/catalog";
-import { readContentStore, readNewsletter, readSocial } from "@/lib/data/file-content";
+import {
+  readContentStore,
+  readNewsletter,
+  readSocial,
+  readWellnessPageSettings,
+} from "@/lib/data/file-content";
 import { normalizeSocialLinks } from "@/lib/social";
 import {
   groupCouncilRows,
@@ -11,6 +16,7 @@ import {
   mapEvent,
   mapFaq,
   mapImage,
+  mapWellnessItem,
 } from "@/lib/data/map";
 import { contentMode } from "@/lib/data/content-mode";
 import { seedMediaHosts } from "@/lib/data/seed";
@@ -27,6 +33,8 @@ import type {
   PublicCatalog,
   SiteBrand,
   SocialLinks,
+  WellnessItem,
+  WellnessPageSettings,
 } from "@/lib/types";
 
 function localCatalog(): PublicCatalog {
@@ -363,6 +371,87 @@ export async function getEditableFaqs(): Promise<Faq[]> {
     console.error(error);
   }
   return readContentStore().faqs ?? [];
+}
+
+const defaultWellnessPage: WellnessPageSettings = {
+  pageTitle: "Wellness Corner",
+  navLabel: "Wellness",
+};
+
+export async function getWellnessPageSettings(): Promise<WellnessPageSettings> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const row = await supabase
+          .from("campus_settings")
+          .select("wellness_page_title, wellness_nav_label")
+          .eq("id", true)
+          .maybeSingle();
+        if (!row.error && row.data) {
+          return {
+            pageTitle: String(row.data.wellness_page_title ?? "").trim() || defaultWellnessPage.pageTitle,
+            navLabel: String(row.data.wellness_nav_label ?? "").trim() || defaultWellnessPage.navLabel,
+          };
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return readWellnessPageSettings();
+}
+
+function sortWellnessItems(items: WellnessItem[]) {
+  return [...items].sort((a, b) => {
+    const sectionCompare = a.section.localeCompare(b.section, undefined, { sensitivity: "base" });
+    if (sectionCompare !== 0) return sectionCompare;
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+    return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+  });
+}
+
+export async function getPublicWellnessItems(): Promise<WellnessItem[]> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const result = await supabase
+          .from("campus_wellness_items")
+          .select("*")
+          .eq("published", true)
+          .order("section")
+          .order("sort_order");
+        if (!result.error) {
+          return sortWellnessItems((result.data ?? []).map((row) => mapWellnessItem(row as Record<string, unknown>)));
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return sortWellnessItems((readContentStore().wellnessItems ?? []).filter((item) => item.published));
+}
+
+export async function getEditableWellnessItems(): Promise<WellnessItem[]> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const result = await supabase
+          .from("campus_wellness_items")
+          .select("*")
+          .order("section")
+          .order("sort_order");
+        if (!result.error) {
+          return sortWellnessItems((result.data ?? []).map((row) => mapWellnessItem(row as Record<string, unknown>)));
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return sortWellnessItems(readContentStore().wellnessItems ?? []);
 }
 
 export const getPublicCatalog = cache(

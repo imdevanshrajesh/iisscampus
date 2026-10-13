@@ -219,6 +219,26 @@ export type Faq = {
   published: boolean;
 };
 
+export type WellnessImageOrientation = "auto" | "portrait" | "landscape" | "square";
+
+export type WellnessItem = {
+  id: string;
+  title: string;
+  body: string;
+  section: string;
+  imageUrl: string | null;
+  imageAlt: string;
+  imageOrientation: WellnessImageOrientation;
+  pdfUrl: string | null;
+  sortOrder: number;
+  published: boolean;
+};
+
+export type WellnessPageSettings = {
+  pageTitle: string;
+  navLabel: string;
+};
+
 export type PublicCatalog = {
   source: "local" | "supabase";
   categories: Category[];
