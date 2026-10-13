@@ -20,6 +20,8 @@ export function EventCard({
     .filter(Boolean);
   const primary = categoryById(categories, event.categoryId);
   const date = formatEventDate(event.eventDate);
+  const end = formatEventDate(event.endDate);
+  const when = date && end && end !== date ? `${date} – ${end}` : date;
   const status = event.isSample ? null : eventStatusLabel(event.eventStatus);
   const pictured = Boolean(event.coverImageUrl && classifyMediaUrl(event.coverImageUrl, hosts).ok);
 
@@ -41,7 +43,7 @@ export function EventCard({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs uppercase tracking-[0.14em] text-muted">
             {listingLabel ? <span>{listingLabel}</span> : null}
             {categoryNames.length ? <span>{categoryNames.join(" · ")}</span> : null}
-            {date ? <span>{date}</span> : null}
+            {when ? <span>{when}</span> : null}
             {event.isSample ? <span>Sample</span> : null}
             {status ? <span className={event.eventStatus === "ongoing" ? "text-accent" : ""}>{status}</span> : null}
           </div>

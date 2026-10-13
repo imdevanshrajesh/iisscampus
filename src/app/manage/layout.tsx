@@ -7,10 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function ManageLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-full bg-surface">
-      <ManageBar />
-      {children}
-    </div>
-  );
+  return <ManageBar>{children}</ManageBar>;
 }

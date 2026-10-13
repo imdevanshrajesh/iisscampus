@@ -3,12 +3,13 @@ import { ResourceCards } from "@/components/content/resource-cards";
 import { GalleryView } from "@/components/gallery/gallery-view";
 import { MediaFrame } from "@/components/media/media-frame";
 import { ActivityFacts } from "@/components/events/activity-facts";
+import { EventHighlights } from "@/components/events/event-highlights";
+import { RegistrationOffer } from "@/components/events/registration-offer";
 import { VenueBlock } from "@/components/events/venue-block";
 import { EventCard } from "@/components/events/event-card";
-import { categoryById, eventCategoryIds, formatEventDate, paragraphs, relatedPublishedEvents } from "@/lib/data/catalog";
+import { categoryById, eventCategoryIds, paragraphs, relatedPublishedEvents } from "@/lib/data/catalog";
 import { classifyMediaUrl, classifyNavigationUrl } from "@/lib/media/url";
 import { presentVideo } from "@/lib/media/video";
-import { registrationState } from "@/lib/registration";
 import type { Achievement, CampusEvent, Category } from "@/lib/types";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -39,9 +40,6 @@ export function EventDetail({
     .map((id) => categoryById(categories, id)?.name)
     .filter(Boolean);
   const primaryCategory = categoryById(categories, event.categoryId);
-  const date = formatEventDate(event.eventDate);
-  const end = formatEventDate(event.endDate);
-  const registration = registrationState(event);
   const instagram = classifyNavigationUrl(event.instagramUrl);
   const video = presentVideo(event.videoUrl);
   const related = relatedPublishedEvents(events, event);
@@ -90,41 +88,20 @@ export function EventDetail({
           {event.listing === "external" && event.hostName ? (
             <p className="mt-4 text-base text-ink">Hosted by {event.hostName}</p>
           ) : null}
-          {date ? (
-            <p className="mt-5 text-sm text-muted">
-              {date}
-              {end && end !== date ? ` – ${end}` : ""}
-            </p>
-          ) : null}
           <p className="mt-6 max-w-xl text-lg leading-8 text-muted">{event.shortDescription}</p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            {registration.state === "open" ? (
-              <a
-                href={registration.href}
-                className="rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-accent-ink"
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                {registration.label}
-              </a>
-            ) : null}
-            {registration.state === "closed" ? (
-              <p className="text-sm text-muted">Registration has closed.</p>
-            ) : null}
+          <EventHighlights event={event} />
+          <RegistrationOffer event={event}>
             {instagram.ok ? (
               <a
                 href={instagram.url}
-                className="rounded-md border border-line px-4 py-2.5 text-sm"
+                className="rounded-md border border-line bg-white px-4 py-2.5 text-sm"
                 rel="noopener noreferrer"
                 target="_blank"
               >
                 Instagram
               </a>
             ) : null}
-          </div>
-          {registration.state === "open" && event.registrationInstructions ? (
-            <p className="mt-4 max-w-xl text-sm leading-6 text-muted">{event.registrationInstructions}</p>
-          ) : null}
+          </RegistrationOffer>
         </div>
       </div>
 

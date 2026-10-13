@@ -22,6 +22,7 @@ import {
   saveSocialToStore,
 } from "@/lib/data/file-content";
 import { expandMapUrl } from "@/lib/media/map";
+import { googleFormUrl } from "@/lib/registration";
 import { classifyMediaUrl, classifyNavigationUrl, parseMediaHostList } from "@/lib/media/url";
 import { parseSocialInput } from "@/lib/social";
 import { isMissingTableError, missingCouncilTablesMessage } from "@/lib/supabase/errors";
@@ -127,6 +128,13 @@ function databaseError(error: DatabaseError | null | undefined, fallback: string
     return "Campus tables are not in the database yet. Apply the latest campus migration, then try again.";
   }
   if (code === "PGRST204") {
+    if (
+      combined.includes("registration_limit") ||
+      combined.includes("registration_count") ||
+      combined.includes("overflow_registration")
+    ) {
+      return "Registration limits are not in the database yet. Run supabase/REGISTRATION_LIMIT.sql in the Supabase SQL editor, then save again.";
+    }
     return "A required campus column is missing. Apply the latest campus migration, then try again.";
   }
   if (combined.includes("permission denied")) {
@@ -191,6 +199,10 @@ function eventRecord(input: EventInput, status: PublicationStatus, featured: boo
     registration_url: registrationUrlForSave(input),
     registration_label: input.registrationLabel,
     registration_deadline: input.registrationDeadline,
+    registration_limit: input.registrationLimit,
+    registration_count: input.registrationCount,
+    overflow_registration_url: googleFormUrl(input.overflowRegistrationUrl),
+    overflow_registration_label: input.overflowRegistrationLabel,
     registration_instructions: input.registrationInstructions,
     instagram_url: httpsOrNull(input.instagramUrl),
     purpose: input.purpose,
@@ -339,6 +351,10 @@ function readEventInput(formData: FormData) {
     registrationUrl: formData.get("registrationUrl"),
     registrationLabel: formData.get("registrationLabel"),
     registrationDeadline: formData.get("registrationDeadline"),
+    registrationLimit: formData.get("registrationLimit"),
+    registrationCount: formData.get("registrationCount"),
+    overflowRegistrationUrl: formData.get("overflowRegistrationUrl"),
+    overflowRegistrationLabel: formData.get("overflowRegistrationLabel"),
     registrationInstructions: formData.get("registrationInstructions"),
     instagramUrl: formData.get("instagramUrl"),
     purpose: formData.get("purpose"),

@@ -66,6 +66,70 @@ describe("registration and redirects", () => {
     );
   });
 
+  it("keeps the main link while places remain", () => {
+    const state = registrationState(
+      {
+        ...base,
+        registrationLimit: 40,
+        registrationCount: 12,
+        registrationDeadline: "2026-02-01",
+      },
+      "2026-01-01",
+    );
+    assert.equal(state.state, "open");
+    if (state.state === "open") {
+      assert.equal(state.href, "https://arigo.example/events/fifa");
+      assert.equal(state.full, false);
+      assert.equal(state.remaining, 28);
+      assert.equal(state.deadline, "2026-02-01");
+    }
+  });
+
+  it("switches to the Google Form once the limit is reached", () => {
+    const state = registrationState(
+      {
+        ...base,
+        registrationLimit: 20,
+        registrationCount: 20,
+        overflowRegistrationUrl: "https://forms.gle/waitlist",
+        overflowRegistrationLabel: "Join the waitlist",
+      },
+      "2026-01-01",
+    );
+    assert.equal(state.state, "open");
+    if (state.state === "open") {
+      assert.equal(state.href, "https://forms.gle/waitlist");
+      assert.equal(state.label, "Join the waitlist");
+      assert.equal(state.full, true);
+    }
+  });
+
+  it("says registration is full when the limit is reached and no form is set", () => {
+    assert.equal(
+      registrationState(
+        { ...base, registrationLimit: 5, registrationCount: 8, overflowRegistrationUrl: "https://evil.example" },
+        "2026-01-01",
+      ).state,
+      "full",
+    );
+  });
+
+  it("still closes after the deadline when a full-event form exists", () => {
+    assert.equal(
+      registrationState(
+        {
+          ...base,
+          registrationDeadline: "2026-01-01",
+          registrationLimit: 5,
+          registrationCount: 5,
+          overflowRegistrationUrl: "https://docs.google.com/forms/d/e/abc/viewform",
+        },
+        "2026-01-02",
+      ).state,
+      "closed",
+    );
+  });
+
   it("opens a page path and a Google Form when those modes are set", () => {
     const page = registrationState(
       { ...base, registrationProvider: "page", registrationUrl: "/events/fifa-fever" },

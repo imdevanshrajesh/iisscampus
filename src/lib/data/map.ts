@@ -131,7 +131,11 @@ export function mapEvent(
     registrationProvider: asRegistrationProvider(row.registration_provider),
     registrationUrl: row.registration_url ? String(row.registration_url) : null,
     registrationLabel: row.registration_label ? String(row.registration_label) : null,
-    registrationDeadline: row.registration_deadline ? String(row.registration_deadline) : null,
+    registrationDeadline: row.registration_deadline ? String(row.registration_deadline).slice(0, 10) : null,
+    registrationLimit: optionalNumber(row.registration_limit),
+    registrationCount: optionalNumber(row.registration_count) ?? 0,
+    overflowRegistrationUrl: row.overflow_registration_url ? String(row.overflow_registration_url) : null,
+    overflowRegistrationLabel: row.overflow_registration_label ? String(row.overflow_registration_label) : null,
     registrationInstructions: row.registration_instructions
       ? String(row.registration_instructions)
       : null,

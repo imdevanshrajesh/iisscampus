@@ -14,9 +14,9 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
   if (!event) notFound();
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-12 md:px-8">
-      <p className="text-xs uppercase tracking-[0.14em] text-muted">{event.publicationStatus.replace("_", " ")}</p>
-      <h1 className="mt-2 text-3xl font-medium tracking-tight">{event.title}</h1>
+    <div className="mx-auto max-w-4xl px-5 py-10 md:px-8">
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">{event.publicationStatus.replace("_", " ")}</p>
+      <h1 className="font-display mt-2 text-4xl text-ink">{event.title}</h1>
       <div className="mt-8">
         <EventForm
           event={event}

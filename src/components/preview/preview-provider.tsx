@@ -4,12 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createContext, use } from "react";
+import { EventHighlights } from "@/components/events/event-highlights";
+import { RegistrationOffer } from "@/components/events/registration-offer";
 import { VenueBlock } from "@/components/events/venue-block";
 import { MediaFrame } from "@/components/media/media-frame";
 import { PreviewExtras } from "@/components/preview/preview-extras";
 import { categoryById, eventCategoryIds, formatEventDate } from "@/lib/data/catalog";
 import { classifyNavigationUrl } from "@/lib/media/url";
-import { registrationState } from "@/lib/registration";
 import type { Achievement, CampusEvent, Category } from "@/lib/types";
 
 type Selection =
@@ -172,9 +173,6 @@ function PreviewBody({
   const names = eventCategoryIds(event)
     .map((id) => categoryById(categories, id)?.name)
     .filter(Boolean);
-  const registration = registrationState(event);
-  const date = formatEventDate(event.eventDate);
-  const end = formatEventDate(event.endDate);
   const listing =
     event.listing === "external"
       ? event.hostName || "Another school"
@@ -203,28 +201,14 @@ function PreviewBody({
           {event.listing === "external" && event.hostName ? (
             <p className="mt-3 text-sm text-ink">Hosted by {event.hostName}</p>
           ) : null}
-          {date ? (
-            <p className="mt-4 text-sm text-muted">
-              {date}
-              {end && end !== date ? ` – ${end}` : ""}
-            </p>
-          ) : null}
           <p className="mt-4 text-base leading-7 text-muted">{event.shortDescription}</p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <EventHighlights event={event} />
+          <div className="mt-6">
             <Link href={`/events/${event.slug}`} className="rounded-md bg-ink px-4 py-2.5 text-sm text-white">
               Open page
             </Link>
-            {registration.state === "open" ? (
-              <a
-                href={registration.href}
-                className="rounded-md border border-line px-4 py-2.5 text-sm"
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                {registration.label}
-              </a>
-            ) : null}
           </div>
+          <RegistrationOffer event={event} compact />
           <PreviewExtras event={event} hosts={hosts} />
           <VenueBlock event={event} compact />
         </div>

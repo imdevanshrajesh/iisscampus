@@ -24,7 +24,8 @@ type ImageDraft = {
   pinned: boolean;
 };
 
-const fieldClass = "w-full rounded-md border border-line bg-background px-3 py-2 text-sm";
+const fieldClass =
+  "w-full rounded-lg border border-line bg-[#fbfaf4] px-3 py-2.5 text-sm outline-none transition-colors focus:border-navy focus:bg-white";
 
 export function EventForm({
   event,
@@ -63,6 +64,14 @@ export function EventForm({
       ? event.registrationProvider
       : "arigo",
   );
+  const [registrationLimit, setRegistrationLimit] = useState(
+    event?.registrationLimit != null ? String(event.registrationLimit) : "",
+  );
+  const [registrationCount, setRegistrationCount] = useState(String(event?.registrationCount ?? 0));
+  const limitNumber = Number(registrationLimit);
+  const countNumber = Number(registrationCount);
+  const limitSet = registrationLimit.trim() !== "" && Number.isFinite(limitNumber) && limitNumber > 0;
+  const registrationFull = limitSet && Number.isFinite(countNumber) && countNumber >= limitNumber;
   const locked =
     role === "editor" &&
     (event?.publicationStatus === "published" || event?.publicationStatus === "archived");
@@ -84,14 +93,14 @@ export function EventForm({
   }
 
   return (
-    <form action={action} className="grid gap-8">
+    <form action={action} className="grid gap-5">
       {event ? <input type="hidden" name="id" value={event.id} /> : null}
       <input type="hidden" name="images" value={JSON.stringify(images.filter((image) => image.url.trim()))} />
       <input type="hidden" name="schedule" value={JSON.stringify(schedule.filter((item) => item.time.trim() && item.title.trim()))} />
       <input type="hidden" name="groups" value={JSON.stringify(groups.filter((group) => group.name.trim()))} />
       <input type="hidden" name="resources" value={JSON.stringify(resources.filter((item) => item.title.trim()))} />
 
-      {state.error ? <p className="rounded-md border border-line bg-wash px-3 py-2 text-sm">{state.error}</p> : null}
+      {state.error ? <p className="rounded-xl border border-accent/30 bg-white px-4 py-3 text-sm">{state.error}</p> : null}
       {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
       {locked ? (
         <p className="text-sm text-muted">
@@ -100,6 +109,7 @@ export function EventForm({
       ) : null}
 
       <fieldset disabled={locked} className="grid gap-5">
+        <Panel title="Event" hint="The title, description, and where this appears on the site.">
         <label className="grid gap-1.5 text-sm">
           Title
           <input name="title" value={title} onChange={(event) => {
@@ -193,6 +203,9 @@ export function EventForm({
           </select>
         </label>
         <p className="text-sm text-muted">Hold Ctrl or Cmd to select more than one. The primary category is always included.</p>
+        </Panel>
+
+        <Panel title="When and where" hint="Start and end days, times, venue, and who can take part.">
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-1.5 text-sm">
             Start date
@@ -244,10 +257,11 @@ export function EventForm({
             <input type="number" min={0} step="0.01" name="feeAed" defaultValue={event?.feeAed ?? ""} className={fieldClass} placeholder="Blank = not set" />
           </label>
           <label className="grid gap-1.5 text-sm">
-            Places available
+            Places at the venue
             <input type="number" min={1} name="capacity" defaultValue={event?.capacity ?? ""} className={fieldClass} />
           </label>
         </div>
+        <p className="text-sm text-muted">Venue places are separate from the registration limit further down.</p>
         <label className="grid gap-1.5 text-sm">
           What to bring
           <textarea name="packingList" defaultValue={event?.packingList ?? ""} rows={4} className={fieldClass} />
@@ -267,9 +281,9 @@ export function EventForm({
             Feature on the homepage
           </label>
         ) : null}
+        </Panel>
 
-        <div className="grid gap-3 border-t border-line pt-5">
-          <h2 className="text-lg font-medium">Cover image</h2>
+        <Panel title="Cover image">
           <label className="grid gap-1.5 text-sm">
             Image URL
             <input name="coverImageUrl" value={coverUrl} onChange={(event) => {
@@ -299,16 +313,13 @@ export function EventForm({
             Attribution
             <input name="coverAttribution" defaultValue={event?.coverAttribution ?? ""} className={fieldClass} />
           </label>
-        </div>
+        </Panel>
 
-        <div className="grid gap-4 border-t border-line pt-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-medium">Gallery</h2>
-              <p className="mt-1 text-sm text-muted">
-                Pin photographs to show them on the Gallery page and in the event preview. The order here is the order visitors see.
-              </p>
-            </div>
+        <Panel
+          title="Gallery"
+          hint="Pin photographs to show them on the Gallery page and in the event preview. The order here is the order visitors see."
+        >
+          <div className="flex justify-end">
             <button
               type="button"
               className="inline-flex items-center gap-1 text-sm text-accent"
@@ -366,8 +377,9 @@ export function EventForm({
               </div>
             );
           })}
-        </div>
+        </Panel>
 
+        <Panel title="Programme" hint="Purpose, activities, the running order, and files visitors can open.">
         <label className="grid gap-1.5 text-sm">
           Purpose
           <textarea name="purpose" defaultValue={event?.purpose ?? ""} rows={4} className={fieldClass} />
@@ -405,12 +417,15 @@ export function EventForm({
         />
 
         <ResourceRepeater resources={resources} onChange={setResources} />
+        </Panel>
 
-        <fieldset className="grid gap-3 border-t border-line pt-5">
-          <legend className="text-lg font-medium">Registration</legend>
+        <Panel
+          title="Registration"
+          hint="The due date sits next to the button. When the recorded number reaches the limit, visitors get the other form instead."
+        >
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="registrationEnabled" defaultChecked={event?.registrationEnabled} />
-            Show Register now
+            Show registration
           </label>
           <p className="text-sm text-muted">
             Arigo builds the event page from these details when you publish. Register now opens that page. Visitors can read it without an account, and Arigo asks them to sign up only when they register.
@@ -458,15 +473,72 @@ export function EventForm({
             <input name="registrationLabel" defaultValue={event?.registrationLabel ?? ""} placeholder="Register now" className={fieldClass} />
           </label>
           <label className="grid gap-1.5 text-sm">
-            Deadline
+            Registration due
             <input type="date" name="registrationDeadline" defaultValue={event?.registrationDeadline ?? ""} className={fieldClass} />
+          </label>
+          <p className="text-sm text-muted">Shown beside the register button. After this day, registration closes, including the other form.</p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="grid gap-1.5 text-sm">
+              Registration limit
+              <input
+                type="number"
+                min={1}
+                name="registrationLimit"
+                value={registrationLimit}
+                onChange={(change) => setRegistrationLimit(change.target.value)}
+                placeholder="No limit"
+                className={fieldClass}
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              Registrations so far
+              <input
+                type="number"
+                min={0}
+                name="registrationCount"
+                value={registrationCount}
+                onChange={(change) => setRegistrationCount(change.target.value)}
+                className={fieldClass}
+              />
+            </label>
+          </div>
+          <p className="text-sm text-muted">
+            Update the number as people register. This site does not count Arigo or Google Form responses on its own.
+          </p>
+          {registrationFull ? (
+            <p className="rounded-lg border border-accent/30 bg-wash px-3 py-2 text-sm text-ink">
+              This event is at the limit. Visitors will see the other form.
+            </p>
+          ) : limitSet ? (
+            <p className="text-sm text-muted">
+              {Math.max(0, limitNumber - (Number.isFinite(countNumber) ? countNumber : 0))} places left on the main registration.
+            </p>
+          ) : null}
+          <label className="grid gap-1.5 text-sm">
+            Google Form when full
+            <input
+              name="overflowRegistrationUrl"
+              defaultValue={event?.overflowRegistrationUrl ?? ""}
+              placeholder="https://forms.gle/..."
+              className={fieldClass}
+            />
+          </label>
+          <label className="grid gap-1.5 text-sm">
+            Form button label
+            <input
+              name="overflowRegistrationLabel"
+              defaultValue={event?.overflowRegistrationLabel ?? ""}
+              placeholder="Register on the form"
+              className={fieldClass}
+            />
           </label>
           <label className="grid gap-1.5 text-sm">
             Instructions
             <textarea name="registrationInstructions" defaultValue={event?.registrationInstructions ?? ""} rows={3} className={fieldClass} />
           </label>
-        </fieldset>
+        </Panel>
 
+        <Panel title="Links">
         <label className="grid gap-1.5 text-sm">
           Instagram URL
           <input name="instagramUrl" defaultValue={event?.instagramUrl ?? ""} className={fieldClass} />
@@ -483,9 +555,10 @@ export function EventForm({
             ))}
           </select>
         </label>
+        </Panel>
       </fieldset>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="sticky bottom-3 z-20 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-white p-3 shadow-[0_8px_30px_rgba(28,36,56,0.08)]">
         <button type="submit" name="intent" value="save" className="rounded-md bg-navy px-4 py-2 text-sm text-white" disabled={locked}>
           {pending ? "Saving" : event?.publicationStatus === "published" ? "Save changes" : "Save draft"}
         </button>
@@ -531,6 +604,26 @@ export function EventForm({
   );
 }
 
+function Panel({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="grid gap-4 rounded-2xl border border-line bg-white p-5 shadow-[0_1px_0_rgba(20,27,56,0.04)]">
+      <div>
+        <h2 className="text-base font-medium tracking-tight">{title}</h2>
+        {hint ? <p className="mt-1 text-sm leading-6 text-muted">{hint}</p> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 function Repeater<T>({
   title,
   items,
@@ -545,9 +638,9 @@ function Repeater<T>({
   render: (item: T, index: number) => React.ReactNode;
 }) {
   return (
-    <div className="grid gap-3 border-t border-line pt-5">
+    <div className="grid gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-medium">{title}</h2>
+        <h2 className="text-sm font-medium">{title}</h2>
         <button type="button" onClick={onAdd} className="text-sm text-accent">Add</button>
       </div>
       {items.map((item, index) => (

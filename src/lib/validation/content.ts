@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { classifyMediaUrl, classifyNavigationUrl } from "@/lib/media/url";
+import { googleFormUrl } from "@/lib/registration";
 
 const slugSchema = z
   .string()
@@ -135,6 +136,16 @@ const optionalCapacity = z
   })
   .pipe(z.number().int().min(1).nullable());
 
+const registrationCount = z
+  .union([z.string(), z.number()])
+  .optional()
+  .or(z.literal(""))
+  .transform((value) => {
+    if (value === "" || value === undefined || value === null) return 0;
+    return Number(value);
+  })
+  .pipe(z.number().int().min(0).max(100000));
+
 export const eventInputSchema = z
   .object({
     title: z.string().trim().min(2).max(140),
@@ -170,6 +181,10 @@ export const eventInputSchema = z
     registrationUrl: optionalText(2048),
     registrationLabel: optionalText(80),
     registrationDeadline: dateSchema,
+    registrationLimit: optionalCapacity,
+    registrationCount,
+    overflowRegistrationUrl: optionalText(2048),
+    overflowRegistrationLabel: optionalText(80),
     registrationInstructions: optionalText(500),
     instagramUrl: optionalText(2048),
     purpose: optionalText(2000),
@@ -229,23 +244,12 @@ export const eventInputSchema = z
             path: ["registrationUrl"],
             message: provider === "page" ? "Add the page path or https:// link." : "Add the Google Form link.",
           });
-        } else if (provider === "google_form") {
-          try {
-            const host = new URL(value.registrationUrl).hostname.replace(/^www\./, "");
-            if (host !== "docs.google.com" && host !== "forms.gle") {
-              context.addIssue({
-                code: "custom",
-                path: ["registrationUrl"],
-                message: "Use a docs.google.com/forms or forms.gle link.",
-              });
-            }
-          } catch {
-            context.addIssue({
-              code: "custom",
-              path: ["registrationUrl"],
-              message: "Use a valid Google Form https:// link.",
-            });
-          }
+        } else if (provider === "google_form" && !googleFormUrl(value.registrationUrl)) {
+          context.addIssue({
+            code: "custom",
+            path: ["registrationUrl"],
+            message: "Use a docs.google.com/forms or forms.gle link.",
+          });
         } else if (provider === "page") {
           const raw = value.registrationUrl;
           if (raw.startsWith("/")) {
@@ -268,6 +272,13 @@ export const eventInputSchema = z
           }
         }
       }
+    }
+    if (value.overflowRegistrationUrl && !googleFormUrl(value.overflowRegistrationUrl)) {
+      context.addIssue({
+        code: "custom",
+        path: ["overflowRegistrationUrl"],
+        message: "Use a docs.google.com/forms or forms.gle link for the form shown when registration is full.",
+      });
     }
   });
 
@@ -306,6 +317,16 @@ export function validateEventMedia(input: EventInput, allowedHosts: readonly str
       optionalHttps(input.registrationUrl, "Registration URL");
     } catch (error) {
       errors.registrationUrl = error instanceof Error ? error.message : "Invalid registration URL.";
+    }
+  }
+
+  if (input.overflowRegistrationUrl) {
+    const overflow = googleFormUrl(input.overflowRegistrationUrl);
+    if (!overflow) {
+      errors.overflowRegistrationUrl =
+        "Use a docs.google.com/forms or forms.gle link for the form shown when registration is full.";
+    } else {
+      input.overflowRegistrationUrl = overflow;
     }
   }
 

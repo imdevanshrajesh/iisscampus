@@ -63,6 +63,10 @@ function normalizeEvent(event: CampusEvent): CampusEvent {
     feeAed: event.feeAed ?? null,
     capacity: event.capacity ?? null,
     packingList: event.packingList ?? null,
+    registrationLimit: event.registrationLimit ?? null,
+    registrationCount: Number.isFinite(event.registrationCount) ? event.registrationCount : 0,
+    overflowRegistrationUrl: event.overflowRegistrationUrl ?? null,
+    overflowRegistrationLabel: event.overflowRegistrationLabel ?? null,
     registrationProvider:
       event.registrationProvider === "arigo" ||
       event.registrationProvider === "page" ||
@@ -204,6 +208,10 @@ export function saveEventToStore(
     registrationUrl: input.registrationEnabled ? input.registrationUrl : null,
     registrationLabel: input.registrationLabel,
     registrationDeadline: input.registrationDeadline,
+    registrationLimit: input.registrationLimit,
+    registrationCount: input.registrationCount,
+    overflowRegistrationUrl: input.overflowRegistrationUrl,
+    overflowRegistrationLabel: input.overflowRegistrationLabel,
     registrationInstructions: input.registrationInstructions,
     instagramUrl: input.instagramUrl,
     purpose: input.purpose,

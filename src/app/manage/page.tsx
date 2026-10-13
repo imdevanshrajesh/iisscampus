@@ -21,10 +21,10 @@ export default async function ManageHomePage() {
   const waiting = access.workspace.events.filter((event) => event.publicationStatus === "in_review");
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-12 md:px-8">
-      <p className="text-sm text-muted">Signed in as {access.role}</p>
-      <h1 className="mt-2 text-3xl font-medium tracking-tight">Content desk</h1>
-      <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
+    <div className="mx-auto max-w-6xl px-5 py-10 md:px-8">
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">{access.role}</p>
+      <h1 className="font-display mt-2 text-4xl text-ink">Content desk</h1>
+      <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
         Events, the boys&apos; student council, and achievements. Publish only what should be on the public site.
       </p>
 
@@ -37,7 +37,7 @@ export default async function ManageHomePage() {
             ["Council years", access.workspace.councilYears.length, "/manage/council"],
           ] as const
         ).map(([label, value, href]) => (
-          <Link key={label} href={href} className="rounded-2xl border border-line bg-background p-4">
+          <Link key={label} href={href} className="rounded-2xl border border-line bg-white p-4 shadow-[0_1px_0_rgba(20,27,56,0.04)]">
             <dt className="text-sm text-muted">{label}</dt>
             <dd className="mt-2 text-3xl font-medium">{value}</dd>
           </Link>
@@ -45,7 +45,7 @@ export default async function ManageHomePage() {
       </dl>
 
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-line bg-background p-5">
+        <section className="rounded-2xl border border-line bg-white p-5 shadow-[0_1px_0_rgba(20,27,56,0.04)]">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-lg font-medium">Happening now</h2>
             <Link href="/manage/events/new" className="text-sm text-accent">
@@ -83,7 +83,7 @@ export default async function ManageHomePage() {
           ) : null}
         </section>
 
-        <section className="rounded-2xl border border-line bg-background p-5">
+        <section className="rounded-2xl border border-line bg-white p-5 shadow-[0_1px_0_rgba(20,27,56,0.04)]">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-lg font-medium">Student council · Boys</h2>
             <Link href="/manage/council/new" className="text-sm text-accent">

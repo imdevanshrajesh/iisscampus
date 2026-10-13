@@ -7,8 +7,9 @@ export default async function NewEventPage() {
   if (!access.ready) return <ManageUnavailable />;
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-12 md:px-8">
-      <h1 className="text-3xl font-medium tracking-tight">New event</h1>
+    <div className="mx-auto max-w-4xl px-5 py-10 md:px-8">
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Events</p>
+      <h1 className="font-display mt-2 text-4xl text-ink">New event</h1>
       <div className="mt-8">
         <EventForm
           event={null}

@@ -85,6 +85,10 @@ export type CampusEvent = {
   registrationUrl: string | null;
   registrationLabel: string | null;
   registrationDeadline: string | null;
+  registrationLimit: number | null;
+  registrationCount: number;
+  overflowRegistrationUrl: string | null;
+  overflowRegistrationLabel: string | null;
   registrationInstructions: string | null;
   instagramUrl: string | null;
   purpose: string | null;
