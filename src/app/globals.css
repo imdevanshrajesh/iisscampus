@@ -38,9 +38,13 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
   background: transparent;
   color: var(--ink);
   font-family: var(--font-sans), sans-serif;
@@ -415,9 +419,9 @@ h1.profile-name {
 
 .hero-scribble {
   position: absolute;
-  left: -2%;
+  left: 0;
   bottom: -0.16em;
-  width: 104%;
+  width: 100%;
   height: 0.28em;
   overflow: visible;
   pointer-events: none;
@@ -579,6 +583,8 @@ html[data-intro="play"] .hero-scribble path {
   --tilt-y: 0deg;
   --shine-x: 50%;
   --shine-y: 50%;
+  width: 100%;
+  min-width: 0;
   height: 100%;
   transform: perspective(1000px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
   transform-style: preserve-3d;
@@ -633,7 +639,11 @@ html[data-intro="play"] .hero-scribble path {
 .board-grid {
   display: grid;
   gap: 1.1rem;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.board-grid > * {
+  min-width: 0;
 }
 
 @media (min-width: 768px) {
@@ -721,6 +731,10 @@ html[data-intro="play"] .hero-scribble path {
   display: grid;
   gap: 0.65rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gallery-mosaic > * {
+  min-width: 0;
 }
 
 @media (min-width: 768px) {
@@ -1121,6 +1135,8 @@ html[data-intro="play"] .hero-scribble path {
 }
 
 .preview-hit {
+  min-width: 0;
+  max-width: 100%;
   cursor: pointer;
   border: 0;
   background: transparent;

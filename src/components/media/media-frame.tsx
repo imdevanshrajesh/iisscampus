@@ -20,7 +20,7 @@ export function MediaFrame({ url, alt, hosts, title, kicker, priority = false }:
         <img
           src={classified.url}
           alt={alt?.trim() || ""}
-          className="h-full w-full object-cover"
+          className="h-full w-full max-w-full object-cover"
           loading={priority ? "eager" : "lazy"}
         />
       </div>
