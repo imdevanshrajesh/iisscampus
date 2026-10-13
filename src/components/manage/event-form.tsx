@@ -160,7 +160,7 @@ export function EventForm({
               />
             </label>
             <p className="text-xs leading-5 text-muted">
-              The school name, location, and map show on the card, in the preview, and on the page.
+              The location is the place name only. The map link pins that school. Paste the long Google Maps link from the address bar, or a maps.app.goo.gl share link.
             </p>
           </fieldset>
         ) : (
@@ -212,14 +212,14 @@ export function EventForm({
           <>
             <label className="grid gap-1.5 text-sm">
               Venue
-              <input name="locationName" defaultValue={event?.locationName ?? ""} className={fieldClass} placeholder="Hall, ground, or room" />
+              <input name="locationName" defaultValue={event?.locationName ?? ""} className={fieldClass} placeholder="Auditorium" />
             </label>
             <label className="grid gap-1.5 text-sm">
               Map
-              <input name="locationMapUrl" defaultValue={event?.locationMapUrl ?? ""} className={fieldClass} placeholder="https://maps.google.com/..." />
+              <input name="locationMapUrl" defaultValue={event?.locationMapUrl ?? ""} className={fieldClass} placeholder="https://www.google.com/maps/place/..." />
             </label>
             <p className="text-sm text-muted">
-              The venue name and map show under the event, in the side preview, and on the event page. A venue name is enough to draw the map.
+              Venue is only the room name, such as Auditorium. The map link pins the school. Paste the long Google Maps link from the address bar, or a maps.app.goo.gl share link.
             </p>
           </>
         )}

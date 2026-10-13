@@ -4,7 +4,7 @@ import type { CampusEvent } from "@/lib/types";
 
 export function VenueBlock({ event, compact = false }: { event: CampusEvent; compact?: boolean }) {
   const map = classifyNavigationUrl(event.locationMapUrl);
-  const embed = mapEmbedSrc(event.locationName, map.ok ? map.url : null);
+  const embed = mapEmbedSrc(map.ok ? map.url : null);
   if (!event.locationName && !map.ok && !embed) return null;
 
   return (

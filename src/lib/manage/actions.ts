@@ -18,6 +18,7 @@ import {
   saveNewsletterToStore,
   saveSocialToStore,
 } from "@/lib/data/file-content";
+import { expandMapUrl } from "@/lib/media/map";
 import { classifyMediaUrl, classifyNavigationUrl, parseMediaHostList } from "@/lib/media/url";
 import { parseSocialInput } from "@/lib/social";
 import { isMissingTableError, missingCouncilTablesMessage } from "@/lib/supabase/errors";
@@ -404,6 +405,7 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
     const mediaErrors = validateEventMedia(parsed.input, []);
     const firstMediaError = Object.values(mediaErrors)[0];
     if (firstMediaError) return { error: firstMediaError };
+    parsed.input.locationMapUrl = await expandMapUrl(parsed.input.locationMapUrl);
     const saved = saveEventToStore(
       session.actor,
       parsed.input,
@@ -438,6 +440,7 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
 
   const parsed = readEventInput(formData);
   if ("error" in parsed) return parsed;
+  parsed.input.locationMapUrl = await expandMapUrl(parsed.input.locationMapUrl);
   const mediaErrors = validateEventMedia(parsed.input, allowedHosts);
   const firstMediaError = Object.values(mediaErrors)[0];
   if (firstMediaError) return { error: firstMediaError };
