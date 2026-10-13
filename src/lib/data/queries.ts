@@ -16,6 +16,7 @@ import {
   mapEvent,
   mapFaq,
   mapImage,
+  mapWellnessCategory,
   mapWellnessItem,
 } from "@/lib/data/map";
 import { contentMode } from "@/lib/data/content-mode";
@@ -33,6 +34,7 @@ import type {
   PublicCatalog,
   SiteBrand,
   SocialLinks,
+  WellnessCategory,
   WellnessItem,
   WellnessPageSettings,
 } from "@/lib/types";
@@ -402,13 +404,41 @@ export async function getWellnessPageSettings(): Promise<WellnessPageSettings> {
   return readWellnessPageSettings();
 }
 
+function sortWellnessCategories(categories: WellnessCategory[]) {
+  return [...categories].sort((a, b) => {
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+  });
+}
+
 function sortWellnessItems(items: WellnessItem[]) {
   return [...items].sort((a, b) => {
-    const sectionCompare = a.section.localeCompare(b.section, undefined, { sensitivity: "base" });
-    if (sectionCompare !== 0) return sectionCompare;
     if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
     return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
   });
+}
+
+export async function getPublicWellnessCategories(): Promise<WellnessCategory[]> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const result = await supabase.from("campus_wellness_categories").select("*").order("sort_order");
+        if (!result.error) {
+          return sortWellnessCategories(
+            (result.data ?? []).map((row) => mapWellnessCategory(row as Record<string, unknown>)),
+          );
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return sortWellnessCategories(readContentStore().wellnessCategories ?? []);
+}
+
+export async function getEditableWellnessCategories(): Promise<WellnessCategory[]> {
+  return getPublicWellnessCategories();
 }
 
 export async function getPublicWellnessItems(): Promise<WellnessItem[]> {
@@ -420,7 +450,6 @@ export async function getPublicWellnessItems(): Promise<WellnessItem[]> {
           .from("campus_wellness_items")
           .select("*")
           .eq("published", true)
-          .order("section")
           .order("sort_order");
         if (!result.error) {
           return sortWellnessItems((result.data ?? []).map((row) => mapWellnessItem(row as Record<string, unknown>)));
@@ -438,11 +467,7 @@ export async function getEditableWellnessItems(): Promise<WellnessItem[]> {
     if ((await contentMode()) === "supabase") {
       const supabase = createPublicClient();
       if (supabase) {
-        const result = await supabase
-          .from("campus_wellness_items")
-          .select("*")
-          .order("section")
-          .order("sort_order");
+        const result = await supabase.from("campus_wellness_items").select("*").order("sort_order");
         if (!result.error) {
           return sortWellnessItems((result.data ?? []).map((row) => mapWellnessItem(row as Record<string, unknown>)));
         }

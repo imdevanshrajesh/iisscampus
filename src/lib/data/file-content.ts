@@ -14,6 +14,7 @@ import type {
   Newsletter,
   PublicationStatus,
   SocialLinks,
+  WellnessCategory,
   WellnessItem,
   WellnessPageSettings,
 } from "@/lib/types";
@@ -30,6 +31,7 @@ type Store = {
   contactEmail?: string | null;
   announcements?: Announcement[];
   faqs?: Faq[];
+  wellnessCategories?: WellnessCategory[];
   wellnessItems?: WellnessItem[];
   wellnessPage?: WellnessPageSettings | null;
 };
@@ -111,7 +113,15 @@ export function readContentStore(): Store {
       contactEmail: parsed.contactEmail ?? null,
       announcements: Array.isArray(parsed.announcements) ? parsed.announcements : [],
       faqs: Array.isArray(parsed.faqs) ? parsed.faqs : [],
-      wellnessItems: Array.isArray(parsed.wellnessItems) ? parsed.wellnessItems : [],
+      wellnessCategories: Array.isArray(parsed.wellnessCategories)
+        ? parsed.wellnessCategories
+        : [],
+      wellnessItems: Array.isArray(parsed.wellnessItems)
+        ? parsed.wellnessItems.map((item) => ({
+            ...item,
+            categoryId: item.categoryId ?? null,
+          }))
+        : [],
       wellnessPage: parsed.wellnessPage ?? null,
     };
   } catch {
@@ -584,11 +594,43 @@ export function saveWellnessPageToStore(input: WellnessPageSettings) {
   return writeContentStore(store);
 }
 
+export function saveWellnessCategoryToStore(input: {
+  id?: string;
+  name: string;
+  sortOrder: number;
+}) {
+  const store = readContentStore();
+  const list = store.wellnessCategories ?? [];
+  const existing = input.id ? list.find((item) => item.id === input.id) : undefined;
+  const duplicate = list.find(
+    (item) => item.id !== existing?.id && item.name.toLowerCase() === input.name.toLowerCase(),
+  );
+  if (duplicate) return false;
+  const record: WellnessCategory = {
+    id: existing?.id ?? crypto.randomUUID(),
+    name: input.name,
+    sortOrder: input.sortOrder,
+  };
+  store.wellnessCategories = existing
+    ? list.map((item) => (item.id === existing.id ? record : item))
+    : [...list, record];
+  return writeContentStore(store);
+}
+
+export function deleteWellnessCategoryFromStore(id: string) {
+  const store = readContentStore();
+  store.wellnessCategories = (store.wellnessCategories ?? []).filter((item) => item.id !== id);
+  store.wellnessItems = (store.wellnessItems ?? []).map((item) =>
+    item.categoryId === id ? { ...item, categoryId: null } : item,
+  );
+  return writeContentStore(store);
+}
+
 export function saveWellnessItemToStore(input: {
   id?: string;
   title: string;
   body: string;
-  section: string;
+  categoryId: string | null;
   imageUrl: string | null;
   imageAlt: string;
   imageOrientation: WellnessItem["imageOrientation"];
@@ -599,11 +641,14 @@ export function saveWellnessItemToStore(input: {
   const store = readContentStore();
   const list = store.wellnessItems ?? [];
   const existing = input.id ? list.find((item) => item.id === input.id) : undefined;
+  if (input.categoryId && !(store.wellnessCategories ?? []).some((category) => category.id === input.categoryId)) {
+    return false;
+  }
   const record: WellnessItem = {
     id: existing?.id ?? crypto.randomUUID(),
     title: input.title,
     body: input.body,
-    section: input.section,
+    categoryId: input.categoryId,
     imageUrl: input.imageUrl,
     imageAlt: input.imageAlt,
     imageOrientation: input.imageOrientation,

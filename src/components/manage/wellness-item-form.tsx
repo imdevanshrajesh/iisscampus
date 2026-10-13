@@ -5,7 +5,7 @@ import { ImageUrlHint } from "@/components/manage/image-url-hint";
 import { deleteWellnessItem, saveWellnessItem, type ActionState } from "@/lib/manage/actions";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import { classifyMediaUrl } from "@/lib/media/url";
-import type { WellnessItem } from "@/lib/types";
+import type { WellnessCategory, WellnessItem } from "@/lib/types";
 
 const fieldClass = "w-full rounded-md border border-line bg-background px-3 py-2 text-sm";
 
@@ -18,9 +18,11 @@ const orientationClass: Record<WellnessItem["imageOrientation"], string> = {
 
 export function WellnessItemForm({
   item,
+  categories,
   mediaHosts,
 }: {
   item: WellnessItem | null;
+  categories: WellnessCategory[];
   mediaHosts: string[];
 }) {
   const [state, action, pending] = useActionState(saveWellnessItem, {} as ActionState);
@@ -30,11 +32,26 @@ export function WellnessItemForm({
     item?.imageOrientation ?? "auto",
   );
   const image = classifyMediaUrl(imageUrl, mediaHosts);
+  const defaultCategoryId =
+    item?.categoryId && categories.some((category) => category.id === item.categoryId)
+      ? item.categoryId
+      : categories[0]?.id ?? "";
 
   return (
     <div className="grid gap-4 rounded-xl border border-line p-4">
       <form action={action} className="grid gap-3">
         {item ? <input type="hidden" name="id" value={item.id} /> : null}
+        <label className="grid gap-1.5 text-sm">
+          Category
+          <select name="categoryId" defaultValue={defaultCategoryId} required className={fieldClass}>
+            {!categories.length ? <option value="">Add a category first</option> : null}
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="grid gap-1.5 text-sm">
           Title
           <input name="title" defaultValue={item?.title ?? ""} required className={fieldClass} />
@@ -43,18 +60,6 @@ export function WellnessItemForm({
           Text
           <textarea name="body" defaultValue={item?.body ?? ""} rows={4} className={fieldClass} />
         </label>
-        <label className="grid gap-1.5 text-sm">
-          Section
-          <input
-            name="section"
-            defaultValue={item?.section ?? ""}
-            placeholder="e.g. Mindfulness, Resources"
-            className={fieldClass}
-          />
-        </label>
-        <p className="text-xs text-muted">
-          Items with the same section name are grouped together on the public page. Leave blank for ungrouped items.
-        </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="grid max-w-32 gap-1.5 text-sm">
             Order
@@ -105,7 +110,11 @@ export function WellnessItemForm({
         </label>
         {state.error ? <p className="text-sm">{state.error}</p> : null}
         {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
-        <button type="submit" disabled={pending} className="justify-self-start rounded-md bg-navy px-4 py-2 text-sm text-white">
+        <button
+          type="submit"
+          disabled={pending || !categories.length}
+          className="justify-self-start rounded-md bg-navy px-4 py-2 text-sm text-white disabled:opacity-50"
+        >
           {pending ? "Saving" : item ? "Save" : "Add item"}
         </button>
       </form>

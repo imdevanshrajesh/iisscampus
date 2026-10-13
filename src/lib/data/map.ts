@@ -13,6 +13,7 @@ import type {
   CouncilYear,
   EventListing,
   Faq,
+  WellnessCategory,
   WellnessImageOrientation,
   WellnessItem,
   GalleryImage,
@@ -246,12 +247,20 @@ function mapWellnessOrientation(value: unknown): WellnessImageOrientation {
   return "auto";
 }
 
+export function mapWellnessCategory(row: Record<string, unknown>): WellnessCategory {
+  return {
+    id: String(row.id),
+    name: String(row.name ?? "").trim(),
+    sortOrder: Number(row.sort_order ?? 0),
+  };
+}
+
 export function mapWellnessItem(row: Record<string, unknown>): WellnessItem {
   return {
     id: String(row.id),
     title: String(row.title ?? ""),
     body: String(row.body ?? ""),
-    section: String(row.section ?? "").trim(),
+    categoryId: row.category_id ? String(row.category_id) : null,
     imageUrl: row.image_url ? String(row.image_url).trim() || null : null,
     imageAlt: String(row.image_alt ?? ""),
     imageOrientation: mapWellnessOrientation(row.image_orientation),

@@ -1734,11 +1734,88 @@ export async function saveWellnessPageSettings(_state: ActionState, formData: Fo
   return { ok: "Page name saved." };
 }
 
+export async function saveWellnessCategory(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const sortOrder = Number(formData.get("sortOrder") ?? 0) || 0;
+  if (name.length < 2 || name.length > 80) return { error: "Enter a category name (2–80 characters)." };
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { saveWellnessCategoryToStore } = await import("@/lib/data/file-content");
+    if (!saveWellnessCategoryToStore({ id: id || undefined, name, sortOrder })) {
+      return { error: "That category name is already in use, or it could not be saved." };
+    }
+    revalidateWellness();
+    return { ok: id ? "Category saved." : "Category added." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const record = { name, sort_order: sortOrder };
+  const saved = id
+    ? await context.supabase.from("campus_wellness_categories").update(record).eq("id", id).select("id").maybeSingle()
+    : await context.supabase.from("campus_wellness_categories").insert(record).select("id").maybeSingle();
+  if (saved.error) {
+    const missing =
+      isMissingTableError(saved.error) ||
+      (saved.error.message ?? "").toLowerCase().includes("wellness");
+    return {
+      error: missing
+        ? "Run supabase/WELLNESS_CATEGORIES.sql in the database, then save again."
+        : databaseError(saved.error, "The category could not be saved."),
+    };
+  }
+
+  await writeAudit(
+    context.supabase,
+    context.actor.userId,
+    id ? "update" : "create",
+    "campus_wellness_categories",
+    saved.data?.id ?? null,
+  );
+  revalidateWellness();
+  return { ok: id ? "Category saved." : "Category added." };
+}
+
+export async function deleteWellnessCategory(_state: ActionState, formData: FormData): Promise<ActionState> {
+  if (formData.get("confirm") !== "yes") return { error: "Confirm the delete, then try again." };
+  const id = String(formData.get("id") ?? "");
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { deleteWellnessCategoryFromStore } = await import("@/lib/data/file-content");
+    if (!deleteWellnessCategoryFromStore(id)) return { error: deleteFailed };
+    revalidateWellness();
+    return { ok: "Deleted." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const cleared = await context.supabase
+    .from("campus_wellness_items")
+    .update({ category_id: null })
+    .eq("category_id", id);
+  if (cleared.error) return { error: databaseError(cleared.error, deleteFailed) };
+
+  const removed = await context.supabase.from("campus_wellness_categories").delete().eq("id", id);
+  if (removed.error) return { error: databaseError(removed.error, deleteFailed) };
+  await writeAudit(context.supabase, context.actor.userId, "delete", "campus_wellness_categories", id);
+  revalidateWellness();
+  return { ok: "Deleted." };
+}
+
 export async function saveWellnessItem(_state: ActionState, formData: FormData): Promise<ActionState> {
   const id = String(formData.get("id") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
-  const section = String(formData.get("section") ?? "").trim();
+  const categoryId = String(formData.get("categoryId") ?? "").trim() || null;
   const imageRaw = String(formData.get("imageUrl") ?? "").trim();
   const imageAlt = String(formData.get("imageAlt") ?? "").trim();
   const orientationRaw = String(formData.get("imageOrientation") ?? "auto").trim();
@@ -1748,7 +1825,7 @@ export async function saveWellnessItem(_state: ActionState, formData: FormData):
 
   if (title.length < 2 || title.length > 120) return { error: "Enter a title (2–120 characters)." };
   if (body.length > 8000) return { error: "Keep the text under 8000 characters." };
-  if (section.length > 80) return { error: "Keep the section name under 80 characters." };
+  if (!categoryId) return { error: "Choose a category." };
   if (imageAlt.length > 200) return { error: "Keep the image description under 200 characters." };
   if (!wellnessOrientations.has(orientationRaw)) return { error: "Choose a valid image layout." };
   const imageOrientation = orientationRaw as "auto" | "portrait" | "landscape" | "square";
@@ -1775,7 +1852,7 @@ export async function saveWellnessItem(_state: ActionState, formData: FormData):
         id: id || undefined,
         title,
         body,
-        section,
+        categoryId,
         imageUrl,
         imageAlt,
         imageOrientation,
@@ -1784,7 +1861,7 @@ export async function saveWellnessItem(_state: ActionState, formData: FormData):
         published,
       })
     ) {
-      return { error: "The wellness item could not be saved." };
+      return { error: "Choose a valid category, or the item could not be saved." };
     }
     revalidateWellness();
     return { ok: id ? "Saved." : "Added." };
@@ -1793,6 +1870,22 @@ export async function saveWellnessItem(_state: ActionState, formData: FormData):
   const context = await staffContext();
   if ("error" in context) return { error: context.error };
   if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const category = await context.supabase
+    .from("campus_wellness_categories")
+    .select("id")
+    .eq("id", categoryId)
+    .maybeSingle();
+  if (category.error || !category.data) {
+    const missing =
+      isMissingTableError(category.error) ||
+      (category.error?.message ?? "").toLowerCase().includes("wellness");
+    return {
+      error: missing
+        ? "Run supabase/WELLNESS_CATEGORIES.sql in the database, then save again."
+        : "Choose a valid category.",
+    };
+  }
 
   let imageUrl: string | null = null;
   if (imageRaw) {
@@ -1806,7 +1899,7 @@ export async function saveWellnessItem(_state: ActionState, formData: FormData):
   const record = {
     title,
     body,
-    section,
+    category_id: categoryId,
     image_url: imageUrl,
     image_alt: imageAlt,
     image_orientation: imageOrientation,
@@ -1824,7 +1917,7 @@ export async function saveWellnessItem(_state: ActionState, formData: FormData):
       (saved.error.message ?? "").toLowerCase().includes("wellness");
     return {
       error: missing
-        ? "Run supabase/WELLNESS.sql in the database, then save again."
+        ? "Run supabase/WELLNESS_CATEGORIES.sql in the database, then save again."
         : databaseError(saved.error, "The wellness item could not be saved."),
     };
   }

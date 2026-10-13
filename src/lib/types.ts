@@ -221,11 +221,17 @@ export type Faq = {
 
 export type WellnessImageOrientation = "auto" | "portrait" | "landscape" | "square";
 
+export type WellnessCategory = {
+  id: string;
+  name: string;
+  sortOrder: number;
+};
+
 export type WellnessItem = {
   id: string;
   title: string;
   body: string;
-  section: string;
+  categoryId: string | null;
   imageUrl: string | null;
   imageAlt: string;
   imageOrientation: WellnessImageOrientation;
