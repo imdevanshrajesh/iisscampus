@@ -58,6 +58,11 @@ export function EventForm({
   const [schedule, setSchedule] = useState<ScheduleItem[]>(event?.schedule ?? []);
   const [groups, setGroups] = useState<ParticipatingGroup[]>(event?.groups ?? []);
   const [resources, setResources] = useState<ContentResource[]>(event?.resources ?? []);
+  const [registrationProvider, setRegistrationProvider] = useState<"arigo" | "page" | "google_form">(
+    event?.registrationProvider === "page" || event?.registrationProvider === "google_form"
+      ? event.registrationProvider
+      : "arigo",
+  );
   const locked =
     role === "editor" &&
     (event?.publicationStatus === "published" || event?.publicationStatus === "archived");
@@ -408,25 +413,46 @@ export function EventForm({
             Show Register now
           </label>
           <p className="text-sm text-muted">
-            Choose Arigo signup, a page on this site, or a Google Form. The public page uses that choice for the Register now button.
+            Arigo builds the event page from these details when you publish. Register now opens that page. Visitors can read it without an account, and Arigo asks them to sign up only when they register.
           </p>
           <label className="grid gap-1.5 text-sm">
             How to register
-            <select name="registrationProvider" defaultValue={event?.registrationProvider ?? "arigo"} className={fieldClass}>
+            <select
+              name="registrationProvider"
+              value={registrationProvider ?? "arigo"}
+              onChange={(change) => {
+                const value = change.target.value;
+                if (value === "page" || value === "google_form" || value === "arigo") {
+                  setRegistrationProvider(value);
+                }
+              }}
+              className={fieldClass}
+            >
               <option value="arigo">Arigo</option>
               <option value="page">Page on this site</option>
               <option value="google_form">Google Form</option>
             </select>
           </label>
-          <label className="grid gap-1.5 text-sm">
-            Registration URL or path
-            <input
-              name="registrationUrl"
-              defaultValue={event?.registrationUrl ?? ""}
-              placeholder="Blank for Arigo · /events/... · https://forms.gle/..."
-              className={fieldClass}
-            />
-          </label>
+          {registrationProvider === "page" || registrationProvider === "google_form" ? (
+            <label className="grid gap-1.5 text-sm">
+              Registration URL or path
+              <input
+                name="registrationUrl"
+                defaultValue={event?.registrationUrl ?? ""}
+                placeholder={registrationProvider === "page" ? "/events/..." : "https://forms.gle/..."}
+                className={fieldClass}
+              />
+            </label>
+          ) : (
+            <>
+              <input type="hidden" name="registrationUrl" value={event?.registrationUrl ?? ""} />
+              <p className="text-sm text-muted">
+                {event?.registrationUrl
+                  ? `Register link: ${event.registrationUrl}`
+                  : "The register link is filled in when you publish."}
+              </p>
+            </>
+          )}
           <label className="grid gap-1.5 text-sm">
             Button label
             <input name="registrationLabel" defaultValue={event?.registrationLabel ?? ""} placeholder="Register now" className={fieldClass} />

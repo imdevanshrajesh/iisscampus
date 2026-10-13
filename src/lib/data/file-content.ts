@@ -234,6 +234,15 @@ export function saveEventToStore(
   return { id: record.id, slug: record.slug, status };
 }
 
+export function rememberEventRegistrationUrl(id: string, registrationUrl: string) {
+  const store = readContentStore();
+  const event = store.events.find((item) => item.id === id);
+  if (!event) return false;
+  event.registrationUrl = registrationUrl;
+  if (!event.registrationProvider) event.registrationProvider = "arigo";
+  return writeContentStore(store);
+}
+
 export function saveAchievementToStore(actor: Actor, input: AchievementInput, intent: string, id: string) {
   const store = readContentStore();
   const now = new Date().toISOString();

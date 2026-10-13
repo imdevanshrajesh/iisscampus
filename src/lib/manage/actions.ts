@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import { can, canDelete, canEditPublication, canTransition } from "@/lib/auth/permissions";
 import { consumeRateLimit } from "@/lib/auth/rate-limit";
 import { getCampusActor, getCampusSession, sessionActionError } from "@/lib/auth/session";
+import { shouldSendEventToArigo, toArigoCampusEvent } from "@/lib/arigo/event-payload";
+import { syncCampusEvent } from "@/lib/arigo/sync-event";
 import { defaultSocialLinks, isSupabaseConfigured, normalizeContactEmail } from "@/lib/config";
 import { councilMemberSlugs } from "@/lib/data/catalog";
 import { contentMode } from "@/lib/data/content-mode";
@@ -14,6 +16,7 @@ import {
   saveAchievementToStore,
   saveCategoryToStore,
   saveCouncilToStore,
+  rememberEventRegistrationUrl,
   saveEventToStore,
   saveNewsletterToStore,
   saveSocialToStore,
@@ -413,14 +416,25 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
       String(formData.get("id") ?? ""),
     );
     if ("error" in saved && saved.error) return { error: saved.error };
-    if (!("id" in saved)) return { error: "The event could not be saved." };
+    if (!("id" in saved) || !saved.id || !saved.status) {
+      return { error: "The event could not be saved." };
+    }
+    const savedId = saved.id;
+    const savedStatus = saved.status;
+    const intentName = String(formData.get("intent") ?? "save");
+    const syncError = shouldSendEventToArigo(savedStatus, intentName)
+      ? await syncCampusEvent(toArigoCampusEvent(savedId, savedStatus, parsed.input), async (url) =>
+          rememberEventRegistrationUrl(savedId, url),
+        )
+      : null;
     revalidatePath("/");
     revalidatePath("/events");
     revalidatePath(`/events/${saved.slug}`);
     revalidatePath("/gallery");
     revalidatePath("/manage");
     revalidatePath("/manage/events");
-    if (!formData.get("id")) redirect(`/manage/events/${saved.id}/edit`);
+    if (syncError) return { error: syncError };
+    if (!formData.get("id")) redirect(`/manage/events/${savedId}/edit`);
     return { ok: saved.status === "published" ? "Published." : "Draft saved." };
   }
 
@@ -563,6 +577,16 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
     await writeAudit(context.supabase, context.actor.userId, intent, "campus_events", eventId);
   }
 
+  const syncError = shouldSendEventToArigo(status, intent)
+    ? await syncCampusEvent(toArigoCampusEvent(eventId, status, parsed.input), async (url) => {
+        const updated = await context.supabase
+          .from("campus_events")
+          .update({ registration_url: url })
+          .eq("id", eventId);
+        return !updated.error;
+      })
+    : null;
+
   revalidatePath("/");
   revalidatePath("/events");
   revalidatePath("/competitions");
@@ -571,6 +595,7 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
   revalidatePath("/manage");
   revalidatePath("/manage/events");
 
+  if (syncError) return { error: syncError };
   if (!id) redirect(`/manage/events/${eventId}/edit`);
   return { ok: status === "published" ? "Published." : "Saved." };
 }
