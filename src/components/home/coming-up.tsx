@@ -56,10 +56,13 @@ export function ComingUp({
               return (
                 <RevealOnScroll key={event.id} delay={index * 60}>
                   <TiltSurface className="h-full">
-                    <PreviewTrigger
-                      event={event}
+                    <article
                       className="coming-card group flex h-full min-h-44 w-full flex-col justify-between rounded-2xl border border-line bg-background p-5 text-left"
                       style={{ "--card-glow": style.glow } as CSSProperties}
+                    >
+                    <PreviewTrigger
+                      event={event}
+                      className="flex h-full w-full flex-col justify-between text-left"
                     >
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -86,6 +89,7 @@ export function ComingUp({
                       <p className="mt-4 line-clamp-3 text-sm leading-6 text-muted">{event.shortDescription}</p>
                       {event.locationName ? <p className="mt-3 text-sm text-ink">{event.locationName}</p> : null}
                     </PreviewTrigger>
+                    </article>
                   </TiltSurface>
                 </RevealOnScroll>
               );

@@ -56,6 +56,23 @@ describe("campus event payload for Arigo", () => {
     assert.equal(body.hostSlug, "india-international-school");
   });
 
+  it("sends the campus page details, including a pdf", () => {
+    const body = buildHostedEventPayload(
+      event({
+        purpose: "Raise money for the lab.",
+        resources: [
+          { title: "Rules", detail: null, href: "https://campus.buildkre.com/rules.pdf", kind: "pdf" },
+        ],
+        images: [{ url: "https://images.example/photo.jpg", alt: "Hall", caption: null }],
+      }),
+      { campusOrigin: "https://campus.buildkre.com", hostSlug: "india-international-school" },
+    );
+    assert.equal(body.details.purpose, "Raise money for the lab.");
+    assert.equal(body.details.resources[0]?.kind, "pdf");
+    assert.equal(body.details.resources[0]?.href, "https://campus.buildkre.com/rules.pdf");
+    assert.equal(body.details.images[0]?.alt, "Hall");
+  });
+
   it("keeps the event visible when registration uses another method", () => {
     const body = buildHostedEventPayload(
       event({ registrationProvider: "google_form", registrationEnabled: true }),

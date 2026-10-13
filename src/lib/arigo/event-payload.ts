@@ -20,6 +20,23 @@ export type ArigoCampusEvent = {
   registrationDeadline: string | null;
   registrationInstructions: string | null;
   publicationStatus: "draft" | "in_review" | "published" | "archived";
+  coverImageUrl?: string | null;
+  coverAlt?: string | null;
+  coverAttribution?: string | null;
+  packingList?: string | null;
+  purpose?: string | null;
+  activities?: string | null;
+  instagramUrl?: string | null;
+  videoUrl?: string | null;
+  schedule?: Array<{ time: string; title: string; detail?: string | null }>;
+  groups?: Array<{ name: string; detail?: string | null }>;
+  resources?: Array<{
+    title: string;
+    detail?: string | null;
+    href?: string | null;
+    kind?: "card" | "link" | "pdf";
+  }>;
+  images?: Array<{ url: string; alt?: string | null; caption?: string | null }>;
 };
 
 export function shouldSendEventToArigo(status: ArigoCampusEvent["publicationStatus"], intent: string) {
@@ -91,5 +108,39 @@ export function buildHostedEventPayload(
     campusUrl: `${origin}/events/${event.slug}`,
     published,
     registrationOpen: published && campusRegistrationUsesArigo(event),
+    details: {
+      coverImageUrl: httpsOrNull(event.coverImageUrl ?? null),
+      coverAlt: event.coverAlt ?? null,
+      coverAttribution: event.coverAttribution ?? null,
+      packingList: event.packingList ?? null,
+      purpose: event.purpose ?? null,
+      activities: event.activities ?? null,
+      instagramUrl: httpsOrNull(event.instagramUrl ?? null),
+      videoUrl: httpsOrNull(event.videoUrl ?? null),
+      schedule: (event.schedule ?? [])
+        .filter((item) => item.time.trim() && item.title.trim())
+        .map((item) => ({
+          time: item.time,
+          title: item.title,
+          detail: item.detail ?? null,
+        })),
+      groups: (event.groups ?? [])
+        .filter((group) => group.name.trim())
+        .map((group) => ({ name: group.name, detail: group.detail ?? null })),
+      resources: (event.resources ?? [])
+        .filter((item) => item.title.trim())
+        .map((item) => ({
+          title: item.title,
+          detail: item.detail ?? null,
+          href: httpsOrNull(item.href ?? null),
+          kind: item.kind === "pdf" || item.kind === "card" ? item.kind : "link",
+        })),
+      images: (event.images ?? [])
+        .flatMap((image) => {
+          const url = httpsOrNull(image.url);
+          if (!url) return [];
+          return [{ url, alt: image.alt ?? "", caption: image.caption ?? null }];
+        }),
+    },
   };
 }
