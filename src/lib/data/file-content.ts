@@ -53,6 +53,22 @@ function normalizeCouncilMembers(members: CouncilMember[]) {
   return normalized.map((member, index) => ({ ...member, slug: slugs[index] ?? member.slug }));
 }
 
+function normalizeAnnouncement(item: Announcement): Announcement {
+  const message = String(item.message ?? "");
+  const title = String(item.title ?? "").trim() || message.trim() || "Announcement";
+  return {
+    id: item.id,
+    title,
+    message,
+    body: String(item.body ?? ""),
+    resources: Array.isArray(item.resources) ? item.resources : [],
+    eventId: item.eventId ?? null,
+    enabled: Boolean(item.enabled),
+    sortOrder: Number(item.sortOrder ?? 0),
+    createdAt: item.createdAt ?? new Date().toISOString(),
+  };
+}
+
 function normalizeEvent(event: CampusEvent): CampusEvent {
   const categoryIds = event.categoryIds?.length ? event.categoryIds : [event.categoryId];
   return {
@@ -112,7 +128,9 @@ export function readContentStore(): Store {
       social: parsed.social ?? null,
       councilLogoUrl: parsed.councilLogoUrl ?? null,
       contactEmail: parsed.contactEmail ?? null,
-      announcements: Array.isArray(parsed.announcements) ? parsed.announcements : [],
+      announcements: Array.isArray(parsed.announcements)
+        ? parsed.announcements.map((item) => normalizeAnnouncement(item as Announcement))
+        : [],
       faqs: Array.isArray(parsed.faqs) ? parsed.faqs : [],
       wellnessCategories: Array.isArray(parsed.wellnessCategories)
         ? parsed.wellnessCategories
@@ -530,20 +548,26 @@ export function saveContactEmailToStore(contactEmail: string | null) {
 
 export function saveAnnouncementToStore(input: {
   id?: string;
+  title: string;
   message: string;
+  body: string;
+  resources: Announcement["resources"];
   eventId: string | null;
   enabled: boolean;
-  sortOrder: number;
 }) {
   const store = readContentStore();
   const list = store.announcements ?? [];
   const existing = input.id ? list.find((item) => item.id === input.id) : undefined;
   const record: Announcement = {
     id: existing?.id ?? crypto.randomUUID(),
+    title: input.title,
     message: input.message,
+    body: input.body,
+    resources: input.resources,
     eventId: input.eventId,
     enabled: input.enabled,
-    sortOrder: input.sortOrder,
+    sortOrder: existing?.sortOrder ?? 0,
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
   };
   store.announcements = existing
     ? list.map((item) => (item.id === existing.id ? record : item))

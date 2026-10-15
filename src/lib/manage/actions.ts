@@ -1576,21 +1576,46 @@ export async function saveContactEmail(_state: ActionState, formData: FormData):
 
 export async function saveAnnouncement(_state: ActionState, formData: FormData): Promise<ActionState> {
   const id = String(formData.get("id") ?? "").trim();
-  const message = String(formData.get("message") ?? "").trim();
   const eventIdRaw = String(formData.get("eventId") ?? "").trim();
   const enabled = formData.get("enabled") === "on";
-  const sortOrder = Number(formData.get("sortOrder") ?? 0) || 0;
-  if (message.length < 2 || message.length > 500) return { error: "Enter a message between 2 and 500 characters." };
-  const eventId = /^[0-9a-f-]{36}$/i.test(eventIdRaw) ? eventIdRaw : null;
+  const resources = readList(formData, "resources");
+  if (!resources) return { error: "A list field could not be read." };
+
+  const { announcementInputSchema } = await import("@/lib/validation/content");
+  const parsed = announcementInputSchema.safeParse({
+    title: formData.get("title"),
+    message: formData.get("message"),
+    body: formData.get("body"),
+    resources,
+    eventId: /^[0-9a-f-]{36}$/i.test(eventIdRaw) ? eventIdRaw : null,
+    enabled,
+  });
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return { error: issue?.message ?? "Check the announcement fields and try again." };
+  }
+
+  const { title, message, body, eventId } = parsed.data;
 
   if ((await contentMode()) === "file") {
     const access = await fileActor((actor) => can(actor, "manage_settings"));
     if ("error" in access) return access;
     const { saveAnnouncementToStore } = await import("@/lib/data/file-content");
-    if (!saveAnnouncementToStore({ id: id || undefined, message, eventId, enabled, sortOrder })) {
+    if (
+      !saveAnnouncementToStore({
+        id: id || undefined,
+        title,
+        message,
+        body,
+        resources: parsed.data.resources,
+        eventId,
+        enabled: parsed.data.enabled,
+      })
+    ) {
       return { error: "The announcement could not be saved." };
     }
     revalidatePath("/");
+    revalidatePath("/announcements");
     revalidatePath("/manage/announcements");
     return { ok: "Announcement saved." };
   }
@@ -1600,25 +1625,33 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
   if (!can(context.actor, "manage_settings")) return { error: genericDenial };
 
   const record = {
+    title,
     message,
+    body,
+    resources: parsed.data.resources,
     event_id: eventId,
-    enabled,
-    sort_order: sortOrder,
+    enabled: parsed.data.enabled,
   };
   const saved = id
     ? await context.supabase.from("campus_announcements").update(record).eq("id", id).select("id").maybeSingle()
     : await context.supabase.from("campus_announcements").insert(record).select("id").maybeSingle();
   if (saved.error) {
-    const missing = isMissingTableError(saved.error) || (saved.error.message ?? "").toLowerCase().includes("announcement");
+    const detail = (saved.error.message ?? "").toLowerCase();
+    const missing =
+      isMissingTableError(saved.error) ||
+      detail.includes("announcement") ||
+      detail.includes("title") ||
+      detail.includes("resources");
     return {
       error: missing
-        ? "Run supabase/JUNIOR_COUNCIL_AND_ACTIVITIES.sql in the database, then save again."
+        ? "Run supabase/ANNOUNCEMENT_BOARD.sql in the database, then save again."
         : databaseError(saved.error, "The announcement could not be saved."),
     };
   }
 
   await writeAudit(context.supabase, context.actor.userId, id ? "update" : "create", "campus_announcements", saved.data?.id ?? null);
   revalidatePath("/");
+  revalidatePath("/announcements");
   revalidatePath("/manage/announcements");
   return { ok: "Announcement saved." };
 }
@@ -1633,6 +1666,7 @@ export async function deleteAnnouncement(_state: ActionState, formData: FormData
     const { deleteAnnouncementFromStore } = await import("@/lib/data/file-content");
     if (!deleteAnnouncementFromStore(id)) return { error: deleteFailed };
     revalidatePath("/");
+    revalidatePath("/announcements");
     revalidatePath("/manage/announcements");
     return { ok: "Deleted." };
   }
@@ -1645,6 +1679,7 @@ export async function deleteAnnouncement(_state: ActionState, formData: FormData
   if (removed.error) return { error: databaseError(removed.error, deleteFailed) };
   await writeAudit(context.supabase, context.actor.userId, "delete", "campus_announcements", id);
   revalidatePath("/");
+  revalidatePath("/announcements");
   revalidatePath("/manage/announcements");
   return { ok: "Deleted." };
 }

@@ -54,6 +54,25 @@ function tokenize(message: string): Token[] {
   return tokens;
 }
 
+export function announcementTickerText(item: { title: string; message: string }) {
+  const line = item.message.trim();
+  return line || item.title.trim();
+}
+
+export function compareAnnouncements(a: { createdAt: string }, b: { createdAt: string }) {
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+}
+
+export function formatAnnouncementDate(value: string) {
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return null;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
 /** Renders a small markdown subset: **bold**, *italic*, and [label](https://...). */
 export function renderAnnouncementMessage(message: string): ReactNode {
   const tokens = tokenize(message);

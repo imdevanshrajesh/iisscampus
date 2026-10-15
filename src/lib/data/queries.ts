@@ -1,3 +1,4 @@
+import { compareAnnouncements } from "@/lib/announcements";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "@/lib/data/catalog";
@@ -308,7 +309,7 @@ export async function getPublicAnnouncements(): Promise<Announcement[]> {
           .from("campus_announcements")
           .select("*")
           .eq("enabled", true)
-          .order("sort_order");
+          .order("created_at", { ascending: false });
         if (!result.error) {
           return (result.data ?? []).map((row) => mapAnnouncement(row as Record<string, unknown>));
         }
@@ -317,7 +318,10 @@ export async function getPublicAnnouncements(): Promise<Announcement[]> {
   } catch (error) {
     console.error(error);
   }
-  return (readContentStore().announcements ?? []).filter((item) => item.enabled);
+  return (readContentStore().announcements ?? [])
+    .filter((item) => item.enabled)
+    .slice()
+    .sort(compareAnnouncements);
 }
 
 export async function getEditableAnnouncements(): Promise<Announcement[]> {
@@ -325,7 +329,10 @@ export async function getEditableAnnouncements(): Promise<Announcement[]> {
     if ((await contentMode()) === "supabase") {
       const supabase = createPublicClient();
       if (supabase) {
-        const result = await supabase.from("campus_announcements").select("*").order("sort_order");
+        const result = await supabase
+          .from("campus_announcements")
+          .select("*")
+          .order("created_at", { ascending: false });
         if (!result.error) {
           return (result.data ?? []).map((row) => mapAnnouncement(row as Record<string, unknown>));
         }
@@ -334,7 +341,7 @@ export async function getEditableAnnouncements(): Promise<Announcement[]> {
   } catch (error) {
     console.error(error);
   }
-  return readContentStore().announcements ?? [];
+  return (readContentStore().announcements ?? []).slice().sort(compareAnnouncements);
 }
 
 export async function getPublicFaqs(): Promise<Faq[]> {

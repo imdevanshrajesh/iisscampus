@@ -494,6 +494,15 @@ export function councilInputFromForm(formData: FormData) {
   });
 }
 
+export const announcementInputSchema = z.object({
+  title: z.string().trim().min(2).max(200),
+  message: z.string().trim().max(500).default(""),
+  body: z.string().trim().max(8000).default(""),
+  resources: z.array(resourceSchema).max(40).default([]),
+  eventId: z.string().uuid().nullable().default(null),
+  enabled: z.boolean().default(true),
+});
+
 export function validateCouncilMedia(input: CouncilInput, allowedHosts: readonly string[]) {
   for (const member of input.members) {
     if (!member.imageUrl) continue;

@@ -223,12 +223,18 @@ export function mapCouncilYear(
 }
 
 export function mapAnnouncement(row: Record<string, unknown>): Announcement {
+  const message = String(row.message ?? "");
+  const titleRaw = String(row.title ?? "").trim();
   return {
     id: String(row.id),
-    message: String(row.message ?? ""),
+    title: titleRaw || message.trim() || "Announcement",
+    message,
+    body: String(row.body ?? ""),
+    resources: mapResources(row.resources),
     eventId: row.event_id ? String(row.event_id) : null,
     enabled: Boolean(row.enabled),
     sortOrder: Number(row.sort_order ?? 0),
+    createdAt: String(row.created_at ?? new Date().toISOString()),
   };
 }
 

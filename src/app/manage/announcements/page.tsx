@@ -13,7 +13,7 @@ export default async function AnnouncementsPage() {
     <div className="mx-auto max-w-6xl px-5 py-12 md:px-8">
       <h1 className="text-3xl font-medium tracking-tight">Announcements</h1>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-        Enabled messages scroll across the top of the homepage. Link an activity when the update belongs to one event or competition.
+        Published announcements appear on the homepage board and on the announcements page. An optional ticker line scrolls at the top of the site.
       </p>
       <div className="mt-8 grid gap-6">
         <AnnouncementForm announcement={null} events={events} />

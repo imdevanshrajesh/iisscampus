@@ -37,7 +37,7 @@ export function LiveNow({
           </ul>
         ) : (
           <div>
-            <p className="font-display max-w-[13ch] text-[clamp(3rem,6.2vw,5.8rem)] leading-[0.86] text-white">
+            <p className="font-display max-w-[13ch] text-[clamp(2.2rem,4.5vw,4rem)] leading-[0.86] text-white md:max-w-[11ch]">
               Nothing on stage <span className="italic text-gold">right now.</span>
             </p>
             <div className="mt-6 max-w-md text-sm leading-6 text-white/65 md:text-base">

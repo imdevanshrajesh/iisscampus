@@ -6,6 +6,7 @@ import { BoardCard } from "@/components/home/board-card";
 import { ComingUp } from "@/components/home/coming-up";
 import { CouncilPreview } from "@/components/home/council-preview";
 import { GalleryMosaic } from "@/components/home/gallery-mosaic";
+import { AnnouncementHomePanel } from "@/components/home/announcement-home-panel";
 import { LiveNow } from "@/components/home/live-now";
 import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
 import { RingLink } from "@/components/home/ring-link";
@@ -13,7 +14,7 @@ import { Today } from "@/components/home/today";
 import { siteConfig } from "@/lib/config";
 import { compareCampusEvents } from "@/lib/data/catalog";
 import { classifyNavigationUrl } from "@/lib/media/url";
-import type { Achievement, CampusEvent, Category } from "@/lib/types";
+import type { Achievement, Announcement, CampusEvent, Category } from "@/lib/types";
 
 const pageAnchors = [
   { href: "/events", label: "Events" },
@@ -33,12 +34,14 @@ export function HomePage({
   achievements,
   hosts,
   logoUrl,
+  announcements,
 }: {
   events: CampusEvent[];
   categories: Category[];
   achievements: Achievement[];
   hosts: readonly string[];
   logoUrl?: string | null;
+  announcements: Announcement[];
 }) {
   const campusEvents = events.filter((event) => event.listing !== "external");
   const featured = campusEvents.filter((event) => event.featured);
@@ -133,6 +136,7 @@ export function HomePage({
 
           <div className="rise home-hero__stage mt-14 md:mt-20" style={delay(680)}>
             <LiveNow ongoing={ongoing} upcoming={upcoming} />
+            <AnnouncementHomePanel announcements={announcements} />
           </div>
         </div>
       </section>

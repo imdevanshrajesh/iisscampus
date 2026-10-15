@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useEffectEvent, useRef, useState, type CSSProperties } from "react";
-import { renderAnnouncementMessage } from "@/lib/announcements";
+import { announcementTickerText, renderAnnouncementMessage } from "@/lib/announcements";
 import type { Announcement, CampusEvent } from "@/lib/types";
 
 const SPEED_PX_PER_SEC = 32;
@@ -21,9 +21,10 @@ function AnnouncementItems({
     <>
       {items.map((item) => {
         const linked = item.eventId ? eventById.get(item.eventId) : null;
+        const ticker = announcementTickerText(item);
         const content = (
           <span className="announcement-bar__item text-sm whitespace-nowrap">
-            {renderAnnouncementMessage(item.message)}
+            {renderAnnouncementMessage(ticker)}
             {linked ? <span className="ml-2 text-white/60">· {linked.title}</span> : null}
           </span>
         );
@@ -58,7 +59,7 @@ export function AnnouncementBar({
   const unitRef = useRef<HTMLDivElement>(null);
   const [loop, setLoop] = useState({ repeat: 1, shift: 0, duration: 20 });
 
-  const active = announcements.filter((item) => item.enabled && item.message.trim());
+  const active = announcements.filter((item) => item.enabled && announcementTickerText(item));
   const eventById = new Map(events.map((event) => [event.id, event]));
   const onCouncil = pathname === "/council" || pathname.startsWith("/council/");
 

@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { ResourceRepeater } from "@/components/manage/resource-repeater";
 import { deleteAnnouncement, saveAnnouncement, type ActionState } from "@/lib/manage/actions";
-import type { Announcement, CampusEvent } from "@/lib/types";
+import type { Announcement, CampusEvent, ContentResource } from "@/lib/types";
 
 const fieldClass = "w-full rounded-md border border-line bg-background px-3 py-2 text-sm";
 
@@ -15,23 +16,48 @@ export function AnnouncementForm({
 }) {
   const [state, action, pending] = useActionState(saveAnnouncement, {} as ActionState);
   const [deleteState, deleteAction, deleting] = useActionState(deleteAnnouncement, {} as ActionState);
+  const [resources, setResources] = useState<ContentResource[]>(announcement?.resources ?? []);
 
   return (
     <div className="grid gap-4 rounded-xl border border-line p-4">
       <form action={action} className="grid gap-3">
         {announcement ? <input type="hidden" name="id" value={announcement.id} /> : null}
+        <input type="hidden" name="resources" value={JSON.stringify(resources.filter((item) => item.title.trim()))} />
         <label className="grid gap-1.5 text-sm">
-          Message
+          Title
+          <input
+            name="title"
+            defaultValue={announcement?.title ?? ""}
+            required
+            maxLength={200}
+            className={fieldClass}
+            placeholder="Summer camp registration"
+          />
+        </label>
+        <label className="grid gap-1.5 text-sm">
+          Ticker line (optional)
           <textarea
             name="message"
             defaultValue={announcement?.message ?? ""}
-            rows={3}
-            required
+            rows={2}
+            maxLength={500}
             className={fieldClass}
-            placeholder="**Summer Camp** registration closes tomorrow. [Register](https://example.com)"
+            placeholder="Short line for the scrolling bar at the top. Leave blank to use the title."
           />
         </label>
         <p className="text-xs text-muted">Formatting: **bold**, *italic*, and [label](https://link).</p>
+        <label className="grid gap-1.5 text-sm">
+          Details
+          <textarea
+            name="body"
+            defaultValue={announcement?.body ?? ""}
+            rows={5}
+            maxLength={8000}
+            className={fieldClass}
+            placeholder="Full announcement text shown when visitors open the card."
+          />
+        </label>
+        <ResourceRepeater resources={resources} onChange={setResources} />
         <label className="grid gap-1.5 text-sm">
           Linked activity
           <select name="eventId" defaultValue={announcement?.eventId ?? ""} className={fieldClass}>
@@ -43,13 +69,9 @@ export function AnnouncementForm({
             ))}
           </select>
         </label>
-        <label className="grid max-w-32 gap-1.5 text-sm">
-          Order
-          <input type="number" name="sortOrder" defaultValue={announcement?.sortOrder ?? 0} className={fieldClass} />
-        </label>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="enabled" defaultChecked={announcement?.enabled ?? true} />
-          Show on homepage
+          Show on site
         </label>
         {state.error ? <p className="text-sm">{state.error}</p> : null}
         {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}

@@ -88,7 +88,7 @@ async function loadStaffWorkspace() {
     supabase.from("campus_council_photos").select("*"),
     supabase.from("campus_council_posts").select("*"),
     supabase.from("campus_council_members").select("*"),
-    supabase.from("campus_announcements").select("*").order("sort_order"),
+    supabase.from("campus_announcements").select("*").order("created_at", { ascending: false }),
     supabase.from("campus_faqs").select("*").order("sort_order"),
   ]);
 

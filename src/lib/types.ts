@@ -206,10 +206,14 @@ export type SiteBrand = {
 
 export type Announcement = {
   id: string;
+  title: string;
   message: string;
+  body: string;
+  resources: ContentResource[];
   eventId: string | null;
   enabled: boolean;
   sortOrder: number;
+  createdAt: string;
 };
 
 export type Faq = {

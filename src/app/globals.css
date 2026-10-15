@@ -530,7 +530,81 @@ html[data-intro="play"] .hero-scribble path {
 
 .home-hero__stage {
   position: relative;
+  display: grid;
+  gap: 1rem;
   border-radius: 1.75rem;
+}
+
+@media (min-width: 768px) {
+  .home-hero__stage {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+}
+
+.announcement-panel {
+  position: relative;
+  z-index: 1;
+  min-height: 22rem;
+  border-radius: 1.75rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 252, 240, 0.92);
+  padding: 2.25rem 1.75rem 1.75rem;
+  box-shadow: 0 24px 50px -28px rgba(11, 31, 68, 0.18);
+}
+
+@media (min-width: 768px) {
+  .announcement-panel {
+    padding: 2.75rem 2.25rem 2.25rem;
+  }
+}
+
+.announcement-card {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--background);
+  overflow: hidden;
+}
+
+.announcement-card__trigger {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  text-align: left;
+  transition: background-color 300ms var(--ease-out);
+}
+
+.announcement-card__trigger:hover,
+.announcement-card__trigger--open {
+  background: rgba(242, 239, 220, 0.55);
+}
+
+.announcement-card__trigger--compact {
+  padding: 0.85rem 1rem;
+}
+
+.announcement-card__panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 400ms var(--ease-out);
+}
+
+.announcement-card__panel--open {
+  grid-template-rows: 1fr;
+}
+
+.announcement-card__panel-inner {
+  overflow: hidden;
+  min-height: 0;
+  padding: 0 1.1rem;
+}
+
+.announcement-card__panel--open .announcement-card__panel-inner {
+  padding: 0 1.1rem 1.1rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
 }
 
 .home-band {
