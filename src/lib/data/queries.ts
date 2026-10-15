@@ -13,6 +13,7 @@ import {
   groupCouncilRows,
   mapAchievement,
   mapAnnouncement,
+  mapMarquee,
   mapCategory,
   mapEvent,
   mapFaq,
@@ -27,6 +28,7 @@ import { createPublicClient } from "@/lib/supabase/public";
 import type {
   Achievement,
   Announcement,
+  MarqueeMessage,
   CampusEvent,
   Category,
   CouncilYear,
@@ -342,6 +344,47 @@ export async function getEditableAnnouncements(): Promise<Announcement[]> {
     console.error(error);
   }
   return (readContentStore().announcements ?? []).slice().sort(compareAnnouncements);
+}
+
+export async function getPublicMarquee(): Promise<MarqueeMessage[]> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const result = await supabase
+          .from("campus_marquee")
+          .select("*")
+          .eq("enabled", true)
+          .order("sort_order");
+        if (!result.error) {
+          return (result.data ?? []).map((row) => mapMarquee(row as Record<string, unknown>));
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return (readContentStore().marquee ?? [])
+    .filter((item) => item.enabled && item.message.trim())
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export async function getEditableMarquee(): Promise<MarqueeMessage[]> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const result = await supabase.from("campus_marquee").select("*").order("sort_order");
+        if (!result.error) {
+          return (result.data ?? []).map((row) => mapMarquee(row as Record<string, unknown>));
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return (readContentStore().marquee ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 export async function getPublicFaqs(): Promise<Faq[]> {

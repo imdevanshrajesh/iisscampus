@@ -34,17 +34,6 @@ export function AnnouncementForm({
             placeholder="Summer camp registration"
           />
         </label>
-        <label className="grid gap-1.5 text-sm">
-          Ticker line (optional)
-          <textarea
-            name="message"
-            defaultValue={announcement?.message ?? ""}
-            rows={2}
-            maxLength={500}
-            className={fieldClass}
-            placeholder="Short line for the scrolling bar at the top. Leave blank to use the title."
-          />
-        </label>
         <p className="text-xs text-muted">Formatting: **bold**, *italic*, and [label](https://link).</p>
         <label className="grid gap-1.5 text-sm">
           Details

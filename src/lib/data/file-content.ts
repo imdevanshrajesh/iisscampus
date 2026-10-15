@@ -6,6 +6,7 @@ import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "
 import type {
   Achievement,
   Announcement,
+  MarqueeMessage,
   CampusEvent,
   Category,
   CouncilMember,
@@ -30,6 +31,7 @@ type Store = {
   councilLogoUrl?: string | null;
   contactEmail?: string | null;
   announcements?: Announcement[];
+  marquee?: MarqueeMessage[];
   faqs?: Faq[];
   wellnessCategories?: WellnessCategory[];
   wellnessItems?: WellnessItem[];
@@ -53,19 +55,28 @@ function normalizeCouncilMembers(members: CouncilMember[]) {
   return normalized.map((member, index) => ({ ...member, slug: slugs[index] ?? member.slug }));
 }
 
-function normalizeAnnouncement(item: Announcement): Announcement {
-  const message = String(item.message ?? "");
-  const title = String(item.title ?? "").trim() || message.trim() || "Announcement";
+function normalizeAnnouncement(item: Announcement & { message?: string }): Announcement {
+  const legacy = String(item.message ?? "").trim();
+  const title = String(item.title ?? "").trim() || legacy || "Announcement";
   return {
     id: item.id,
     title,
-    message,
     body: String(item.body ?? ""),
     resources: Array.isArray(item.resources) ? item.resources : [],
     eventId: item.eventId ?? null,
     enabled: Boolean(item.enabled),
     sortOrder: Number(item.sortOrder ?? 0),
     createdAt: item.createdAt ?? new Date().toISOString(),
+  };
+}
+
+function normalizeMarquee(item: MarqueeMessage): MarqueeMessage {
+  return {
+    id: item.id,
+    message: String(item.message ?? ""),
+    eventId: item.eventId ?? null,
+    enabled: Boolean(item.enabled),
+    sortOrder: Number(item.sortOrder ?? 0),
   };
 }
 
@@ -130,6 +141,9 @@ export function readContentStore(): Store {
       contactEmail: parsed.contactEmail ?? null,
       announcements: Array.isArray(parsed.announcements)
         ? parsed.announcements.map((item) => normalizeAnnouncement(item as Announcement))
+        : [],
+      marquee: Array.isArray(parsed.marquee)
+        ? parsed.marquee.map((item) => normalizeMarquee(item as MarqueeMessage))
         : [],
       faqs: Array.isArray(parsed.faqs) ? parsed.faqs : [],
       wellnessCategories: Array.isArray(parsed.wellnessCategories)
@@ -549,7 +563,6 @@ export function saveContactEmailToStore(contactEmail: string | null) {
 export function saveAnnouncementToStore(input: {
   id?: string;
   title: string;
-  message: string;
   body: string;
   resources: Announcement["resources"];
   eventId: string | null;
@@ -561,7 +574,6 @@ export function saveAnnouncementToStore(input: {
   const record: Announcement = {
     id: existing?.id ?? crypto.randomUUID(),
     title: input.title,
-    message: input.message,
     body: input.body,
     resources: input.resources,
     eventId: input.eventId,
@@ -578,6 +590,35 @@ export function saveAnnouncementToStore(input: {
 export function deleteAnnouncementFromStore(id: string) {
   const store = readContentStore();
   store.announcements = (store.announcements ?? []).filter((item) => item.id !== id);
+  return writeContentStore(store);
+}
+
+export function saveMarqueeToStore(input: {
+  id?: string;
+  message: string;
+  eventId: string | null;
+  enabled: boolean;
+  sortOrder: number;
+}) {
+  const store = readContentStore();
+  const list = store.marquee ?? [];
+  const existing = input.id ? list.find((item) => item.id === input.id) : undefined;
+  const record: MarqueeMessage = {
+    id: existing?.id ?? crypto.randomUUID(),
+    message: input.message,
+    eventId: input.eventId,
+    enabled: input.enabled,
+    sortOrder: input.sortOrder,
+  };
+  store.marquee = existing
+    ? list.map((item) => (item.id === existing.id ? record : item))
+    : [...list, record];
+  return writeContentStore(store);
+}
+
+export function deleteMarqueeFromStore(id: string) {
+  const store = readContentStore();
+  store.marquee = (store.marquee ?? []).filter((item) => item.id !== id);
   return writeContentStore(store);
 }
 

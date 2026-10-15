@@ -54,11 +54,6 @@ function tokenize(message: string): Token[] {
   return tokens;
 }
 
-export function announcementTickerText(item: { title: string; message: string }) {
-  const line = item.message.trim();
-  return line || item.title.trim();
-}
-
 export function compareAnnouncements(a: { createdAt: string }, b: { createdAt: string }) {
   return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 }

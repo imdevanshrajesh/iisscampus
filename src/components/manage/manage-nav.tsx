@@ -22,6 +22,7 @@ const groups = [
       { href: "/manage/council", label: "Council" },
       { href: "/manage/achievements", label: "Achievements" },
       { href: "/manage/announcements", label: "Announcements" },
+      { href: "/manage/marquee", label: "Marquee" },
       { href: "/manage/faq", label: "FAQ" },
       { href: "/manage/newsletter", label: "Newsletter" },
       { href: "/manage/wellness", label: "Wellness" },

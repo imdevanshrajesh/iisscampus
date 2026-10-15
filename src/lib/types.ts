@@ -204,10 +204,17 @@ export type SiteBrand = {
   contactEmail: string | null;
 };
 
+export type MarqueeMessage = {
+  id: string;
+  message: string;
+  eventId: string | null;
+  enabled: boolean;
+  sortOrder: number;
+};
+
 export type Announcement = {
   id: string;
   title: string;
-  message: string;
   body: string;
   resources: ContentResource[];
   eventId: string | null;

@@ -6,37 +6,37 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { PreviewProvider } from "@/components/preview/preview-provider";
 import { defaultSocialLinks } from "@/lib/config";
 import {
-  getPublicAnnouncements,
+  getPublicMarquee,
   getPublicCatalog,
   getPublicSocial,
   getSiteBrand,
   getWellnessPageSettings,
 } from "@/lib/data/queries";
 import { withWellnessNavLabel } from "@/lib/nav";
-import type { Announcement, CampusEvent, Category } from "@/lib/types";
+import type { CampusEvent, Category, MarqueeMessage } from "@/lib/types";
 
 export default async function PublicLayout({ children }: LayoutProps<"/">) {
   let showSampleNote = true;
   let social = { ...defaultSocialLinks };
   let logoUrl: string | null = null;
   let contactEmail: string | null = null;
-  let announcements: Announcement[] = [];
+  let marquee: MarqueeMessage[] = [];
   let events: CampusEvent[] = [];
   let categories: Category[] = [];
   let hosts: string[] = [];
   let nav = withWellnessNavLabel();
   try {
-    const [catalog, brand, publicAnnouncements, wellness] = await Promise.all([
+    const [catalog, brand, publicMarquee, wellness] = await Promise.all([
       getPublicCatalog(),
       getSiteBrand(),
-      getPublicAnnouncements(),
+      getPublicMarquee(),
       getWellnessPageSettings(),
     ]);
     showSampleNote = catalog.events.some((event) => event.isSample);
     social = await getPublicSocial();
     logoUrl = brand.councilLogoUrl ?? catalog.councilLogoUrl;
     contactEmail = brand.contactEmail;
-    announcements = publicAnnouncements;
+    marquee = publicMarquee;
     events = catalog.events;
     categories = catalog.categories;
     hosts = catalog.mediaHosts;
@@ -51,7 +51,7 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
       <SiteChrome logoUrl={logoUrl} nav={nav} />
       <PublicMain>
         <HomeLink />
-        <AnnouncementBar announcements={announcements} events={events} />
+        <AnnouncementBar messages={marquee} events={events} />
         <PreviewProvider categories={categories} hosts={hosts} events={events}>
           {children}
         </PreviewProvider>

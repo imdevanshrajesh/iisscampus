@@ -496,11 +496,17 @@ export function councilInputFromForm(formData: FormData) {
 
 export const announcementInputSchema = z.object({
   title: z.string().trim().min(2).max(200),
-  message: z.string().trim().max(500).default(""),
   body: z.string().trim().max(8000).default(""),
   resources: z.array(resourceSchema).max(40).default([]),
   eventId: z.string().uuid().nullable().default(null),
   enabled: z.boolean().default(true),
+});
+
+export const marqueeInputSchema = z.object({
+  message: z.string().trim().min(2).max(500),
+  eventId: z.string().uuid().nullable().default(null),
+  enabled: z.boolean().default(true),
+  sortOrder: z.number().int().min(0).max(500).default(0),
 });
 
 export function validateCouncilMedia(input: CouncilInput, allowedHosts: readonly string[]) {

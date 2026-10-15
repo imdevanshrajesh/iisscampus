@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useEffectEvent, useRef, useState, type CSSProperties } from "react";
-import { announcementTickerText, renderAnnouncementMessage } from "@/lib/announcements";
-import type { Announcement, CampusEvent } from "@/lib/types";
+import { renderAnnouncementMessage } from "@/lib/announcements";
+import type { CampusEvent, MarqueeMessage } from "@/lib/types";
 
 const SPEED_PX_PER_SEC = 32;
 
@@ -13,7 +13,7 @@ function AnnouncementItems({
   eventById,
   copyKey,
 }: {
-  items: Announcement[];
+  items: MarqueeMessage[];
   eventById: Map<string, CampusEvent>;
   copyKey: string;
 }) {
@@ -21,10 +21,9 @@ function AnnouncementItems({
     <>
       {items.map((item) => {
         const linked = item.eventId ? eventById.get(item.eventId) : null;
-        const ticker = announcementTickerText(item);
         const content = (
           <span className="announcement-bar__item text-sm whitespace-nowrap">
-            {renderAnnouncementMessage(ticker)}
+            {renderAnnouncementMessage(item.message)}
             {linked ? <span className="ml-2 text-white/60">· {linked.title}</span> : null}
           </span>
         );
@@ -48,10 +47,10 @@ function AnnouncementItems({
 }
 
 export function AnnouncementBar({
-  announcements,
+  messages,
   events,
 }: {
-  announcements: Announcement[];
+  messages: MarqueeMessage[];
   events: CampusEvent[];
 }) {
   const pathname = usePathname();
@@ -59,7 +58,7 @@ export function AnnouncementBar({
   const unitRef = useRef<HTMLDivElement>(null);
   const [loop, setLoop] = useState({ repeat: 1, shift: 0, duration: 20 });
 
-  const active = announcements.filter((item) => item.enabled && announcementTickerText(item));
+  const active = messages.filter((item) => item.enabled && item.message.trim());
   const eventById = new Map(events.map((event) => [event.id, event]));
   const onCouncil = pathname === "/council" || pathname.startsWith("/council/");
 
@@ -100,7 +99,7 @@ export function AnnouncementBar({
       observer.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [active.length, onCouncil, announcements]);
+  }, [active.length, onCouncil, messages]);
 
   if (onCouncil || !active.length) return null;
 

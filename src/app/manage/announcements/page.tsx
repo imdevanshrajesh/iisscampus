@@ -13,7 +13,7 @@ export default async function AnnouncementsPage() {
     <div className="mx-auto max-w-6xl px-5 py-12 md:px-8">
       <h1 className="text-3xl font-medium tracking-tight">Announcements</h1>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-        Published announcements appear on the homepage board and on the announcements page. An optional ticker line scrolls at the top of the site.
+        These are the visitor announcements on the homepage and the announcements page. The scrolling bar is edited under Marquee.
       </p>
       <div className="mt-8 grid gap-6">
         <AnnouncementForm announcement={null} events={events} />

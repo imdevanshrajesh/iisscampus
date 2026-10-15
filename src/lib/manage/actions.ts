@@ -1584,7 +1584,6 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
   const { announcementInputSchema } = await import("@/lib/validation/content");
   const parsed = announcementInputSchema.safeParse({
     title: formData.get("title"),
-    message: formData.get("message"),
     body: formData.get("body"),
     resources,
     eventId: /^[0-9a-f-]{36}$/i.test(eventIdRaw) ? eventIdRaw : null,
@@ -1595,7 +1594,7 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
     return { error: issue?.message ?? "Check the announcement fields and try again." };
   }
 
-  const { title, message, body, eventId } = parsed.data;
+  const { title, body, eventId } = parsed.data;
 
   if ((await contentMode()) === "file") {
     const access = await fileActor((actor) => can(actor, "manage_settings"));
@@ -1605,7 +1604,6 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
       !saveAnnouncementToStore({
         id: id || undefined,
         title,
-        message,
         body,
         resources: parsed.data.resources,
         eventId,
@@ -1626,7 +1624,7 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
 
   const record = {
     title,
-    message,
+    message: "",
     body,
     resources: parsed.data.resources,
     event_id: eventId,
@@ -1654,6 +1652,83 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
   revalidatePath("/announcements");
   revalidatePath("/manage/announcements");
   return { ok: "Announcement saved." };
+}
+
+export async function saveMarquee(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  const eventIdRaw = String(formData.get("eventId") ?? "").trim();
+  const { marqueeInputSchema } = await import("@/lib/validation/content");
+  const parsed = marqueeInputSchema.safeParse({
+    message: formData.get("message"),
+    eventId: /^[0-9a-f-]{36}$/i.test(eventIdRaw) ? eventIdRaw : null,
+    enabled: formData.get("enabled") === "on",
+    sortOrder: Number(formData.get("sortOrder") ?? 0) || 0,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Enter a marquee message." };
+  }
+
+  const { message, eventId, enabled, sortOrder } = parsed.data;
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { saveMarqueeToStore } = await import("@/lib/data/file-content");
+    if (!saveMarqueeToStore({ id: id || undefined, message, eventId, enabled, sortOrder })) {
+      return { error: "The marquee message could not be saved." };
+    }
+    revalidatePath("/", "layout");
+    revalidatePath("/manage/marquee");
+    return { ok: "Marquee message saved." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const record = { message, event_id: eventId, enabled, sort_order: sortOrder };
+  const saved = id
+    ? await context.supabase.from("campus_marquee").update(record).eq("id", id).select("id").maybeSingle()
+    : await context.supabase.from("campus_marquee").insert(record).select("id").maybeSingle();
+  if (saved.error) {
+    const missing = isMissingTableError(saved.error) || (saved.error.message ?? "").toLowerCase().includes("marquee");
+    return {
+      error: missing
+        ? "Run supabase/MARQUEE.sql in the database, then save again."
+        : databaseError(saved.error, "The marquee message could not be saved."),
+    };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, id ? "update" : "create", "campus_marquee", saved.data?.id ?? null);
+  revalidatePath("/", "layout");
+  revalidatePath("/manage/marquee");
+  return { ok: "Marquee message saved." };
+}
+
+export async function deleteMarquee(_state: ActionState, formData: FormData): Promise<ActionState> {
+  if (formData.get("confirm") !== "yes") return { error: "Confirm the delete, then try again." };
+  const id = String(formData.get("id") ?? "");
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { deleteMarqueeFromStore } = await import("@/lib/data/file-content");
+    if (!deleteMarqueeFromStore(id)) return { error: deleteFailed };
+    revalidatePath("/", "layout");
+    revalidatePath("/manage/marquee");
+    return { ok: "Deleted." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const removed = await context.supabase.from("campus_marquee").delete().eq("id", id);
+  if (removed.error) return { error: databaseError(removed.error, deleteFailed) };
+  await writeAudit(context.supabase, context.actor.userId, "delete", "campus_marquee", id);
+  revalidatePath("/", "layout");
+  revalidatePath("/manage/marquee");
+  return { ok: "Deleted." };
 }
 
 export async function deleteAnnouncement(_state: ActionState, formData: FormData): Promise<ActionState> {

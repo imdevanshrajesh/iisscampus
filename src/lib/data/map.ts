@@ -2,6 +2,7 @@ import { councilMemberSlugs } from "@/lib/data/catalog";
 import type {
   Achievement,
   Announcement,
+  MarqueeMessage,
   CampusEvent,
   Category,
   ContentResource,
@@ -222,13 +223,22 @@ export function mapCouncilYear(
   };
 }
 
-export function mapAnnouncement(row: Record<string, unknown>): Announcement {
-  const message = String(row.message ?? "");
-  const titleRaw = String(row.title ?? "").trim();
+export function mapMarquee(row: Record<string, unknown>): MarqueeMessage {
   return {
     id: String(row.id),
-    title: titleRaw || message.trim() || "Announcement",
-    message,
+    message: String(row.message ?? ""),
+    eventId: row.event_id ? String(row.event_id) : null,
+    enabled: Boolean(row.enabled),
+    sortOrder: Number(row.sort_order ?? 0),
+  };
+}
+
+export function mapAnnouncement(row: Record<string, unknown>): Announcement {
+  const titleRaw = String(row.title ?? "").trim();
+  const legacy = String(row.message ?? "").trim();
+  return {
+    id: String(row.id),
+    title: titleRaw || legacy || "Announcement",
     body: String(row.body ?? ""),
     resources: mapResources(row.resources),
     eventId: row.event_id ? String(row.event_id) : null,
