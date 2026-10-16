@@ -554,6 +554,39 @@ export const marqueeInputSchema = z.object({
   sortOrder: z.number().int().min(0).max(500).default(0),
 });
 
+const optionalSiteHref = z
+  .string()
+  .trim()
+  .max(300)
+  .optional()
+  .or(z.literal(""))
+  .transform((value) => value || null);
+
+export function parseSiteHref(raw: string | null) {
+  if (!raw) return null;
+  if (raw.startsWith("/") && !raw.startsWith("//") && !/\s/.test(raw)) return raw;
+  const classified = classifyNavigationUrl(raw);
+  return classified.ok ? classified.url : null;
+}
+
+export const navGroupInputSchema = z.object({
+  label: z.string().trim().min(1, "Enter a label.").max(40),
+  href: optionalSiteHref,
+  includeListing: z.enum(["event", "competition"]).nullable().default(null),
+  enabled: z.boolean().default(true),
+  sortOrder: z.number().int().min(0).max(500).default(0),
+});
+
+export const navItemInputSchema = z.object({
+  groupId: z.string().trim().min(1).max(80),
+  title: z.string().trim().max(80).default(""),
+  description: z.string().trim().max(160).default(""),
+  href: optionalSiteHref,
+  eventId: z.string().uuid().nullable().default(null),
+  enabled: z.boolean().default(true),
+  sortOrder: z.number().int().min(0).max(500).default(0),
+});
+
 export function validateCouncilMedia(input: CouncilInput, allowedHosts: readonly string[]) {
   for (const member of input.members) {
     if (!member.imageUrl) continue;

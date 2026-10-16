@@ -202,6 +202,9 @@ export type SocialLinks = {
 export type SiteBrand = {
   councilLogoUrl: string | null;
   contactEmail: string | null;
+  navLogoUrl: string | null;
+  navLogoHref: string | null;
+  navLabel: string;
 };
 
 export type MarqueeMessage = {
@@ -210,6 +213,42 @@ export type MarqueeMessage = {
   eventId: string | null;
   enabled: boolean;
   sortOrder: number;
+};
+
+export type NavIncludeListing = "event" | "competition";
+
+export type NavItem = {
+  id: string;
+  groupId: string;
+  title: string;
+  description: string;
+  href: string | null;
+  eventId: string | null;
+  enabled: boolean;
+  sortOrder: number;
+};
+
+export type NavGroup = {
+  id: string;
+  label: string;
+  href: string | null;
+  includeListing: NavIncludeListing | null;
+  enabled: boolean;
+  sortOrder: number;
+  items: NavItem[];
+};
+
+export type PublicNavLink = {
+  title: string;
+  description: string;
+  href: string;
+};
+
+export type PublicNavGroup = {
+  id: string;
+  label: string;
+  href: string | null;
+  links: PublicNavLink[];
 };
 
 export type Announcement = {

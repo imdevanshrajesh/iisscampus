@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useEffectEvent, useRef, useState, type CSSProperties } from "react";
 import { renderAnnouncementMessage } from "@/lib/announcements";
 import type { CampusEvent, MarqueeMessage } from "@/lib/types";
@@ -53,15 +52,12 @@ export function AnnouncementBar({
   messages: MarqueeMessage[];
   events: CampusEvent[];
 }) {
-  const pathname = usePathname();
   const barRef = useRef<HTMLDivElement>(null);
   const unitRef = useRef<HTMLDivElement>(null);
   const [loop, setLoop] = useState({ repeat: 1, shift: 0, duration: 20 });
 
   const active = messages.filter((item) => item.enabled && item.message.trim());
   const eventById = new Map(events.map((event) => [event.id, event]));
-  const onCouncil = pathname === "/council" || pathname.startsWith("/council/");
-
   const measure = useEffectEvent(() => {
     const unit = unitRef.current;
     const bar = barRef.current;
@@ -82,7 +78,7 @@ export function AnnouncementBar({
   });
 
   useEffect(() => {
-    if (onCouncil || !active.length) return;
+    if (!active.length) return;
 
     measure();
     const bar = barRef.current;
@@ -99,14 +95,14 @@ export function AnnouncementBar({
       observer.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [active.length, onCouncil, messages]);
+  }, [active.length, messages]);
 
-  if (onCouncil || !active.length) return null;
+  if (!active.length) return null;
 
   return (
     <div
       ref={barRef}
-      className="announcement-bar border-b border-ink/15 bg-navy text-white"
+      className="announcement-bar sticky top-20 z-30 border-b border-ink/15 bg-navy text-white md:top-24"
       role="region"
       aria-label="Announcements"
     >

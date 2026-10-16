@@ -2,6 +2,7 @@ import {
   ContactEmailForm,
   CouncilLogoForm,
   HostForm,
+  NavBrandForm,
   RoleForm,
   SocialForm,
 } from "@/components/manage/settings-forms";
@@ -62,6 +63,15 @@ export default async function SettingsPage() {
         </p>
         <div className="mt-4">
           <CouncilLogoForm logoUrl={brand.councilLogoUrl} />
+        </div>
+      </section>
+      <section className="mt-12">
+        <h2 className="text-xl font-medium">Navbar</h2>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
+          The mark on the right of the top bar. Paste an HTTPS image address, the name beside it, and where a click should go.
+        </p>
+        <div className="mt-4">
+          <NavBrandForm logoUrl={brand.navLogoUrl} href={brand.navLogoHref} label={brand.navLabel} />
         </div>
       </section>
       <section className="mt-12">

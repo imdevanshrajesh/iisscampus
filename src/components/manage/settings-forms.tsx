@@ -5,6 +5,7 @@ import {
   grantRole,
   saveContactEmail,
   saveCouncilLogo,
+  saveNavBrand,
   saveSettings,
   saveSocial,
   type ActionState,
@@ -54,12 +55,48 @@ export function CouncilLogoForm({ logoUrl }: { logoUrl: string | null }) {
         />
       </label>
       <p className="text-xs leading-5 text-muted">
-        Used in the navigation, admin bar, intro, council page, and site icon. Leave blank to use the logo saved in the project. The host must be listed under image hosts.
+        Used on the council page, the intro, the admin bar, and the site icon. Leave blank to use the logo saved in the project. The host must be listed under image hosts.
       </p>
       {state.error ? <p className="text-sm">{state.error}</p> : null}
       {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
       <button type="submit" disabled={pending} className="justify-self-start rounded-md bg-ink px-4 py-2 text-sm text-white">
         Save logo
+      </button>
+    </form>
+  );
+}
+
+export function NavBrandForm({
+  logoUrl,
+  href,
+  label,
+}: {
+  logoUrl: string | null;
+  href: string | null;
+  label: string;
+}) {
+  const [state, action, pending] = useActionState(saveNavBrand, {} as ActionState);
+  return (
+    <form action={action} className="grid max-w-xl gap-3">
+      <label className="grid gap-1.5 text-sm">
+        Name
+        <input name="navLabel" defaultValue={label} maxLength={40} className={fieldClass} />
+      </label>
+      <label className="grid gap-1.5 text-sm">
+        Navbar logo URL
+        <input name="navLogoUrl" defaultValue={logoUrl ?? ""} className={fieldClass} placeholder={IMAGE_URL_EXAMPLE} />
+      </label>
+      <label className="grid gap-1.5 text-sm">
+        Link
+        <input name="navLogoHref" defaultValue={href ?? ""} className={fieldClass} placeholder="/ or https://" />
+      </label>
+      <p className="text-xs leading-5 text-muted">
+        This logo and name are only in the top bar. Leave the logo blank to keep using the council logo there. Leave the link blank to open the home page.
+      </p>
+      {state.error ? <p className="text-sm">{state.error}</p> : null}
+      {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
+      <button type="submit" disabled={pending} className="justify-self-start rounded-md bg-ink px-4 py-2 text-sm text-white">
+        Save navbar
       </button>
     </form>
   );

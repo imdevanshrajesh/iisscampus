@@ -9,7 +9,7 @@ export async function ManageBar({ children }: { children: React.ReactNode }) {
 
   if (!actor) {
     return (
-      <div className="min-h-dvh bg-[#f4f1e6]">
+      <div className="min-h-dvh bg-[#eef1f4]">
         <header className="border-b border-white/10 bg-navy text-white">
           <div className="mx-auto flex max-w-6xl px-5 py-4 md:px-8">
             <Wordmark href="/manage/login" tone="paper" logoUrl={brand.councilLogoUrl} />
@@ -21,8 +21,8 @@ export async function ManageBar({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-dvh bg-[#f4f1e6] lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
-      <aside className="border-b border-white/10 bg-navy text-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:border-b-0 lg:border-r">
+    <div className="min-h-dvh bg-[#eef1f4] lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)]">
+      <aside className="border-b border-white/10 bg-[#12141c] text-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:border-b-0 lg:border-r lg:border-white/10">
         <div className="flex items-center justify-between gap-4 px-5 py-5">
           <Wordmark href="/manage" tone="paper" logoUrl={brand.councilLogoUrl} />
           <form action={signOut} className="lg:hidden">

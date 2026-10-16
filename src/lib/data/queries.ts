@@ -14,6 +14,7 @@ import {
   mapAchievement,
   mapAnnouncement,
   mapMarquee,
+  mapNavGroup,
   mapCategory,
   mapEvent,
   mapCustomProgram,
@@ -23,9 +24,11 @@ import {
   mapWellnessItem,
 } from "@/lib/data/map";
 import { contentMode } from "@/lib/data/content-mode";
+import { defaultNavGroups } from "@/lib/nav";
 import { seedMediaHosts } from "@/lib/data/seed";
-import { logPostgrestUnlessMissing } from "@/lib/supabase/errors";
+import { isMissingTableError, logPostgrestUnlessMissing } from "@/lib/supabase/errors";
 import { createPublicClient } from "@/lib/supabase/public";
+import { createStaffClient } from "@/lib/supabase/server";
 import type {
   Achievement,
   Announcement,
@@ -35,6 +38,7 @@ import type {
   Category,
   CouncilYear,
   Faq,
+  NavGroup,
   Newsletter,
   PublicCatalog,
   SiteBrand,
@@ -272,25 +276,19 @@ export async function getSiteBrand(): Promise<SiteBrand> {
       if (supabase) {
         const row = await supabase
           .from("campus_settings")
-          .select("council_logo_url, contact_email")
+          .select("council_logo_url, contact_email, nav_logo_url, nav_logo_href, nav_label")
           .eq("id", true)
           .maybeSingle();
         if (!row.error) {
-          return {
-            councilLogoUrl: row.data?.council_logo_url ? String(row.data.council_logo_url) : null,
-            contactEmail: row.data?.contact_email ? String(row.data.contact_email) : null,
-          };
+          return brandFromRow(row.data);
         }
         const logoOnly = await supabase
           .from("campus_settings")
-          .select("council_logo_url")
+          .select("council_logo_url, contact_email")
           .eq("id", true)
           .maybeSingle();
         if (!logoOnly.error) {
-          return {
-            councilLogoUrl: logoOnly.data?.council_logo_url ? String(logoOnly.data.council_logo_url) : null,
-            contactEmail: null,
-          };
+          return brandFromRow(logoOnly.data);
         }
       }
     }
@@ -301,6 +299,25 @@ export async function getSiteBrand(): Promise<SiteBrand> {
   return {
     councilLogoUrl: store.councilLogoUrl ?? null,
     contactEmail: store.contactEmail ?? null,
+    navLogoUrl: store.navLogoUrl ?? null,
+    navLogoHref: store.navLogoHref ?? null,
+    navLabel: store.navLabel?.trim() || "IISS Boys",
+  };
+}
+
+function brandFromRow(row: {
+  council_logo_url?: string | null;
+  contact_email?: string | null;
+  nav_logo_url?: string | null;
+  nav_logo_href?: string | null;
+  nav_label?: string | null;
+} | null): SiteBrand {
+  return {
+    councilLogoUrl: row?.council_logo_url ? String(row.council_logo_url) : null,
+    contactEmail: row?.contact_email ? String(row.contact_email) : null,
+    navLogoUrl: row?.nav_logo_url ? String(row.nav_logo_url) : null,
+    navLogoHref: row?.nav_logo_href ? String(row.nav_logo_href) : null,
+    navLabel: row?.nav_label?.trim() || "IISS Boys",
   };
 }
 
@@ -387,6 +404,63 @@ export async function getEditableMarquee(): Promise<MarqueeMessage[]> {
     console.error(error);
   }
   return (readContentStore().marquee ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+const navColumns =
+  "id, label, href, sort_order, enabled, include_listing, campus_nav_items(id, group_id, title, description, href, event_id, sort_order, enabled)";
+
+function sortNavGroups(groups: NavGroup[]) {
+  return groups
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label))
+    .map((group) => ({
+      ...group,
+      items: group.items.slice().sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title)),
+    }));
+}
+
+function localNavGroups(enabledOnly: boolean) {
+  const stored = readContentStore().navGroups;
+  const groups = stored ?? defaultNavGroups;
+  return sortNavGroups(enabledOnly ? groups.filter((group) => group.enabled) : groups);
+}
+
+export async function getPublicNavGroups(): Promise<NavGroup[]> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const result = await supabase.from("campus_nav_groups").select(navColumns).eq("enabled", true).order("sort_order");
+        if (!result.error) {
+          return sortNavGroups((result.data ?? []).map((row) => mapNavGroup(row as Record<string, unknown>)));
+        }
+        logPostgrestUnlessMissing(result.error);
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return localNavGroups(true);
+}
+
+export async function getEditableNavGroups(): Promise<NavGroup[]> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = await createStaffClient();
+      if (supabase) {
+        const result = await supabase.from("campus_nav_groups").select(navColumns).order("sort_order");
+        if (!result.error) {
+          return sortNavGroups((result.data ?? []).map((row) => mapNavGroup(row as Record<string, unknown>)));
+        }
+        if (isMissingTableError(result.error)) return [];
+        console.error(result.error);
+        return [];
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return localNavGroups(false);
 }
 
 export async function getPublicFaqs(): Promise<Faq[]> {

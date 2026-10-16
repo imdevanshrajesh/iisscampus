@@ -3,6 +3,52 @@ import { councilKindLabel } from "@/components/council/council-year";
 import { ManageUnavailable } from "@/components/manage/unavailable";
 import { eventStatusLabel } from "@/lib/data/catalog";
 import { requireWorkspace } from "@/lib/manage/access";
+import type { CampusEvent } from "@/lib/types";
+
+function monthSeries(events: CampusEvent[]) {
+  const now = new Date();
+  const buckets = Array.from({ length: 6 }, (_, index) => {
+    const offset = 5 - index;
+    const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
+    const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+    const label = new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" }).format(date);
+    return { key, label, count: 0 };
+  });
+  for (const event of events) {
+    if (!event.eventDate) continue;
+    const bucket = buckets.find((item) => event.eventDate?.startsWith(item.key));
+    if (bucket) bucket.count += 1;
+  }
+  return buckets;
+}
+
+function MonthChart({ series }: { series: { key: string; label: string; count: number }[] }) {
+  const max = Math.max(1, ...series.map((item) => item.count));
+  const width = 560;
+  const height = 148;
+  const barWidth = 28;
+  const gap = (width - series.length * barWidth) / (series.length + 1);
+  return (
+    <svg viewBox={`0 0 ${width} ${height + 28}`} className="mt-4 w-full" role="img" aria-label="Events by month">
+      {series.map((item, index) => {
+        const barHeight = item.count === 0 ? 2 : (item.count / max) * (height - 8);
+        const x = gap + index * (barWidth + gap);
+        const y = height - barHeight;
+        return (
+          <g key={item.key}>
+            <rect x={x} y={y} width={barWidth} height={barHeight} rx={6} fill="#c65a12" />
+            <text x={x + barWidth / 2} y={y - 6} textAnchor="middle" fontSize="12" fill="#1c2438">
+              {item.count}
+            </text>
+            <text x={x + barWidth / 2} y={height + 18} textAnchor="middle" fontSize="12" fill="#6a6258">
+              {item.label}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
 
 export default async function ManageHomePage() {
   const access = await requireWorkspace();
@@ -19,16 +65,28 @@ export default async function ManageHomePage() {
     (event) => event.eventStatus === "ongoing" && event.publicationStatus === "published",
   );
   const waiting = access.workspace.events.filter((event) => event.publicationStatus === "in_review");
+  const months = monthSeries(access.workspace.events);
+  const statusRows = [
+    ["Published", counts.published],
+    ["In review", counts.in_review],
+    ["Drafts", counts.draft],
+    ["Archived", counts.archived],
+  ] as const;
+  const statusMax = Math.max(1, ...statusRows.map(([, value]) => value));
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-10 md:px-8">
-      <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">{access.role}</p>
-      <h1 className="font-display mt-2 text-4xl text-ink">Content desk</h1>
-      <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
-        Events, the boys&apos; student council, and achievements. Publish only what should be on the public site.
-      </p>
+    <div className="mx-auto max-w-6xl px-5 py-8 md:px-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">{access.role}</p>
+          <h1 className="mt-2 text-3xl font-medium tracking-tight text-ink">Overview</h1>
+        </div>
+        <Link href="/manage/events/new" className="rounded-md bg-navy px-3.5 py-2 text-sm text-white">
+          New event
+        </Link>
+      </div>
 
-      <dl className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <dl className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {(
           [
             ["On now", ongoing.length, "/events?status=ongoing"],
@@ -37,15 +95,39 @@ export default async function ManageHomePage() {
             ["Council years", access.workspace.councilYears.length, "/manage/council"],
           ] as const
         ).map(([label, value, href]) => (
-          <Link key={label} href={href} className="rounded-2xl border border-line bg-white p-4 shadow-[0_1px_0_rgba(20,27,56,0.04)]">
-            <dt className="text-sm text-muted">{label}</dt>
-            <dd className="mt-2 text-3xl font-medium">{value}</dd>
+          <Link key={label} href={href} className="rounded-lg border border-[#e3e6ea] bg-white px-4 py-3.5">
+            <dt className="text-xs font-medium uppercase tracking-[0.12em] text-muted">{label}</dt>
+            <dd className="mt-2 text-3xl font-medium tracking-tight">{value}</dd>
           </Link>
         ))}
       </dl>
 
-      <div className="mt-10 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-line bg-white p-5 shadow-[0_1px_0_rgba(20,27,56,0.04)]">
+      <div className="mt-3 grid gap-3 lg:grid-cols-5">
+        <section className="rounded-lg border border-[#e3e6ea] bg-white p-4 lg:col-span-3">
+          <h2 className="text-sm font-medium">Events by month</h2>
+          <p className="mt-1 text-xs text-muted">Counted from each event&apos;s start date, for the last six months.</p>
+          <MonthChart series={months} />
+        </section>
+        <section className="rounded-lg border border-[#e3e6ea] bg-white p-4 lg:col-span-2">
+          <h2 className="text-sm font-medium">Publication</h2>
+          <ul className="mt-4 grid gap-3">
+            {statusRows.map(([label, value]) => (
+              <li key={label}>
+                <div className="flex items-center justify-between text-sm">
+                  <span>{label}</span>
+                  <span className="text-muted">{value}</span>
+                </div>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#eef1f4]">
+                  <div className="h-full rounded-full bg-accent" style={{ width: `${(value / statusMax) * 100}%` }} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <section className="rounded-lg border border-[#e3e6ea] bg-white p-4">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-lg font-medium">Happening now</h2>
             <Link href="/manage/events/new" className="text-sm text-accent">
@@ -83,7 +165,7 @@ export default async function ManageHomePage() {
           ) : null}
         </section>
 
-        <section className="rounded-2xl border border-line bg-white p-5 shadow-[0_1px_0_rgba(20,27,56,0.04)]">
+        <section className="rounded-lg border border-[#e3e6ea] bg-white p-4">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-lg font-medium">Student council · Boys</h2>
             <Link href="/manage/council/new" className="text-sm text-accent">

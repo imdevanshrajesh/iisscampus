@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { canDelete, canEditPublication, canTransition, type Actor } from "@/lib/auth/permissions";
+import { defaultNavGroups, isNavIncludeListing } from "@/lib/nav";
 import { councilMemberSlugs } from "@/lib/data/catalog";
 import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "@/lib/data/seed";
 import type {
@@ -13,6 +14,8 @@ import type {
   CouncilMember,
   CouncilYear,
   Faq,
+  NavGroup,
+  NavItem,
   Newsletter,
   PublicationStatus,
   SocialLinks,
@@ -31,8 +34,12 @@ type Store = {
   social?: SocialLinks | null;
   councilLogoUrl?: string | null;
   contactEmail?: string | null;
+  navLogoUrl?: string | null;
+  navLogoHref?: string | null;
+  navLabel?: string | null;
   announcements?: Announcement[];
   marquee?: MarqueeMessage[];
+  navGroups?: NavGroup[];
   faqs?: Faq[];
   customPrograms?: CustomProgram[];
   wellnessCategories?: WellnessCategory[];
@@ -69,6 +76,32 @@ function normalizeAnnouncement(item: Announcement & { message?: string }): Annou
     enabled: Boolean(item.enabled),
     sortOrder: Number(item.sortOrder ?? 0),
     createdAt: item.createdAt ?? new Date().toISOString(),
+  };
+}
+
+function normalizeNavItem(item: NavItem, groupId: string): NavItem {
+  return {
+    id: item.id,
+    groupId,
+    title: String(item.title ?? ""),
+    description: String(item.description ?? ""),
+    href: item.href ? String(item.href) : null,
+    eventId: item.eventId ?? null,
+    enabled: Boolean(item.enabled),
+    sortOrder: Number(item.sortOrder ?? 0),
+  };
+}
+
+function normalizeNavGroup(group: NavGroup): NavGroup {
+  const items = Array.isArray(group.items) ? group.items.map((entry) => normalizeNavItem(entry, group.id)) : [];
+  return {
+    id: group.id,
+    label: String(group.label ?? ""),
+    href: group.href ? String(group.href) : null,
+    includeListing: isNavIncludeListing(group.includeListing) ? group.includeListing : null,
+    enabled: Boolean(group.enabled),
+    sortOrder: Number(group.sortOrder ?? 0),
+    items,
   };
 }
 
@@ -141,12 +174,18 @@ export function readContentStore(): Store {
       social: parsed.social ?? null,
       councilLogoUrl: parsed.councilLogoUrl ?? null,
       contactEmail: parsed.contactEmail ?? null,
+      navLogoUrl: parsed.navLogoUrl ?? null,
+      navLogoHref: parsed.navLogoHref ?? null,
+      navLabel: parsed.navLabel ?? null,
       announcements: Array.isArray(parsed.announcements)
         ? parsed.announcements.map((item) => normalizeAnnouncement(item as Announcement))
         : [],
       marquee: Array.isArray(parsed.marquee)
         ? parsed.marquee.map((item) => normalizeMarquee(item as MarqueeMessage))
         : [],
+      navGroups: Array.isArray(parsed.navGroups)
+        ? parsed.navGroups.map((group) => normalizeNavGroup(group as NavGroup))
+        : undefined,
       faqs: Array.isArray(parsed.faqs) ? parsed.faqs : [],
       customPrograms: Array.isArray(parsed.customPrograms) ? parsed.customPrograms : [],
       wellnessCategories: Array.isArray(parsed.wellnessCategories)
@@ -551,6 +590,14 @@ export function saveSocialToStore(social: SocialLinks) {
   return writeContentStore(store);
 }
 
+export function saveNavBrandToStore(input: { navLogoUrl: string | null; navLogoHref: string | null; navLabel: string }) {
+  const store = readContentStore();
+  store.navLogoUrl = input.navLogoUrl;
+  store.navLogoHref = input.navLogoHref;
+  store.navLabel = input.navLabel;
+  return writeContentStore(store);
+}
+
 export function saveCouncilLogoToStore(councilLogoUrl: string | null) {
   const store = readContentStore();
   store.councilLogoUrl = councilLogoUrl;
@@ -622,6 +669,83 @@ export function saveMarqueeToStore(input: {
 export function deleteMarqueeFromStore(id: string) {
   const store = readContentStore();
   store.marquee = (store.marquee ?? []).filter((item) => item.id !== id);
+  return writeContentStore(store);
+}
+
+function storedNavGroups() {
+  const store = readContentStore();
+  const source = store.navGroups ?? defaultNavGroups;
+  return source.map((group) => ({ ...group, items: group.items.map((item) => ({ ...item })) }));
+}
+
+export function saveNavGroupToStore(input: {
+  id?: string;
+  label: string;
+  href: string | null;
+  includeListing: NavGroup["includeListing"];
+  enabled: boolean;
+  sortOrder: number;
+}) {
+  const store = readContentStore();
+  const list = storedNavGroups();
+  const existing = input.id ? list.find((group) => group.id === input.id) : undefined;
+  const record: NavGroup = {
+    id: existing?.id ?? crypto.randomUUID(),
+    label: input.label,
+    href: input.href,
+    includeListing: input.includeListing,
+    enabled: input.enabled,
+    sortOrder: input.sortOrder,
+    items: existing?.items ?? [],
+  };
+  store.navGroups = existing ? list.map((group) => (group.id === existing.id ? record : group)) : [...list, record];
+  return writeContentStore(store);
+}
+
+export function deleteNavGroupFromStore(id: string) {
+  const store = readContentStore();
+  const list = storedNavGroups();
+  store.navGroups = list.filter((group) => group.id !== id);
+  return writeContentStore(store);
+}
+
+export function saveNavItemToStore(input: {
+  id?: string;
+  groupId: string;
+  title: string;
+  description: string;
+  href: string | null;
+  eventId: string | null;
+  enabled: boolean;
+  sortOrder: number;
+}) {
+  const store = readContentStore();
+  const list = storedNavGroups();
+  const group = list.find((entry) => entry.id === input.groupId);
+  if (!group) return false;
+  const existing = input.id ? group.items.find((item) => item.id === input.id) : undefined;
+  const record: NavItem = {
+    id: existing?.id ?? crypto.randomUUID(),
+    groupId: group.id,
+    title: input.title,
+    description: input.description,
+    href: input.href,
+    eventId: input.eventId,
+    enabled: input.enabled,
+    sortOrder: input.sortOrder,
+  };
+  group.items = existing ? group.items.map((item) => (item.id === existing.id ? record : item)) : [...group.items, record];
+  store.navGroups = list;
+  return writeContentStore(store);
+}
+
+export function deleteNavItemFromStore(id: string) {
+  const store = readContentStore();
+  const list = storedNavGroups();
+  store.navGroups = list.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => item.id !== id),
+  }));
   return writeContentStore(store);
 }
 

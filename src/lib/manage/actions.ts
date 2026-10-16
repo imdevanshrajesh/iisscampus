@@ -1531,6 +1531,63 @@ export async function saveCouncilLogo(_state: ActionState, formData: FormData): 
   return { ok: "Council logo saved." };
 }
 
+export async function saveNavBrand(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const rawLogo = String(formData.get("navLogoUrl") ?? "").trim();
+  const rawHref = String(formData.get("navLogoHref") ?? "").trim();
+  const navLabel = String(formData.get("navLabel") ?? "").trim() || "IISS Boys";
+  if (navLabel.length > 40) return { error: "Keep the navbar name to 40 characters." };
+
+  const { parseSiteHref } = await import("@/lib/validation/content");
+  let navLogoUrl: string | null = null;
+  if (rawLogo) {
+    const classified = classifyNavigationUrl(rawLogo);
+    if (!classified.ok) return { error: "Navbar logo must be a valid https:// image link." };
+    navLogoUrl = classified.url;
+  }
+  const navLogoHref = rawHref ? parseSiteHref(rawHref) : null;
+  if (rawHref && !navLogoHref) return { error: "Use a site path such as /events, or an https:// link." };
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { saveNavBrandToStore } = await import("@/lib/data/file-content");
+    if (!saveNavBrandToStore({ navLogoUrl, navLogoHref, navLabel })) return { error: "The navbar logo could not be saved." };
+    revalidatePath("/", "layout");
+    revalidatePath("/manage/settings");
+    return { ok: "Navbar logo saved." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  if (navLogoUrl) {
+    const hostsRow = await context.supabase.from("campus_settings").select("media_hosts").eq("id", true).maybeSingle();
+    const hosts = Array.isArray(hostsRow.data?.media_hosts) ? hostsRow.data.media_hosts.map(String) : [];
+    const image = classifyMediaUrl(navLogoUrl, hosts);
+    if (!image.ok) return { error: image.message };
+    navLogoUrl = image.url;
+  }
+
+  const saved = await context.supabase
+    .from("campus_settings")
+    .update({ nav_logo_url: navLogoUrl, nav_logo_href: navLogoHref, nav_label: navLabel })
+    .eq("id", true);
+  if (saved.error) {
+    const missing = (saved.error.message ?? "").toLowerCase().includes("nav_logo") || (saved.error.message ?? "").toLowerCase().includes("nav_label");
+    return {
+      error: missing
+        ? "Run supabase/NAV_LOGO.sql in the database, then save again."
+        : databaseError(saved.error, "The navbar logo could not be saved."),
+    };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, "update_nav_logo", "campus_settings", null);
+  revalidatePath("/", "layout");
+  revalidatePath("/manage/settings");
+  return { ok: "Navbar logo saved." };
+}
+
 export async function saveContactEmail(_state: ActionState, formData: FormData): Promise<ActionState> {
   const raw = String(formData.get("contactEmail") ?? "").trim();
   let contactEmail: string | null = null;
@@ -2252,5 +2309,187 @@ export async function deleteWellnessItem(_state: ActionState, formData: FormData
   if (removed.error) return { error: databaseError(removed.error, deleteFailed) };
   await writeAudit(context.supabase, context.actor.userId, "delete", "campus_wellness_items", id);
   revalidateWellness();
+  return { ok: "Deleted." };
+}
+
+const navMissing = "Run supabase/NAVIGATION.sql in the database, then save again.";
+
+function revalidateNav() {
+  revalidatePath("/", "layout");
+  revalidatePath("/manage/navigation");
+}
+
+function navWriteError(error: DatabaseError | null | undefined) {
+  const missing = isMissingTableError(error) || (error?.message ?? "").toLowerCase().includes("nav");
+  return missing ? navMissing : databaseError(error, "The menu could not be saved.");
+}
+
+export async function saveNavGroup(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  const listingRaw = String(formData.get("includeListing") ?? "");
+  const { navGroupInputSchema, parseSiteHref } = await import("@/lib/validation/content");
+  const parsed = navGroupInputSchema.safeParse({
+    label: formData.get("label"),
+    href: formData.get("href"),
+    includeListing: listingRaw === "event" || listingRaw === "competition" ? listingRaw : null,
+    enabled: formData.get("enabled") === "on",
+    sortOrder: Number(formData.get("sortOrder") ?? 0) || 0,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Enter a label." };
+  const href = parseSiteHref(parsed.data.href);
+  if (parsed.data.href && !href) return { error: "Use a site path such as /events, or an https:// link." };
+
+  const record = {
+    label: parsed.data.label,
+    href,
+    include_listing: parsed.data.includeListing,
+    enabled: parsed.data.enabled,
+    sort_order: parsed.data.sortOrder,
+  };
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { saveNavGroupToStore } = await import("@/lib/data/file-content");
+    if (
+      !saveNavGroupToStore({
+        id: id || undefined,
+        label: record.label,
+        href,
+        includeListing: parsed.data.includeListing,
+        enabled: parsed.data.enabled,
+        sortOrder: parsed.data.sortOrder,
+      })
+    ) {
+      return { error: "The menu could not be saved." };
+    }
+    revalidateNav();
+    return { ok: "Saved." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const saved = id
+    ? await context.supabase.from("campus_nav_groups").update(record).eq("id", id).select("id").maybeSingle()
+    : await context.supabase.from("campus_nav_groups").insert(record).select("id").maybeSingle();
+  if (saved.error) return { error: navWriteError(saved.error) };
+  await writeAudit(context.supabase, context.actor.userId, id ? "update" : "create", "campus_nav_groups", saved.data?.id ?? null);
+  revalidateNav();
+  return { ok: "Saved." };
+}
+
+export async function deleteNavGroup(_state: ActionState, formData: FormData): Promise<ActionState> {
+  if (formData.get("confirm") !== "yes") return { error: "Confirm the delete, then try again." };
+  const id = String(formData.get("id") ?? "");
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { deleteNavGroupFromStore } = await import("@/lib/data/file-content");
+    if (!deleteNavGroupFromStore(id)) return { error: deleteFailed };
+    revalidateNav();
+    return { ok: "Deleted." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+  const removed = await context.supabase.from("campus_nav_groups").delete().eq("id", id);
+  if (removed.error) return { error: navWriteError(removed.error) };
+  await writeAudit(context.supabase, context.actor.userId, "delete", "campus_nav_groups", id);
+  revalidateNav();
+  return { ok: "Deleted." };
+}
+
+export async function saveNavItem(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  const eventIdRaw = String(formData.get("eventId") ?? "").trim();
+  const { navItemInputSchema, parseSiteHref } = await import("@/lib/validation/content");
+  const parsed = navItemInputSchema.safeParse({
+    groupId: formData.get("groupId"),
+    title: formData.get("title"),
+    description: formData.get("description"),
+    href: formData.get("href"),
+    eventId: /^[0-9a-f-]{36}$/i.test(eventIdRaw) ? eventIdRaw : null,
+    enabled: formData.get("enabled") === "on",
+    sortOrder: Number(formData.get("sortOrder") ?? 0) || 0,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check this card." };
+
+  let href = parseSiteHref(parsed.data.href);
+  if (!parsed.data.eventId) {
+    if (parsed.data.title.length < 1) return { error: "Enter a title, or choose an activity." };
+    if (!parsed.data.href) return { error: "Enter a link, or choose an activity." };
+    if (!href) return { error: "Use a site path such as /events, or an https:// link." };
+  } else if (parsed.data.href && !href) {
+    return { error: "Use a site path such as /events, or an https:// link." };
+  }
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { saveNavItemToStore } = await import("@/lib/data/file-content");
+    if (
+      !saveNavItemToStore({
+        id: id || undefined,
+        groupId: parsed.data.groupId,
+        title: parsed.data.title,
+        description: parsed.data.description,
+        href,
+        eventId: parsed.data.eventId,
+        enabled: parsed.data.enabled,
+        sortOrder: parsed.data.sortOrder,
+      })
+    ) {
+      return { error: "Choose a menu label before adding a card." };
+    }
+    revalidateNav();
+    return { ok: "Saved." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const record = {
+    group_id: parsed.data.groupId,
+    title: parsed.data.title,
+    description: parsed.data.description,
+    href,
+    event_id: parsed.data.eventId,
+    enabled: parsed.data.enabled,
+    sort_order: parsed.data.sortOrder,
+  };
+  const saved = id
+    ? await context.supabase.from("campus_nav_items").update(record).eq("id", id).select("id").maybeSingle()
+    : await context.supabase.from("campus_nav_items").insert(record).select("id").maybeSingle();
+  if (saved.error) return { error: navWriteError(saved.error) };
+  await writeAudit(context.supabase, context.actor.userId, id ? "update" : "create", "campus_nav_items", saved.data?.id ?? null);
+  revalidateNav();
+  return { ok: "Saved." };
+}
+
+export async function deleteNavItem(_state: ActionState, formData: FormData): Promise<ActionState> {
+  if (formData.get("confirm") !== "yes") return { error: "Confirm the delete, then try again." };
+  const id = String(formData.get("id") ?? "");
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { deleteNavItemFromStore } = await import("@/lib/data/file-content");
+    if (!deleteNavItemFromStore(id)) return { error: deleteFailed };
+    revalidateNav();
+    return { ok: "Deleted." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+  const removed = await context.supabase.from("campus_nav_items").delete().eq("id", id);
+  if (removed.error) return { error: navWriteError(removed.error) };
+  await writeAudit(context.supabase, context.actor.userId, "delete", "campus_nav_items", id);
+  revalidateNav();
   return { ok: "Deleted." };
 }

@@ -17,6 +17,8 @@ import type {
   CustomProgramLink,
   CustomProgramPhoto,
   Faq,
+  NavGroup,
+  NavItem,
   WellnessCategory,
   WellnessImageOrientation,
   WellnessItem,
@@ -223,6 +225,35 @@ export function mapCouncilYear(
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     publishedAt: row.published_at ? String(row.published_at) : null,
+  };
+}
+
+export function mapNavItem(row: Record<string, unknown>): NavItem {
+  return {
+    id: String(row.id),
+    groupId: String(row.group_id ?? ""),
+    title: String(row.title ?? ""),
+    description: String(row.description ?? ""),
+    href: row.href ? String(row.href) : null,
+    eventId: row.event_id ? String(row.event_id) : null,
+    enabled: Boolean(row.enabled),
+    sortOrder: Number(row.sort_order ?? 0),
+  };
+}
+
+export function mapNavGroup(row: Record<string, unknown>): NavGroup {
+  const listing = row.include_listing === "event" || row.include_listing === "competition" ? row.include_listing : null;
+  const nested = Array.isArray(row.campus_nav_items) ? row.campus_nav_items : [];
+  return {
+    id: String(row.id),
+    label: String(row.label ?? ""),
+    href: row.href ? String(row.href) : null,
+    includeListing: listing,
+    enabled: Boolean(row.enabled),
+    sortOrder: Number(row.sort_order ?? 0),
+    items: nested
+      .map((item) => mapNavItem(item as Record<string, unknown>))
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title)),
   };
 }
 

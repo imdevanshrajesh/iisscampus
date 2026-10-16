@@ -23,6 +23,7 @@ const groups = [
       { href: "/manage/achievements", label: "Achievements" },
       { href: "/manage/announcements", label: "Announcements" },
       { href: "/manage/marquee", label: "Marquee" },
+      { href: "/manage/navigation", label: "Navigation" },
       { href: "/manage/faq", label: "FAQ" },
       { href: "/manage/programs", label: "Custom programs" },
       { href: "/manage/newsletter", label: "Newsletter" },
@@ -54,8 +55,8 @@ export function ManageNav({ showSettings }: { showSettings: boolean }) {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`shrink-0 rounded-lg px-3 py-2 text-sm ${
-                    active ? "bg-white text-navy" : "text-white/75 hover:bg-white/10 hover:text-white"
+                  className={`shrink-0 rounded-md px-3 py-1.5 text-sm ${
+                    active ? "bg-white/12 text-white" : "text-white/65 hover:bg-white/8 hover:text-white"
                   }`}
                   aria-current={active ? "page" : undefined}
                 >
