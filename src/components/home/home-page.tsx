@@ -10,6 +10,7 @@ import { AnnouncementHomePanel } from "@/components/home/announcement-home-panel
 import { LiveNow } from "@/components/home/live-now";
 import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
 import { RingLink } from "@/components/home/ring-link";
+import { NavMark } from "@/components/layout/nav-marks";
 import { Today } from "@/components/home/today";
 import { siteConfig } from "@/lib/config";
 import { compareCampusEvents } from "@/lib/data/catalog";
@@ -66,7 +67,7 @@ export function HomePage({
   return (
     <>
       <section className="home-hero">
-        <div className="mx-auto max-w-[90rem] px-5 pt-4 md:px-8 md:pt-8">
+        <div className="mx-auto max-w-[90rem] px-5 pt-3 md:px-8">
           <div
             className="rise kicker grid grid-cols-2 gap-3 border-y border-ink/80 py-3 text-ink/75"
             style={delay(0)}
@@ -126,7 +127,10 @@ export function HomePage({
                       <span className="font-display text-xs italic text-accent">
                         {String(index + 1).padStart(2, "0")}
                       </span>
-                      <span className="text-link">{link.label}</span>
+                      <span className="text-link inline-flex items-center gap-2">
+                        <NavMark href={link.href} label={link.label} size={14} />
+                        {link.label}
+                      </span>
                     </Link>
                   </li>
                 ))}

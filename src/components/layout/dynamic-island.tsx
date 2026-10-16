@@ -1,10 +1,11 @@
 "use client";
 
-import { ChevronDown, Home, Images, CalendarDays, Users, Newspaper } from "lucide-react";
+import { CalendarDays, ChevronDown, Clock, Home, Images, Menu, Newspaper, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { CouncilLogo } from "@/components/brand/council-logo";
+import { NavMark } from "@/components/layout/nav-marks";
 import { primaryNav } from "@/lib/nav";
 import type { PublicNavGroup, PublicNavLink } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,34 @@ const dock = [
   { href: "/gallery", label: "Gallery", icon: Images },
   { href: "/newsletter", label: "Letter", icon: Newspaper },
 ];
+
+const clockFormat = new Intl.DateTimeFormat("en-GB", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: "Asia/Dubai",
+});
+
+function NavClock() {
+  const [label, setLabel] = useState("");
+
+  useEffect(() => {
+    const tick = () => setLabel(clockFormat.format(new Date()));
+    tick();
+    const id = window.setInterval(tick, 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  return (
+    <time className="hidden min-w-36 items-center justify-end gap-1.5 text-right text-sm tabular-nums whitespace-nowrap text-background/75 lg:inline-flex" suppressHydrationWarning>
+      <Clock aria-hidden="true" size={14} className="shrink-0 opacity-70" />
+      {label || "\u00a0"}
+    </time>
+  );
+}
 
 const sectionHrefs = new Set([
   "/",
@@ -45,7 +74,7 @@ export function HomeLink() {
   if (pathname === "/") return null;
 
   return (
-    <div className="mx-auto max-w-6xl px-5 md:px-8">
+    <div className="mx-auto max-w-6xl px-5 pt-3 md:px-8">
       <Link href="/" className="mb-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-ink">
         <Home aria-hidden="true" size={16} />
         Home
@@ -64,7 +93,10 @@ function LinkCards({ links, onNavigate }: { links: PublicNavLink[]; onNavigate: 
             onClick={onNavigate}
             className="block h-full rounded-2xl border border-line bg-background px-4 py-3.5 transition hover:bg-wash"
           >
-            <span className="block text-sm font-medium text-ink">{link.title}</span>
+            <span className="flex items-center gap-2 text-sm font-medium text-ink">
+              <NavMark href={link.href} label={link.title} size={16} />
+              {link.title}
+            </span>
             {link.description ? <span className="mt-1 block text-sm leading-5 text-muted">{link.description}</span> : null}
           </Link>
         </li>
@@ -87,9 +119,15 @@ function GroupPanel({
     <div className={embedded ? "grid gap-3" : "mx-auto grid max-w-[90rem] gap-4 px-5 py-5 md:px-8 md:py-6"}>
       {!embedded || viewAll ? (
         <div className="flex items-center justify-between gap-4">
-          {embedded ? <span /> : <p className="text-sm font-medium text-ink">{group.label}</p>}
+          {embedded ? <span /> : (
+            <p className="inline-flex items-center gap-2 text-sm font-medium text-ink">
+              <NavMark href={group.href ?? group.links[0]?.href} label={group.label} size={15} />
+              {group.label}
+            </p>
+          )}
           {viewAll ? (
-            <Link href={viewAll.href} onClick={onNavigate} className="rounded-full bg-navy px-3.5 py-1.5 text-sm text-white">
+            <Link href={viewAll.href} onClick={onNavigate} className="inline-flex items-center gap-1.5 rounded-full bg-navy px-3.5 py-1.5 text-sm text-white">
+              <NavMark href={viewAll.href} label={viewAll.title} size={14} />
               View all
             </Link>
           ) : null}
@@ -189,15 +227,15 @@ export function SiteChrome({
       </a>
       <header
         ref={rootRef}
-        className="site-nav pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-3"
+        className="site-nav pointer-events-none fixed inset-x-0 top-2 z-50 flex h-max items-start justify-center px-3"
       >
-        <div className="pointer-events-auto relative" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
+        <div className="pointer-events-auto relative w-full md:w-auto" onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
         <div className="site-nav__bar">
-          <nav className="site-nav__links hidden items-center gap-0.5 md:flex" aria-label="Primary">
+          <nav className="site-nav__links hidden items-center gap-2 md:flex" aria-label="Primary">
             {menuGroups.map((group) => {
               const active = groupActive(pathname, group);
               const className = cn(
-                "inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-sm",
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm",
                 active ? "text-background" : "text-background/70 hover:text-background",
               );
                   if (!group.links.length && group.href) {
@@ -210,6 +248,7 @@ export function SiteChrome({
                     className={className}
                     aria-current={active ? "page" : undefined}
                   >
+                    <NavMark href={group.href} label={group.label} size={15} />
                     {group.label}
                   </Link>
                 );
@@ -230,6 +269,7 @@ export function SiteChrome({
                     setOpenId(expanded ? null : group.id);
                   }}
                 >
+                  <NavMark href={group.href ?? group.links[0]?.href} label={group.label} size={15} />
                   {group.label}
                   <ChevronDown aria-hidden="true" size={14} className={cn("opacity-70 transition", expanded && "rotate-180")} />
                 </button>
@@ -247,13 +287,15 @@ export function SiteChrome({
               href="/events"
               onMouseEnter={() => hoverGroup(null)}
               onClick={closeMenu}
-              className="hidden rounded-full bg-background px-3.5 py-1.5 text-sm font-medium text-navy md:inline-flex"
+              className="hidden items-center gap-1.5 rounded-full bg-background px-3.5 py-1.5 text-sm font-medium text-navy md:inline-flex"
             >
+              <CalendarDays aria-hidden="true" size={15} />
               What&apos;s on
             </Link>
+            <NavClock />
             <button
               type="button"
-              className="rounded-full bg-background px-3.5 py-1.5 text-sm font-medium text-navy md:hidden"
+              className="inline-flex items-center gap-1.5 rounded-full bg-background px-3.5 py-1.5 text-sm font-medium text-navy md:hidden"
               aria-expanded={mobileOpen}
               aria-controls="site-nav-mobile"
               onClick={() => {
@@ -261,6 +303,7 @@ export function SiteChrome({
                 setOpenId(null);
               }}
             >
+              <Menu aria-hidden="true" size={15} />
               {mobileOpen ? "Close" : "Menu"}
             </button>
           </div>
@@ -282,8 +325,9 @@ export function SiteChrome({
                       key={group.id}
                       href={group.href}
                       onClick={closeMenu}
-                      className="rounded-xl px-3 py-2.5 text-sm font-medium text-ink"
+                      className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-ink"
                     >
+                      <NavMark href={group.href} label={group.label} size={16} />
                       {group.label}
                     </Link>
                   );
@@ -293,11 +337,14 @@ export function SiteChrome({
                   <div key={group.id} className="rounded-2xl border border-line bg-background">
                     <button
                       type="button"
-                      className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-ink"
+                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-ink"
                       aria-expanded={expanded}
                       onClick={() => setOpenId(expanded ? null : group.id)}
                     >
-                      {group.label}
+                      <span className="inline-flex items-center gap-2">
+                        <NavMark href={group.href ?? group.links[0]?.href} label={group.label} size={16} />
+                        {group.label}
+                      </span>
                       <ChevronDown aria-hidden="true" size={14} className={cn("transition", expanded && "rotate-180")} />
                     </button>
                     {expanded ? (

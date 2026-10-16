@@ -214,11 +214,11 @@ h1.profile-name {
 .site-nav__bar {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  width: max-content;
+  gap: 1.35rem;
+  width: 100%;
   max-width: calc(100vw - 1.5rem);
-  min-height: 3.25rem;
-  padding: 0.35rem 0.45rem 0.35rem 0.85rem;
+  min-height: 3.35rem;
+  padding: 0.4rem 0.7rem 0.4rem 1.15rem;
   border: 1px solid rgba(252, 251, 243, 0.08);
   border-radius: 999px;
   background: rgba(31, 42, 68, 0.94);
@@ -242,7 +242,14 @@ h1.profile-name {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1.15rem;
+}
+
+@media (min-width: 768px) {
+  .site-nav__bar {
+    width: max-content;
+    min-width: min(64rem, calc(100vw - 2rem));
+  }
 }
 
 .site-nav__mark {
@@ -265,7 +272,7 @@ h1.profile-name {
 }
 
 .site-nav__panel--menu {
-  width: min(22rem, calc(100vw - 1.5rem));
+  width: 100%;
 }
 
 .phone-dock {

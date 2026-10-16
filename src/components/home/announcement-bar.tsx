@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useEffectEvent, useRef, useState, type CSSProperties } from "react";
 import { renderAnnouncementMessage } from "@/lib/announcements";
 import type { CampusEvent, MarqueeMessage } from "@/lib/types";
@@ -52,6 +53,8 @@ export function AnnouncementBar({
   messages: MarqueeMessage[];
   events: CampusEvent[];
 }) {
+  const pathname = usePathname();
+  const onCouncil = pathname === "/council" || pathname.startsWith("/council/");
   const barRef = useRef<HTMLDivElement>(null);
   const unitRef = useRef<HTMLDivElement>(null);
   const [loop, setLoop] = useState({ repeat: 1, shift: 0, duration: 20 });
@@ -97,12 +100,12 @@ export function AnnouncementBar({
     };
   }, [active.length, messages]);
 
-  if (!active.length) return null;
+  if (!active.length || onCouncil) return null;
 
   return (
     <div
       ref={barRef}
-      className="announcement-bar sticky top-20 z-30 border-b border-ink/15 bg-navy text-white md:top-24"
+      className="announcement-bar border-b border-ink/15 bg-navy text-white"
       role="region"
       aria-label="Announcements"
     >

@@ -8,7 +8,7 @@ export function PublicMain({ children }: { children: React.ReactNode }) {
   const council = pathname === "/council" || pathname.startsWith("/council/");
 
   return (
-    <main id="content" className={cn("flex-1 pb-24 pt-20 md:pb-0 md:pt-24", council && "council-shell")}>
+    <main id="content" className={cn("flex-1 pb-24 pt-[4.5rem] md:pb-0", council && "council-shell")}>
       {children}
     </main>
   );
