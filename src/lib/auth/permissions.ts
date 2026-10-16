@@ -17,6 +17,7 @@ export type PrivilegedAction =
   | "manage_council"
   | "manage_roles"
   | "manage_settings"
+  | "manage_custom_programs"
   | "read_audit"
   | "delete_draft"
   | "delete_published";
@@ -30,6 +31,7 @@ const editorActions = new Set<PrivilegedAction>([
   "manage_categories",
   "manage_achievements",
   "manage_council",
+  "manage_custom_programs",
   "delete_draft",
 ]);
 

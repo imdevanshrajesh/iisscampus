@@ -1,10 +1,10 @@
 import { CustomProgramForm } from "@/components/manage/custom-program-form";
 import { ManageUnavailable } from "@/components/manage/unavailable";
 import { getEditableCustomPrograms } from "@/lib/data/queries";
-import { requireAdministrator } from "@/lib/manage/access";
+import { requireWorkspace } from "@/lib/manage/access";
 
 export default async function CustomProgramsPage() {
-  const access = await requireAdministrator();
+  const access = await requireWorkspace();
   if (!access.ready) return <ManageUnavailable />;
   const programs = await getEditableCustomPrograms();
 

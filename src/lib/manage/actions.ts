@@ -1875,7 +1875,7 @@ export async function saveCustomProgram(_state: ActionState, formData: FormData)
   if ("error" in normalizedLinks) return normalizedLinks;
 
   if ((await contentMode()) === "file") {
-    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    const access = await fileActor((actor) => can(actor, "manage_custom_programs"));
     if ("error" in access) return access;
     const filePhotos = [];
     for (const photo of parsed.data.photos) {
@@ -1907,7 +1907,7 @@ export async function saveCustomProgram(_state: ActionState, formData: FormData)
 
   const context = await staffContext();
   if ("error" in context) return { error: context.error };
-  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+  if (!can(context.actor, "manage_custom_programs")) return { error: genericDenial };
 
   const hostsRow = await context.supabase.from("campus_settings").select("media_hosts").eq("id", true).maybeSingle();
   const hosts = Array.isArray(hostsRow.data?.media_hosts) ? hostsRow.data.media_hosts.map(String) : [];
@@ -1959,7 +1959,7 @@ export async function deleteCustomProgram(_state: ActionState, formData: FormDat
   const id = String(formData.get("id") ?? "");
 
   if ((await contentMode()) === "file") {
-    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    const access = await fileActor((actor) => can(actor, "manage_custom_programs"));
     if ("error" in access) return access;
     const { deleteCustomProgramFromStore } = await import("@/lib/data/file-content");
     if (!deleteCustomProgramFromStore(id)) return { error: deleteFailed };
@@ -1970,7 +1970,7 @@ export async function deleteCustomProgram(_state: ActionState, formData: FormDat
 
   const context = await staffContext();
   if ("error" in context) return { error: context.error };
-  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+  if (!can(context.actor, "manage_custom_programs")) return { error: genericDenial };
 
   const removed = await context.supabase.from("campus_custom_programs").delete().eq("id", id);
   if (removed.error) return { error: databaseError(removed.error, deleteFailed) };
