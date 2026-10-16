@@ -231,6 +231,35 @@ export type Faq = {
   published: boolean;
 };
 
+export type CustomProgramPhoto = {
+  url: string;
+  alt: string;
+};
+
+export type CustomProgramLink = {
+  label: string;
+  url: string;
+};
+
+export type CustomProgramEvent = {
+  title: string;
+  slug: string;
+};
+
+export type CustomProgram = {
+  id: string;
+  title: string;
+  summary: string;
+  websiteLabel: string | null;
+  websiteUrl: string | null;
+  photos: CustomProgramPhoto[];
+  links: CustomProgramLink[];
+  eventId: string | null;
+  event: CustomProgramEvent | null;
+  sortOrder: number;
+  published: boolean;
+};
+
 export type WellnessImageOrientation = "auto" | "portrait" | "landscape" | "square";
 
 export type WellnessCategory = {

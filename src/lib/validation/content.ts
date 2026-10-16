@@ -502,6 +502,51 @@ export const announcementInputSchema = z.object({
   enabled: z.boolean().default(true),
 });
 
+const customProgramPhotoSchema = z.object({
+  url: z.string().trim().min(1).max(2048),
+  alt: z.string().trim().min(1, "Add a description for each photo.").max(200),
+});
+
+const customProgramLinkSchema = z
+  .object({
+    label: z.string().trim().min(1).max(80),
+    url: z.string().trim().min(1).max(2048),
+  })
+  .superRefine((value, context) => {
+    const classified = classifyNavigationUrl(value.url);
+    if (!classified.ok) {
+      context.addIssue({
+        code: "custom",
+        path: ["url"],
+        message: "Each extra link must be a valid https:// address.",
+      });
+    }
+  });
+
+export const customProgramInputSchema = z
+  .object({
+    title: z.string().trim().min(2).max(120),
+    summary: z.string().trim().max(4000).default(""),
+    websiteLabel: optionalText(80),
+    websiteUrl: optionalText(2048),
+    photos: z.array(customProgramPhotoSchema).max(12).default([]),
+    links: z.array(customProgramLinkSchema).max(12).default([]),
+    eventId: z.string().uuid().nullable().default(null),
+    published: z.boolean().default(true),
+    sortOrder: z.number().int().min(0).max(500).default(0),
+  })
+  .superRefine((value, context) => {
+    if (!value.websiteUrl) return;
+    const classified = classifyNavigationUrl(value.websiteUrl);
+    if (!classified.ok) {
+      context.addIssue({
+        code: "custom",
+        path: ["websiteUrl"],
+        message: "The website must be a valid https:// link.",
+      });
+    }
+  });
+
 export const marqueeInputSchema = z.object({
   message: z.string().trim().min(2).max(500),
   eventId: z.string().uuid().nullable().default(null),

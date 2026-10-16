@@ -13,6 +13,9 @@ import type {
   CouncilPost,
   CouncilYear,
   EventListing,
+  CustomProgram,
+  CustomProgramLink,
+  CustomProgramPhoto,
   Faq,
   WellnessCategory,
   WellnessImageOrientation,
@@ -253,6 +256,40 @@ export function mapFaq(row: Record<string, unknown>): Faq {
     id: String(row.id),
     question: String(row.question ?? ""),
     answer: String(row.answer ?? ""),
+    sortOrder: Number(row.sort_order ?? 0),
+    published: Boolean(row.published),
+  };
+}
+
+function mapProgramPhotos(value: unknown): CustomProgramPhoto[] {
+  return asArray<CustomProgramPhoto>(value)
+    .filter((item) => item && typeof item.url === "string" && item.url.trim())
+    .map((item) => ({
+      url: String(item.url).trim(),
+      alt: String(item.alt ?? "").trim(),
+    }));
+}
+
+function mapProgramLinks(value: unknown): CustomProgramLink[] {
+  return asArray<CustomProgramLink>(value)
+    .filter((item) => item && typeof item.label === "string" && item.label.trim() && typeof item.url === "string" && item.url.trim())
+    .map((item) => ({
+      label: String(item.label).trim(),
+      url: String(item.url).trim(),
+    }));
+}
+
+export function mapCustomProgram(row: Record<string, unknown>): CustomProgram {
+  return {
+    id: String(row.id),
+    title: String(row.title ?? ""),
+    summary: String(row.summary ?? ""),
+    websiteLabel: row.website_label ? String(row.website_label) : null,
+    websiteUrl: row.website_url ? String(row.website_url) : null,
+    photos: mapProgramPhotos(row.photos),
+    links: mapProgramLinks(row.links),
+    eventId: row.event_id ? String(row.event_id) : null,
+    event: null,
     sortOrder: Number(row.sort_order ?? 0),
     published: Boolean(row.published),
   };

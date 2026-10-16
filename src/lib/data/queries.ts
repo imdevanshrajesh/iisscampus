@@ -16,6 +16,7 @@ import {
   mapMarquee,
   mapCategory,
   mapEvent,
+  mapCustomProgram,
   mapFaq,
   mapImage,
   mapWellnessCategory,
@@ -28,6 +29,7 @@ import { createPublicClient } from "@/lib/supabase/public";
 import type {
   Achievement,
   Announcement,
+  CustomProgram,
   MarqueeMessage,
   CampusEvent,
   Category,
@@ -423,6 +425,77 @@ export async function getEditableFaqs(): Promise<Faq[]> {
     console.error(error);
   }
   return readContentStore().faqs ?? [];
+}
+
+function attachProgramEvents(
+  programs: CustomProgram[],
+  events: { id: string; title: string; slug: string; published: boolean }[],
+  publishedOnly: boolean,
+): CustomProgram[] {
+  const byId = new Map(events.map((event) => [event.id, event]));
+  return programs.map((program) => {
+    const event = program.eventId ? byId.get(program.eventId) : undefined;
+    if (!event || (publishedOnly && !event.published) || !event.slug) {
+      return { ...program, event: null };
+    }
+    return { ...program, event: { title: event.title, slug: event.slug } };
+  });
+}
+
+async function loadCustomPrograms(publishedOnly: boolean): Promise<CustomProgram[]> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        let query = supabase.from("campus_custom_programs").select("*").order("sort_order");
+        if (publishedOnly) query = query.eq("published", true);
+        const result = await query;
+        if (!result.error) {
+          const programs = (result.data ?? []).map((row) => mapCustomProgram(row as Record<string, unknown>));
+          const eventIds = [...new Set(programs.map((program) => program.eventId).filter((id): id is string => Boolean(id)))];
+          if (!eventIds.length) return programs;
+          const events = await supabase
+            .from("campus_events")
+            .select("id, title, slug, publication_status")
+            .in("id", eventIds);
+          if (events.error) return programs;
+          return attachProgramEvents(
+            programs,
+            (events.data ?? []).map((row) => ({
+              id: String(row.id),
+              title: String(row.title ?? ""),
+              slug: String(row.slug ?? ""),
+              published: row.publication_status === "published",
+            })),
+            publishedOnly,
+          );
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+
+  const store = readContentStore();
+  const programs = (store.customPrograms ?? []).filter((program) => (publishedOnly ? program.published : true));
+  return attachProgramEvents(
+    programs,
+    store.events.map((event) => ({
+      id: event.id,
+      title: event.title,
+      slug: event.slug,
+      published: event.publicationStatus === "published",
+    })),
+    publishedOnly,
+  );
+}
+
+export async function getPublicCustomPrograms(): Promise<CustomProgram[]> {
+  return loadCustomPrograms(true);
+}
+
+export async function getEditableCustomPrograms(): Promise<CustomProgram[]> {
+  return loadCustomPrograms(false);
 }
 
 const defaultWellnessPage: WellnessPageSettings = {

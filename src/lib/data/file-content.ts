@@ -6,6 +6,7 @@ import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "
 import type {
   Achievement,
   Announcement,
+  CustomProgram,
   MarqueeMessage,
   CampusEvent,
   Category,
@@ -33,6 +34,7 @@ type Store = {
   announcements?: Announcement[];
   marquee?: MarqueeMessage[];
   faqs?: Faq[];
+  customPrograms?: CustomProgram[];
   wellnessCategories?: WellnessCategory[];
   wellnessItems?: WellnessItem[];
   wellnessPage?: WellnessPageSettings | null;
@@ -146,6 +148,7 @@ export function readContentStore(): Store {
         ? parsed.marquee.map((item) => normalizeMarquee(item as MarqueeMessage))
         : [],
       faqs: Array.isArray(parsed.faqs) ? parsed.faqs : [],
+      customPrograms: Array.isArray(parsed.customPrograms) ? parsed.customPrograms : [],
       wellnessCategories: Array.isArray(parsed.wellnessCategories)
         ? parsed.wellnessCategories
         : [],
@@ -646,6 +649,44 @@ export function saveFaqToStore(input: {
 export function deleteFaqFromStore(id: string) {
   const store = readContentStore();
   store.faqs = (store.faqs ?? []).filter((item) => item.id !== id);
+  return writeContentStore(store);
+}
+
+export function saveCustomProgramToStore(input: {
+  id?: string;
+  title: string;
+  summary: string;
+  websiteLabel: string | null;
+  websiteUrl: string | null;
+  photos: CustomProgram["photos"];
+  links: CustomProgram["links"];
+  eventId: string | null;
+  published: boolean;
+  sortOrder: number;
+}) {
+  const store = readContentStore();
+  const list = store.customPrograms ?? [];
+  const existing = input.id ? list.find((item) => item.id === input.id) : undefined;
+  const record: CustomProgram = {
+    id: existing?.id ?? crypto.randomUUID(),
+    title: input.title,
+    summary: input.summary,
+    websiteLabel: input.websiteLabel,
+    websiteUrl: input.websiteUrl,
+    photos: input.photos,
+    links: input.links,
+    eventId: input.eventId,
+    event: null,
+    published: input.published,
+    sortOrder: input.sortOrder,
+  };
+  store.customPrograms = existing ? list.map((item) => (item.id === existing.id ? record : item)) : [...list, record];
+  return writeContentStore(store);
+}
+
+export function deleteCustomProgramFromStore(id: string) {
+  const store = readContentStore();
+  store.customPrograms = (store.customPrograms ?? []).filter((item) => item.id !== id);
   return writeContentStore(store);
 }
 

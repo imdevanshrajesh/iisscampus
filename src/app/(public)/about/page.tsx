@@ -1,10 +1,11 @@
 import { ArrowUpRight, Link2 } from "lucide-react";
+import { CustomProgramCards } from "@/components/about/custom-program-cards";
 import { InstagramMark } from "@/components/brand/instagram-mark";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { contactMailto, siteConfig } from "@/lib/config";
 import { paragraphs } from "@/lib/data/catalog";
-import { getPublicFaqs, getPublicSocial, getSiteBrand } from "@/lib/data/queries";
+import { getPublicCustomPrograms, getPublicFaqs, getPublicSocial, getSiteBrand } from "@/lib/data/queries";
 
 export const metadata: Metadata = {
   title: "FAQ & About",
@@ -22,7 +23,12 @@ const kinds = [
 ];
 
 export default async function AboutPage() {
-  const [social, faqs, brand] = await Promise.all([getPublicSocial(), getPublicFaqs(), getSiteBrand()]);
+  const [social, faqs, programs, brand] = await Promise.all([
+    getPublicSocial(),
+    getPublicFaqs(),
+    getPublicCustomPrograms(),
+    getSiteBrand(),
+  ]);
   const contactHref = contactMailto(brand.contactEmail) ?? siteConfig.contactUrl;
   return (
     <div className="mx-auto max-w-[90rem] px-5 py-10 md:px-8 md:py-16">
@@ -142,6 +148,8 @@ export default async function AboutPage() {
           </div>
         </section>
       ) : null}
+
+      <CustomProgramCards programs={programs} />
     </div>
   );
 }

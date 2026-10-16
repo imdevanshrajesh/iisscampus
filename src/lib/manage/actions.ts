@@ -1829,6 +1829,157 @@ export async function deleteFaq(_state: ActionState, formData: FormData): Promis
   return { ok: "Deleted." };
 }
 
+function normalizeCustomProgramLinks(
+  links: { label: string; url: string }[],
+): { error: string } | { links: { label: string; url: string }[] } {
+  const normalized = [];
+  for (const link of links) {
+    const classified = classifyNavigationUrl(link.url);
+    if (!classified.ok) return { error: "Each extra link must be a valid https:// address." };
+    normalized.push({ label: link.label, url: classified.url });
+  }
+  return { links: normalized };
+}
+
+export async function saveCustomProgram(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  const eventIdRaw = String(formData.get("eventId") ?? "").trim();
+  const photos = readList(formData, "photos");
+  const links = readList(formData, "links");
+  if (!photos || !links) return { error: "A list field could not be read." };
+
+  const { customProgramInputSchema } = await import("@/lib/validation/content");
+  const parsed = customProgramInputSchema.safeParse({
+    title: formData.get("title"),
+    summary: formData.get("summary"),
+    websiteLabel: formData.get("websiteLabel"),
+    websiteUrl: formData.get("websiteUrl"),
+    photos,
+    links,
+    eventId: /^[0-9a-f-]{36}$/i.test(eventIdRaw) ? eventIdRaw : null,
+    published: formData.get("published") === "on",
+    sortOrder: Number(formData.get("sortOrder") ?? 0) || 0,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the program fields and try again." };
+  }
+
+  let websiteUrl = parsed.data.websiteUrl;
+  if (websiteUrl) {
+    const classified = classifyNavigationUrl(websiteUrl);
+    if (!classified.ok) return { error: "The website must be a valid https:// link." };
+    websiteUrl = classified.url;
+  }
+  const websiteLabel = websiteUrl ? parsed.data.websiteLabel || "Website" : null;
+  const normalizedLinks = normalizeCustomProgramLinks(parsed.data.links);
+  if ("error" in normalizedLinks) return normalizedLinks;
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const filePhotos = [];
+    for (const photo of parsed.data.photos) {
+      const image = classifyNavigationUrl(photo.url);
+      if (!image.ok) return { error: image.message };
+      filePhotos.push({ url: image.url, alt: photo.alt });
+    }
+    const { saveCustomProgramToStore } = await import("@/lib/data/file-content");
+    if (
+      !saveCustomProgramToStore({
+        id: id || undefined,
+        title: parsed.data.title,
+        summary: parsed.data.summary,
+        websiteLabel,
+        websiteUrl,
+        photos: filePhotos,
+        links: normalizedLinks.links,
+        eventId: parsed.data.eventId,
+        published: parsed.data.published,
+        sortOrder: parsed.data.sortOrder,
+      })
+    ) {
+      return { error: "The program could not be saved." };
+    }
+    revalidatePath("/about");
+    revalidatePath("/manage/programs");
+    return { ok: "Program saved." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const hostsRow = await context.supabase.from("campus_settings").select("media_hosts").eq("id", true).maybeSingle();
+  const hosts = Array.isArray(hostsRow.data?.media_hosts) ? hostsRow.data.media_hosts.map(String) : [];
+  const storedPhotos = [];
+  for (const photo of parsed.data.photos) {
+    const image = classifyMediaUrl(photo.url, hosts);
+    if (!image.ok) return { error: image.message };
+    storedPhotos.push({ url: image.url, alt: photo.alt });
+  }
+
+  const record = {
+    title: parsed.data.title,
+    summary: parsed.data.summary,
+    website_label: websiteLabel,
+    website_url: websiteUrl,
+    photos: storedPhotos,
+    links: normalizedLinks.links,
+    event_id: parsed.data.eventId,
+    published: parsed.data.published,
+    sort_order: parsed.data.sortOrder,
+  };
+  const saved = id
+    ? await context.supabase.from("campus_custom_programs").update(record).eq("id", id).select("id").maybeSingle()
+    : await context.supabase.from("campus_custom_programs").insert(record).select("id").maybeSingle();
+  if (saved.error) {
+    const missing =
+      isMissingTableError(saved.error) || (saved.error.message ?? "").toLowerCase().includes("custom_program");
+    return {
+      error: missing
+        ? "Run supabase/CUSTOM_PROGRAMS.sql in the database, then save again."
+        : databaseError(saved.error, "The program could not be saved."),
+    };
+  }
+
+  await writeAudit(
+    context.supabase,
+    context.actor.userId,
+    id ? "update" : "create",
+    "campus_custom_programs",
+    saved.data?.id ?? null,
+  );
+  revalidatePath("/about");
+  revalidatePath("/manage/programs");
+  return { ok: "Program saved." };
+}
+
+export async function deleteCustomProgram(_state: ActionState, formData: FormData): Promise<ActionState> {
+  if (formData.get("confirm") !== "yes") return { error: "Confirm the delete, then try again." };
+  const id = String(formData.get("id") ?? "");
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { deleteCustomProgramFromStore } = await import("@/lib/data/file-content");
+    if (!deleteCustomProgramFromStore(id)) return { error: deleteFailed };
+    revalidatePath("/about");
+    revalidatePath("/manage/programs");
+    return { ok: "Deleted." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const removed = await context.supabase.from("campus_custom_programs").delete().eq("id", id);
+  if (removed.error) return { error: databaseError(removed.error, deleteFailed) };
+  await writeAudit(context.supabase, context.actor.userId, "delete", "campus_custom_programs", id);
+  revalidatePath("/about");
+  revalidatePath("/manage/programs");
+  return { ok: "Deleted." };
+}
+
 const wellnessOrientations = new Set(["auto", "portrait", "landscape", "square"]);
 
 function revalidateWellness() {
