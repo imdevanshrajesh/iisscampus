@@ -50,26 +50,26 @@ security definer
 set search_path = public
 as $$
 declare
-  email text;
+  visitor_email text;
   local_part text;
   domain text;
   rate_key text;
-  body text;
-  client_ip text := '';
+  suggestion_body text;
+  visitor_ip text := '';
   link_count int;
 begin
   if raw_email is null or char_length(raw_email) > 254 or raw_body is null or char_length(raw_body) > 4000 then
     raise exception 'invalid suggestion';
   end if;
 
-  email := lower(btrim(raw_email));
-  if email !~ '^[a-z0-9](?:[a-z0-9._%+\-]{0,62}[a-z0-9])?@[a-z0-9](?:[a-z0-9.\-]{0,250}[a-z0-9])?\.[a-z]{2,24}$' then
+  visitor_email := lower(btrim(raw_email));
+  if visitor_email !~ '^[a-z0-9](?:[a-z0-9._%+\-]{0,62}[a-z0-9])?@[a-z0-9](?:[a-z0-9.\-]{0,250}[a-z0-9])?\.[a-z]{2,24}$' then
     raise exception 'invalid suggestion';
   end if;
 
-  domain := split_part(email, '@', 2);
-  local_part := split_part(email, '@', 1);
-  if domain not in ('gmail.com', 'iiss.ae') or local_part = '' or position('..' in email) > 0 then
+  domain := split_part(visitor_email, '@', 2);
+  local_part := split_part(visitor_email, '@', 1);
+  if domain not in ('gmail.com', 'iiss.ae') or local_part = '' or position('..' in visitor_email) > 0 then
     raise exception 'invalid suggestion';
   end if;
 
@@ -82,22 +82,22 @@ begin
   end if;
   rate_key := rate_key || '@' || domain;
 
-  body := btrim(regexp_replace(raw_body, '[[:space:]]+', ' ', 'g'));
-  if char_length(body) < 20 or char_length(body) > 1500 then
+  suggestion_body := btrim(regexp_replace(raw_body, '[[:space:]]+', ' ', 'g'));
+  if char_length(suggestion_body) < 20 or char_length(suggestion_body) > 1500 then
     raise exception 'invalid suggestion';
   end if;
-  if position('<script' in lower(body)) > 0 or position('javascript:' in lower(body)) > 0 then
+  if position('<script' in lower(suggestion_body)) > 0 or position('javascript:' in lower(suggestion_body)) > 0 then
     raise exception 'invalid suggestion';
   end if;
   link_count :=
-    (char_length(lower(body)) - char_length(replace(lower(body), 'http://', ''))) / 7
-    + (char_length(lower(body)) - char_length(replace(lower(body), 'https://', ''))) / 8;
+    (char_length(lower(suggestion_body)) - char_length(replace(lower(suggestion_body), 'http://', ''))) / 7
+    + (char_length(lower(suggestion_body)) - char_length(replace(lower(suggestion_body), 'https://', ''))) / 8;
   if link_count > 3 then
     raise exception 'invalid suggestion';
   end if;
 
   if raw_ip is not null and char_length(btrim(raw_ip)) between 1 and 64 and btrim(raw_ip) ~ '^[0-9a-fA-F:.]+$' then
-    client_ip := btrim(raw_ip);
+    visitor_ip := btrim(raw_ip);
   end if;
 
   perform pg_advisory_xact_lock(hashtext(rate_key));
@@ -111,17 +111,17 @@ begin
     return 'rate';
   end if;
 
-  if client_ip <> '' and (
+  if visitor_ip <> '' and (
     select count(*)
     from public.campus_suggestions existing
-    where existing.client_ip = client_ip
+    where existing.client_ip = visitor_ip
       and existing.created_at > timezone('utc', now()) - interval '1 hour'
   ) >= 8 then
     return 'rate';
   end if;
 
   insert into public.campus_suggestions (email, email_key, body, client_ip)
-  values (email, rate_key, body, client_ip);
+  values (visitor_email, rate_key, suggestion_body, visitor_ip);
 
   return 'ok';
 end;

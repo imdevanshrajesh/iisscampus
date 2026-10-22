@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { can } from "@/lib/auth/permissions";
-import { consumeRateLimit } from "@/lib/auth/rate-limit";
+import { consumeRateLimit, rateLimitAllows } from "@/lib/auth/rate-limit";
 import { getCampusSession, sessionActionError } from "@/lib/auth/session";
 import { contentMode } from "@/lib/data/content-mode";
 import { isMissingTableError } from "@/lib/supabase/errors";
@@ -52,18 +52,29 @@ export async function submitSuggestion(
   if (!cleaned.ok) return { error: cleaned.error };
 
   const ip = await clientAddress();
+  const ipKey = `suggestion-ip:${ip}`;
+  const emailLimitKey = `suggestion-email:${emailKey}`;
   if (
-    !consumeRateLimit(`suggestion-ip:${ip}`, SUGGESTION_IP_LIMIT, SUGGESTION_IP_WINDOW_MS) ||
-    !consumeRateLimit(`suggestion-email:${emailKey}`, SUGGESTION_EMAIL_LIMIT, SUGGESTION_EMAIL_WINDOW_MS)
+    !rateLimitAllows(ipKey, SUGGESTION_IP_LIMIT, SUGGESTION_IP_WINDOW_MS) ||
+    !rateLimitAllows(emailLimitKey, SUGGESTION_EMAIL_LIMIT, SUGGESTION_EMAIL_WINDOW_MS)
   ) {
     return { error: rateLimited };
+  }
+
+  function rememberSend() {
+    consumeRateLimit(ipKey, SUGGESTION_IP_LIMIT, SUGGESTION_IP_WINDOW_MS);
+    consumeRateLimit(emailLimitKey, SUGGESTION_EMAIL_LIMIT, SUGGESTION_EMAIL_WINDOW_MS);
   }
 
   if ((await contentMode()) === "file") {
     const { saveSuggestionToStore } = await import("@/lib/data/file-content");
     const saved = saveSuggestionToStore({ email, emailKey, body: cleaned.body, ip });
-    if (saved === "rate") return { error: rateLimited };
+    if (saved === "rate") {
+      rememberSend();
+      return { error: rateLimited };
+    }
     if (saved !== "ok") return { error: "That suggestion could not be sent." };
+    rememberSend();
     revalidatePath("/manage/suggestions");
     revalidatePath("/manage");
     return { ok: thanks };
@@ -79,14 +90,20 @@ export async function submitSuggestion(
   });
 
   if (result.error) {
+    console.error(result.error.code, result.error.message);
     const missing =
       isMissingTableError(result.error) ||
       result.error.code === "PGRST202" ||
+      result.error.code === "42702" ||
       (result.error.message ?? "").toLowerCase().includes("submit_campus_suggestion");
     return { error: missing ? unavailable : "That suggestion could not be sent." };
   }
-  if (result.data === "rate") return { error: rateLimited };
+  if (result.data === "rate") {
+    rememberSend();
+    return { error: rateLimited };
+  }
   if (result.data !== "ok") return { error: "Check the email and suggestion, then try again." };
+  rememberSend();
 
   revalidatePath("/manage/suggestions");
   revalidatePath("/manage");

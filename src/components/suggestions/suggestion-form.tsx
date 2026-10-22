@@ -8,13 +8,21 @@ const fieldClass = "rounded-md border border-line bg-background px-3 py-2 text-b
 export function SuggestionForm() {
   const [state, action, pending] = useActionState(submitSuggestion, {} as SuggestionActionState);
   const openedAt = useRef<HTMLInputElement>(null);
+  const startedAt = useRef("");
 
   useEffect(() => {
-    if (openedAt.current) openedAt.current.value = String(Date.now());
-  }, []);
+    if (!startedAt.current) startedAt.current = String(Date.now());
+    if (openedAt.current) openedAt.current.value = startedAt.current;
+  }, [state]);
 
   return (
-    <form action={action} className="relative mt-8 grid max-w-xl gap-4">
+    <form
+      action={action}
+      className="relative mt-8 grid max-w-xl gap-4"
+      onSubmit={() => {
+        if (openedAt.current && startedAt.current) openedAt.current.value = startedAt.current;
+      }}
+    >
       <div className="absolute -left-[9999px] h-px w-px overflow-hidden" aria-hidden="true">
         <label>
           Company
