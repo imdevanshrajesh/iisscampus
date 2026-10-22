@@ -2,6 +2,7 @@ import Link from "next/link";
 import { councilKindLabel } from "@/components/council/council-year";
 import { ManageUnavailable } from "@/components/manage/unavailable";
 import { eventStatusLabel } from "@/lib/data/catalog";
+import { countStaffSuggestions } from "@/lib/data/queries";
 import { requireWorkspace } from "@/lib/manage/access";
 import type { CampusEvent } from "@/lib/types";
 
@@ -66,6 +67,7 @@ export default async function ManageHomePage() {
   );
   const waiting = access.workspace.events.filter((event) => event.publicationStatus === "in_review");
   const months = monthSeries(access.workspace.events);
+  const suggestionCount = access.role === "administrator" ? await countStaffSuggestions() : null;
   const statusRows = [
     ["Published", counts.published],
     ["In review", counts.in_review],
@@ -93,6 +95,7 @@ export default async function ManageHomePage() {
             ["In review", counts.in_review, "/manage/events?status=in_review"],
             ["Drafts", counts.draft, "/manage/events?status=draft"],
             ["Council years", access.workspace.councilYears.length, "/manage/council"],
+            ...(suggestionCount === null ? [] : [["Suggestions", suggestionCount, "/manage/suggestions"] as const]),
           ] as const
         ).map(([label, value, href]) => (
           <Link key={label} href={href} className="rounded-lg border border-[#e3e6ea] bg-white px-4 py-3.5">

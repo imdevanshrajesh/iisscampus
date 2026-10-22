@@ -3,6 +3,7 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "@/lib/data/catalog";
 import {
+  listSuggestionsFromStore,
   readContentStore,
   readNewsletter,
   readSocial,
@@ -24,6 +25,7 @@ import {
   mapWellnessItem,
 } from "@/lib/data/map";
 import { contentMode } from "@/lib/data/content-mode";
+import type { Suggestion } from "@/lib/suggestions";
 import { defaultNavGroups } from "@/lib/nav";
 import { seedMediaHosts } from "@/lib/data/seed";
 import { isMissingTableError, logPostgrestUnlessMissing } from "@/lib/supabase/errors";
@@ -712,4 +714,58 @@ export function findCategory(categories: Category[], id: string | null) {
 
 export function achievementsForEvent(achievements: Achievement[], eventId: string) {
   return achievements.filter((item) => item.eventId === eventId);
+}
+
+function mapSuggestion(row: Record<string, unknown>): Suggestion {
+  return {
+    id: String(row.id),
+    email: String(row.email ?? ""),
+    body: String(row.body ?? ""),
+    createdAt: String(row.created_at ?? row.createdAt ?? ""),
+  };
+}
+
+export async function getStaffSuggestions(): Promise<{ items: Suggestion[]; missing: boolean }> {
+  try {
+    if ((await contentMode()) === "file") {
+      return {
+        items: listSuggestionsFromStore().slice(0, 200).map((item) => ({
+          id: item.id,
+          email: item.email,
+          body: item.body,
+          createdAt: item.createdAt,
+        })),
+        missing: false,
+      };
+    }
+    const supabase = await createStaffClient();
+    if (!supabase) return { items: [], missing: false };
+    const result = await supabase
+      .from("campus_suggestions")
+      .select("id, email, body, created_at")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (result.error) return { items: [], missing: isMissingTableError(result.error) };
+    return { items: (result.data ?? []).map((row) => mapSuggestion(row as Record<string, unknown>)), missing: false };
+  } catch (error) {
+    console.error(error);
+    return { items: [], missing: false };
+  }
+}
+
+export async function countStaffSuggestions() {
+  try {
+    if ((await contentMode()) === "file") return listSuggestionsFromStore().length;
+    const supabase = await createStaffClient();
+    if (!supabase) return 0;
+    const result = await supabase.from("campus_suggestions").select("id", { count: "exact", head: true });
+    if (result.error) {
+      logPostgrestUnlessMissing(result.error);
+      return 0;
+    }
+    return result.count ?? 0;
+  } catch (error) {
+    console.error(error);
+    return 0;
+  }
 }

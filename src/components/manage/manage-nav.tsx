@@ -25,6 +25,7 @@ const groups = [
       { href: "/manage/marquee", label: "Marquee" },
       { href: "/manage/navigation", label: "Navigation" },
       { href: "/manage/faq", label: "FAQ" },
+      { href: "/manage/suggestions", label: "Suggestions" },
       { href: "/manage/programs", label: "Custom programs" },
       { href: "/manage/newsletter", label: "Newsletter" },
       { href: "/manage/wellness", label: "Wellness" },

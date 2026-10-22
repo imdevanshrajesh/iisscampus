@@ -23,6 +23,7 @@ import type {
   WellnessItem,
   WellnessPageSettings,
 } from "@/lib/types";
+import { suggestionWithinLimits, type StoredSuggestion } from "@/lib/suggestions";
 import type { AchievementInput, CouncilInput, EventInput } from "@/lib/validation/content";
 
 type Store = {
@@ -45,6 +46,7 @@ type Store = {
   wellnessCategories?: WellnessCategory[];
   wellnessItems?: WellnessItem[];
   wellnessPage?: WellnessPageSettings | null;
+  suggestions?: StoredSuggestion[];
 };
 
 function contentFilePath() {
@@ -198,6 +200,22 @@ export function readContentStore(): Store {
           }))
         : [],
       wellnessPage: parsed.wellnessPage ?? null,
+      suggestions: Array.isArray(parsed.suggestions)
+        ? parsed.suggestions.flatMap((item) => {
+            const row = item as StoredSuggestion;
+            if (!row?.id || !row.email || !row.body) return [];
+            return [
+              {
+                id: String(row.id),
+                email: String(row.email),
+                emailKey: String(row.emailKey || row.email),
+                body: String(row.body),
+                ip: String(row.ip ?? ""),
+                createdAt: String(row.createdAt ?? new Date().toISOString()),
+              },
+            ];
+          })
+        : [],
     };
   } catch {
     return initialStore();
@@ -767,6 +785,37 @@ export function saveFaqToStore(input: {
     sortOrder: input.sortOrder,
   };
   store.faqs = existing ? list.map((item) => (item.id === existing.id ? record : item)) : [...list, record];
+  return writeContentStore(store);
+}
+
+export function listSuggestionsFromStore() {
+  return (readContentStore().suggestions ?? []).slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export function saveSuggestionToStore(input: { email: string; emailKey: string; body: string; ip: string }) {
+  const store = readContentStore();
+  const list = store.suggestions ?? [];
+  const now = Date.now();
+  if (!suggestionWithinLimits(list, input.emailKey, input.ip, now)) return "rate" as const;
+  store.suggestions = [
+    {
+      id: crypto.randomUUID(),
+      email: input.email,
+      emailKey: input.emailKey,
+      body: input.body,
+      ip: input.ip,
+      createdAt: new Date(now).toISOString(),
+    },
+    ...list,
+  ].slice(0, 500);
+  return writeContentStore(store) ? ("ok" as const) : ("error" as const);
+}
+
+export function deleteSuggestionFromStore(id: string) {
+  const store = readContentStore();
+  const list = store.suggestions ?? [];
+  if (!list.some((item) => item.id === id)) return false;
+  store.suggestions = list.filter((item) => item.id !== id);
   return writeContentStore(store);
 }
 

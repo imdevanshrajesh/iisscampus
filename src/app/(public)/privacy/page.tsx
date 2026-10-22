@@ -26,6 +26,10 @@ export default function PrivacyPage() {
           achievement pages only when that record has been published.
         </p>
         <p>
+          A suggestion stores the email address you enter and the text of the suggestion so council staff can read it.
+          It is not shown on the public site.
+        </p>
+        <p>
           This is an independent activities archive for IISS x Student Council Boys. It is not the official school
           website.
         </p>

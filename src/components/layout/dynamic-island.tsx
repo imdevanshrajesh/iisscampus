@@ -56,6 +56,7 @@ const sectionHrefs = new Set([
   "/newsletter",
   "/wellness",
   "/about",
+  "/suggestions",
 ]);
 
 function groupActive(pathname: string, group: PublicNavGroup) {
@@ -65,8 +66,7 @@ function groupActive(pathname: string, group: PublicNavGroup) {
 
 function splitLinks(links: PublicNavLink[]) {
   const viewAll = links.find((link) => sectionHrefs.has(link.href));
-  const cards = viewAll && links.length > 1 ? links.filter((link) => link !== viewAll) : links;
-  return { viewAll: viewAll && links.length > 1 ? viewAll : null, cards };
+  return { viewAll: viewAll && links.length > 1 ? viewAll : null, cards: links };
 }
 
 export function HomeLink() {
@@ -281,7 +281,7 @@ export function SiteChrome({
               <span className="site-nav__mark">
                 <CouncilLogo url={logoUrl} width={30} height={30} className="h-full w-full object-cover" priority />
               </span>
-              <span className="hidden sm:inline">{brandLabel}</span>
+              <span className="site-nav__name">{brandLabel}</span>
             </Link>
             <Link
               href="/events"
@@ -295,16 +295,16 @@ export function SiteChrome({
             <NavClock />
             <button
               type="button"
-              className="inline-flex items-center gap-1.5 rounded-full bg-background px-3.5 py-1.5 text-sm font-medium text-navy md:hidden"
+              className="site-nav__menu inline-flex items-center rounded-full bg-background px-2.5 py-1.5 text-navy md:hidden"
               aria-expanded={mobileOpen}
               aria-controls="site-nav-mobile"
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
               onClick={() => {
                 setMobileOpen((open) => !open);
                 setOpenId(null);
               }}
             >
-              <Menu aria-hidden="true" size={15} />
-              {mobileOpen ? "Close" : "Menu"}
+              <Menu aria-hidden="true" size={16} />
             </button>
           </div>
         </div>

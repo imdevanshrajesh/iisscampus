@@ -245,6 +245,41 @@ h1.profile-name {
   gap: 1.15rem;
 }
 
+.site-nav__name {
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .site-nav__bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 0.5rem;
+    padding-left: 0.7rem;
+  }
+
+  .site-nav__end {
+    display: contents;
+    margin-left: 0;
+  }
+
+  .site-nav__brand {
+    grid-column: 2;
+    justify-self: center;
+    min-width: 0;
+  }
+
+  .site-nav__menu {
+    grid-column: 3;
+    justify-self: end;
+  }
+
+  .site-nav__name {
+    max-width: 9.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 @media (min-width: 768px) {
   .site-nav__bar {
     width: max-content;

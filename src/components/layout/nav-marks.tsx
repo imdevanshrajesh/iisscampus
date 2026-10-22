@@ -5,6 +5,7 @@ import {
   HeartPulse,
   Home,
   Images,
+  MessageSquare,
   Newspaper,
   School,
   Trophy,
@@ -22,6 +23,7 @@ const icons: Record<string, LucideIcon> = {
   "/newsletter": Newspaper,
   "/wellness": HeartPulse,
   "/about": CircleHelp,
+  "/suggestions": MessageSquare,
 };
 
 function iconFor(href: string, label = "") {
@@ -41,6 +43,7 @@ function iconFor(href: string, label = "") {
   if (text.includes("letter") || text.includes("news")) return Newspaper;
   if (text.includes("well")) return HeartPulse;
   if (text.includes("achiev") || text.includes("award")) return Award;
+  if (text.includes("suggest")) return MessageSquare;
   if (text.includes("school")) return School;
   return CircleHelp;
 }

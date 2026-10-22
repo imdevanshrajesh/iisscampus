@@ -128,5 +128,6 @@ values
   ('a1b2c3d4-0002-4000-8000-000000000005', 'a1b2c3d4-0001-4000-8000-000000000005', 'Newsletter', 'The latest letter', '/newsletter', 10),
   ('a1b2c3d4-0002-4000-8000-000000000006', 'a1b2c3d4-0001-4000-8000-000000000005', 'Wellness', 'A quiet corner for wellbeing', '/wellness', 20),
   ('a1b2c3d4-0002-4000-8000-000000000007', 'a1b2c3d4-0001-4000-8000-000000000005', 'Achievements', 'Awards and results', '/achievements', 30),
-  ('a1b2c3d4-0002-4000-8000-000000000008', 'a1b2c3d4-0001-4000-8000-000000000005', 'FAQ & About', 'Questions and how the council works', '/about', 40)
+  ('a1b2c3d4-0002-4000-8000-000000000008', 'a1b2c3d4-0001-4000-8000-000000000005', 'FAQ & About', 'Questions and how the council works', '/about', 40),
+  ('a1b2c3d4-0002-4000-8000-000000000009', 'a1b2c3d4-0001-4000-8000-000000000004', 'Suggestions', 'Send a note to the council', '/suggestions', 10)
 on conflict (id) do nothing;
