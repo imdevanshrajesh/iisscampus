@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ActivityCalendar } from "@/components/events/activity-calendar";
+import { ExpandableFilters } from "@/components/events/expandable-filters";
 import { EventCard } from "@/components/events/event-card";
 import { PreviewTrigger } from "@/components/preview/preview-provider";
 import { filterPublishedEvents, formatEventDate, publishedYears } from "@/lib/data/catalog";
@@ -88,82 +89,12 @@ export function ActivitiesBrowse({
         <ActivityCalendar events={calendarEvents} />
       </div>
 
-      <form method="get" className="mt-10 grid gap-4 border-y border-line py-6 md:grid-cols-4" action={basePath}>
-        <label className="grid gap-1.5 text-sm">
-          Search
-          <input name="q" defaultValue={filters.query} placeholder="Name or description" className="rounded-md border border-line px-3 py-2" />
-        </label>
-        <label className="grid gap-1.5 text-sm">
-          Category
-          <select name="category" defaultValue={filters.category} className="rounded-md border border-line bg-white px-3 py-2">
-            <option value="">All</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.slug}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {years.length ? (
-          <label className="grid gap-1.5 text-sm">
-            Year
-            <select name="year" defaultValue={filters.year} className="rounded-md border border-line bg-white px-3 py-2">
-              <option value="">All</option>
-              {years.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-        <label className="grid gap-1.5 text-sm">
-          Status
-          <select name="status" defaultValue={filters.status} className="rounded-md border border-line bg-white px-3 py-2">
-            <option value="">All</option>
-            <option value="upcoming">Upcoming</option>
-            <option value="ongoing">Ongoing</option>
-            <option value="completed">Completed</option>
-          </select>
-        </label>
-        <label className="grid gap-1.5 text-sm">
-          Grade
-          <select name="grade" defaultValue={filters.grade} className="rounded-md border border-line bg-white px-3 py-2">
-            <option value="">All</option>
-            {Array.from({ length: 12 }, (_, index) => index + 1).map((grade) => (
-              <option key={grade} value={String(grade)}>
-                Grade {grade}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1.5 text-sm">
-          From date
-          <input type="date" name="from" defaultValue={filters.from} className="rounded-md border border-line px-3 py-2" />
-        </label>
-        <label className="grid gap-1.5 text-sm">
-          To date
-          <input type="date" name="to" defaultValue={filters.to} className="rounded-md border border-line px-3 py-2" />
-        </label>
-        <label className="grid gap-1.5 text-sm">
-          Fee
-          <select name="fee" defaultValue={filters.fee} className="rounded-md border border-line bg-white px-3 py-2">
-            <option value="">Any</option>
-            <option value="free">Free</option>
-            <option value="paid">Paid</option>
-          </select>
-        </label>
-        <div className="flex items-end gap-4 md:col-span-4">
-          <button type="submit" className="rounded-md bg-ink px-4 py-2 text-sm text-white">
-            Apply
-          </button>
-          {active ? (
-            <Link href={basePath} className="text-sm text-accent">
-              Clear filters
-            </Link>
-          ) : null}
-        </div>
-      </form>
+      <ExpandableFilters
+        basePath={basePath}
+        categories={categories}
+        years={years}
+        filters={filters}
+      />
 
       {visible.length ? (
         <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">

@@ -20,6 +20,7 @@ const groups = [
     label: "School",
     links: [
       { href: "/manage/council", label: "Council" },
+      { href: "/manage/socials", label: "Socials" },
       { href: "/manage/achievements", label: "Achievements" },
       { href: "/manage/announcements", label: "Announcements" },
       { href: "/manage/marquee", label: "Marquee" },

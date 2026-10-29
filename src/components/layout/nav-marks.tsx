@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Newspaper,
   School,
+  Share2,
   Trophy,
   Users,
   type LucideIcon,
@@ -18,6 +19,8 @@ const icons: Record<string, LucideIcon> = {
   "/events": CalendarDays,
   "/competitions": Trophy,
   "/council": Users,
+  "/council/socials": Share2,
+  "/socials": Share2,
   "/achievements": Award,
   "/gallery": Images,
   "/newsletter": Newspaper,
@@ -43,6 +46,7 @@ function iconFor(href: string, label = "") {
   if (text.includes("letter") || text.includes("news")) return Newspaper;
   if (text.includes("well")) return HeartPulse;
   if (text.includes("achiev") || text.includes("award")) return Award;
+  if (text.includes("social") || text.includes("insta")) return Share2;
   if (text.includes("suggest")) return MessageSquare;
   if (text.includes("school")) return School;
   return CircleHelp;

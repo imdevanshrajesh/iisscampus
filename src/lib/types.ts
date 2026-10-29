@@ -199,6 +199,18 @@ export type SocialLinks = {
   extraLinks: ExtraSiteLink[];
 };
 
+export type SocialPost = {
+  id: string;
+  instagramUrl: string;
+  caption: string | null;
+  imageUrl: string | null;
+  pinned: boolean;
+  sortOrder: number;
+  councilTag: string;
+  publishedOn: string;
+  createdAt: string;
+};
+
 export type SiteBrand = {
   councilLogoUrl: string | null;
   contactEmail: string | null;

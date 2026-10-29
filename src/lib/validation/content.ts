@@ -609,3 +609,38 @@ export function validateCouncilMedia(input: CouncilInput, allowedHosts: readonly
   }
   return null;
 }
+
+export const socialPostInputSchema = z.object({
+  instagramUrl: z
+    .string()
+    .trim()
+    .min(5, "Enter an Instagram post or reel address.")
+    .refine((url) => {
+      try {
+        const parsed = new URL(url);
+        const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+        return host === "instagram.com" || host === "instagr.am";
+      } catch {
+        return false;
+      }
+    }, "Enter a valid Instagram link (e.g. https://www.instagram.com/p/...)."),
+  caption: z
+    .string()
+    .trim()
+    .max(1000)
+    .optional()
+    .nullable()
+    .transform((value) => value || null),
+  imageUrl: z
+    .string()
+    .trim()
+    .max(1000)
+    .optional()
+    .nullable()
+    .transform((value) => value || null),
+  pinned: z.boolean().default(true),
+  sortOrder: z.number().int().min(0).max(10000).default(0),
+  councilTag: z.string().trim().default("all"),
+});
+export type SocialPostInput = z.infer<typeof socialPostInputSchema>;
+

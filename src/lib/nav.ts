@@ -8,6 +8,7 @@ export const primaryNav: NavLink[] = [
   { href: "/events", label: "Events" },
   { href: "/competitions", label: "Competitions" },
   { href: "/council", label: "Council" },
+  { href: "/council/socials", label: "Socials" },
   { href: "/achievements", label: "Achievements" },
   { href: "/gallery", label: "Gallery" },
   { href: "/newsletter", label: "Newsletter" },
@@ -87,6 +88,7 @@ export const defaultNavGroups: NavGroup[] = [
     sortOrder: 30,
     items: [
       item("nav-council-page", "nav-council", "The council", "Meet the boys' student council", "/council", 0),
+      item("nav-socials", "nav-council", "Socials", "Pinned Instagram posts and council accounts", "/council/socials", 5),
       item("nav-suggestions", "nav-council", "Suggestions", "Send a note to the council", "/suggestions", 10),
     ],
   },
@@ -173,14 +175,27 @@ export function resolvePublicNav(
         group.label.trim().toLowerCase() === "council" || group.items.some((entry) => entry.href === "/council");
       if (!councilGroup) {
         for (let index = links.length - 1; index >= 0; index -= 1) {
-          if (links[index]?.href === "/suggestions") links.splice(index, 1);
+          if (links[index]?.href === "/suggestions" || links[index]?.href === "/council/socials") {
+            links.splice(index, 1);
+          }
         }
-      } else if (!links.some((link) => link.href === "/suggestions")) {
-        links.push({
-          title: "Suggestions",
-          description: "Send a note to the council",
-          href: "/suggestions",
-        });
+      } else {
+        if (!links.some((link) => link.href === "/council/socials")) {
+          const councilIdx = links.findIndex((l) => l.href === "/council");
+          const insertAt = councilIdx >= 0 ? councilIdx + 1 : 0;
+          links.splice(insertAt, 0, {
+            title: "Socials",
+            description: "Pinned Instagram posts and council accounts",
+            href: "/council/socials",
+          });
+        }
+        if (!links.some((link) => link.href === "/suggestions")) {
+          links.push({
+            title: "Suggestions",
+            description: "Send a note to the council",
+            href: "/suggestions",
+          });
+        }
       }
 
       if (!links.length && !group.href) return null;

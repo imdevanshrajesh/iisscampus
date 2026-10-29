@@ -7,6 +7,7 @@ import {
   readContentStore,
   readNewsletter,
   readSocial,
+  readSocialPostsFromStore,
   readWellnessPageSettings,
 } from "@/lib/data/file-content";
 import { normalizeSocialLinks } from "@/lib/social";
@@ -21,6 +22,7 @@ import {
   mapCustomProgram,
   mapFaq,
   mapImage,
+  mapSocialPost,
   mapWellnessCategory,
   mapWellnessItem,
 } from "@/lib/data/map";
@@ -45,6 +47,7 @@ import type {
   PublicCatalog,
   SiteBrand,
   SocialLinks,
+  SocialPost,
   WellnessCategory,
   WellnessItem,
   WellnessPageSettings,
@@ -768,4 +771,53 @@ export async function countStaffSuggestions() {
     console.error(error);
     return 0;
   }
+}
+
+export async function getPublicSocialPosts(): Promise<SocialPost[]> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const result = await supabase
+          .from("campus_social_posts")
+          .select("*")
+          .eq("pinned", true)
+          .order("sort_order", { ascending: true })
+          .order("published_on", { ascending: false });
+        if (!result.error) {
+          return (result.data ?? []).map((row) => mapSocialPost(row as Record<string, unknown>));
+        }
+        logPostgrestUnlessMissing(result.error);
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return readSocialPostsFromStore()
+    .filter((post) => post.pinned)
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder || new Date(b.publishedOn).getTime() - new Date(a.publishedOn).getTime());
+}
+
+export async function getEditableSocialPosts(): Promise<SocialPost[]> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const result = await supabase
+          .from("campus_social_posts")
+          .select("*")
+          .order("sort_order", { ascending: true })
+          .order("published_on", { ascending: false });
+        if (!result.error) {
+          return (result.data ?? []).map((row) => mapSocialPost(row as Record<string, unknown>));
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return readSocialPostsFromStore()
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder || new Date(b.publishedOn).getTime() - new Date(a.publishedOn).getTime());
 }

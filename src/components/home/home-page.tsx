@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import type { CSSProperties } from "react";
 import { AchievementCards } from "@/components/home/achievement-cards";
-import { BoardCard } from "@/components/home/board-card";
 import { ComingUp } from "@/components/home/coming-up";
 import { CouncilPreview } from "@/components/home/council-preview";
 import { GalleryMosaic } from "@/components/home/gallery-mosaic";
@@ -145,71 +145,51 @@ export function HomePage({
         </div>
       </section>
 
-      <section id="board" className="mx-auto max-w-[90rem] px-5 py-20 md:px-8 md:py-28">
-        <RevealOnScroll>
-          <div className="flex items-end justify-between gap-6 border-b border-ink pb-4">
-            <h2 className="font-display text-[clamp(2.6rem,5vw,4.5rem)] leading-none text-ink">
-              On the <span className="italic">board</span>
-            </h2>
-            <Link href="/events" className="text-link text-sm text-ink">
-              All events
-            </Link>
-          </div>
-        </RevealOnScroll>
-        {lead.length ? (
-          <div className="board-grid mt-8">
-            {lead.slice(0, 5).map((event, index) => (
-              <RevealOnScroll
-                key={event.id}
-                className={index === 0 ? "board-grid__lead" : index === 3 ? "board-grid__wide" : ""}
-                delay={index * 80}
-              >
-                <BoardCard
-                  event={event}
-                  categories={categories}
-                  hosts={hosts}
-                  tall={index === 0 || index === 2}
-                  priority={index === 0}
-                />
-              </RevealOnScroll>
-            ))}
-          </div>
-        ) : (
-          <RevealOnScroll delay={120}>
-            <p className="font-display mt-10 max-w-xl text-3xl italic leading-tight text-ink/70">
-              The board is clear for now. Published events will be pinned here.
-            </p>
-          </RevealOnScroll>
-        )}
-      </section>
+      <ComingUp
+        id="board"
+        events={lead}
+        categories={categories}
+        hosts={hosts}
+        heading="On the"
+        accent="board"
+        kicker="Featured Activities"
+        seeMoreHref="/events"
+        empty="The board is clear for now. Published events will be pinned here."
+      />
 
       <ComingUp
         events={competitions}
         categories={categories}
+        hosts={hosts}
         heading="The"
         accent="competitions"
         kicker="Hosted here and at other schools"
         seeMoreHref="/competitions"
         empty="Published competitions will be listed here."
+        direction="reverse"
       />
 
       <ComingUp
         events={upcoming}
         categories={categories}
+        hosts={hosts}
         heading="Coming"
         accent="up"
         kicker="Next on the calendar"
         seeMoreHref="/events?status=upcoming"
         empty="Nothing dated yet. Upcoming activities land here the moment they are published."
+        direction="normal"
       />
 
       <ComingUp
         events={completed}
         categories={categories}
+        hosts={hosts}
         heading="Just"
         accent="finished"
         kicker="Most recent first"
         seeMoreHref="/events?status=completed"
+        direction="reverse"
       />
 
       <section className="mx-auto max-w-[90rem] px-5 py-20 md:px-8 md:py-28">

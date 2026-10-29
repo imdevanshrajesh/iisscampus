@@ -19,6 +19,7 @@ import type {
   Newsletter,
   PublicationStatus,
   SocialLinks,
+  SocialPost,
   WellnessCategory,
   WellnessItem,
   WellnessPageSettings,
@@ -47,6 +48,7 @@ type Store = {
   wellnessItems?: WellnessItem[];
   wellnessPage?: WellnessPageSettings | null;
   suggestions?: StoredSuggestion[];
+  socialPosts?: SocialPost[];
 };
 
 function contentFilePath() {
@@ -951,5 +953,45 @@ export function saveWellnessItemToStore(input: {
 export function deleteWellnessItemFromStore(id: string) {
   const store = readContentStore();
   store.wellnessItems = (store.wellnessItems ?? []).filter((item) => item.id !== id);
+  return writeContentStore(store);
+}
+
+export function readSocialPostsFromStore(): SocialPost[] {
+  return readContentStore().socialPosts ?? [];
+}
+
+export function saveSocialPostToStore(input: {
+  id?: string;
+  instagramUrl: string;
+  caption: string | null;
+  imageUrl: string | null;
+  pinned: boolean;
+  sortOrder: number;
+  councilTag: string;
+}) {
+  const store = readContentStore();
+  const list = store.socialPosts ?? [];
+  const existing = input.id ? list.find((item) => item.id === input.id) : undefined;
+  const now = new Date().toISOString();
+  const record: SocialPost = {
+    id: existing?.id ?? crypto.randomUUID(),
+    instagramUrl: input.instagramUrl,
+    caption: input.caption,
+    imageUrl: input.imageUrl,
+    pinned: input.pinned,
+    sortOrder: input.sortOrder,
+    councilTag: input.councilTag,
+    publishedOn: existing?.publishedOn ?? now,
+    createdAt: existing?.createdAt ?? now,
+  };
+  store.socialPosts = existing
+    ? list.map((item) => (item.id === existing.id ? record : item))
+    : [...list, record];
+  return writeContentStore(store);
+}
+
+export function deleteSocialPostFromStore(id: string) {
+  const store = readContentStore();
+  store.socialPosts = (store.socialPosts ?? []).filter((item) => item.id !== id);
   return writeContentStore(store);
 }

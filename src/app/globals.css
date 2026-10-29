@@ -822,18 +822,27 @@ html[data-intro="play"] .hero-scribble path {
 
 .reveal-mask {
   opacity: 0;
-  transform: translateY(32px);
-  filter: blur(6px);
+  transform: translateY(28px) scale(0.975);
+  filter: blur(8px);
+  will-change: transform, opacity, filter;
   transition:
-    opacity 1s var(--ease-out),
-    transform 1.2s var(--ease-out),
-    filter 1s var(--ease-out);
+    opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .reveal-mask[data-revealed="true"] {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
   filter: blur(0);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 @supports (animation-timeline: view()) {

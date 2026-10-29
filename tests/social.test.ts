@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { normalizeSocialLinks, parseSocialInput } from "../src/lib/social.ts";
+import { linkHostIsInstagram, normalizeSocialLinks, parseSocialInput } from "../src/lib/social.ts";
 
 describe("site links", () => {
   it("fills the usual labels and addresses when nothing is stored", () => {
@@ -46,5 +46,10 @@ describe("site links", () => {
     form.set("extraLinks", JSON.stringify([{ label: "Results", url: "" }]));
     const parsed = parseSocialInput(form);
     assert.deepEqual(parsed, { error: "Each extra link needs a label and an https:// address." });
+  });
+
+  it("identifies instagram hosts correctly", () => {
+    assert.equal(linkHostIsInstagram("https://www.instagram.com/p/DB123/"), true);
+    assert.equal(linkHostIsInstagram("https://notinstagram.com/post"), false);
   });
 });

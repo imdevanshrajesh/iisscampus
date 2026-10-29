@@ -26,6 +26,7 @@ import type {
   ParticipatingGroup,
   RegistrationProvider,
   ScheduleItem,
+  SocialPost,
 } from "@/lib/types";
 
 function assignMemberSlugs(members: CouncilMember[]) {
@@ -407,5 +408,19 @@ export function mapAchievement(row: Record<string, unknown>): Achievement {
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     publishedAt: row.published_at ? String(row.published_at) : null,
+  };
+}
+
+export function mapSocialPost(row: Record<string, unknown>): SocialPost {
+  return {
+    id: String(row.id),
+    instagramUrl: String(row.instagram_url ?? row.instagramUrl ?? ""),
+    caption: row.caption ? String(row.caption) : null,
+    imageUrl: row.image_url ? String(row.image_url) : row.imageUrl ? String(row.imageUrl) : null,
+    pinned: row.pinned !== false,
+    sortOrder: Number(row.sort_order ?? row.sortOrder ?? 0) || 0,
+    councilTag: String(row.council_tag ?? row.councilTag ?? "all"),
+    publishedOn: String(row.published_on ?? row.publishedOn ?? new Date().toISOString()),
+    createdAt: String(row.created_at ?? row.createdAt ?? new Date().toISOString()),
   };
 }

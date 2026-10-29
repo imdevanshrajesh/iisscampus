@@ -51,6 +51,8 @@ const sectionHrefs = new Set([
   "/events",
   "/competitions",
   "/council",
+  "/council/socials",
+  "/socials",
   "/achievements",
   "/gallery",
   "/newsletter",

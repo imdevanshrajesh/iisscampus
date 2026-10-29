@@ -2493,3 +2493,88 @@ export async function deleteNavItem(_state: ActionState, formData: FormData): Pr
   revalidateNav();
   return { ok: "Deleted." };
 }
+
+export async function saveSocialPost(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  const { socialPostInputSchema } = await import("@/lib/validation/content");
+  const parsed = socialPostInputSchema.safeParse({
+    instagramUrl: formData.get("instagramUrl"),
+    caption: formData.get("caption") || null,
+    imageUrl: formData.get("imageUrl") || null,
+    pinned: formData.get("pinned") === "on" || formData.get("pinned") === "true",
+    sortOrder: Number(formData.get("sortOrder") ?? 0) || 0,
+    councilTag: String(formData.get("councilTag") ?? "all"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the form and try again." };
+  }
+
+  const { instagramUrl, caption, imageUrl, pinned, sortOrder, councilTag } = parsed.data;
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { saveSocialPostToStore } = await import("@/lib/data/file-content");
+    if (!saveSocialPostToStore({ id: id || undefined, instagramUrl, caption, imageUrl, pinned, sortOrder, councilTag })) {
+      return { error: "The social post could not be saved." };
+    }
+    revalidatePath("/council/socials");
+    revalidatePath("/manage/socials");
+    return { ok: "Social post saved." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const record = {
+    instagram_url: instagramUrl,
+    caption,
+    image_url: imageUrl,
+    pinned,
+    sort_order: sortOrder,
+    council_tag: councilTag,
+  };
+  const saved = id
+    ? await context.supabase.from("campus_social_posts").update(record).eq("id", id).select("id").maybeSingle()
+    : await context.supabase.from("campus_social_posts").insert(record).select("id").maybeSingle();
+
+  if (saved.error) {
+    return {
+      error: isMissingTableError(saved.error)
+        ? "The social posts table has not been created yet."
+        : databaseError(saved.error, "The social post could not be saved."),
+    };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, id ? "update" : "create", "campus_social_posts", saved.data?.id ?? null);
+  revalidatePath("/council/socials");
+  revalidatePath("/manage/socials");
+  return { ok: "Social post saved." };
+}
+
+export async function deleteSocialPost(_state: ActionState, formData: FormData): Promise<ActionState> {
+  if (formData.get("confirm") !== "yes") return { error: "Confirm the delete, then try again." };
+  const id = String(formData.get("id") ?? "");
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { deleteSocialPostFromStore } = await import("@/lib/data/file-content");
+    if (!deleteSocialPostFromStore(id)) return { error: deleteFailed };
+    revalidatePath("/council/socials");
+    revalidatePath("/manage/socials");
+    return { ok: "Deleted." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const removed = await context.supabase.from("campus_social_posts").delete().eq("id", id);
+  if (removed.error) return { error: databaseError(removed.error, deleteFailed) };
+  await writeAudit(context.supabase, context.actor.userId, "delete", "campus_social_posts", id);
+  revalidatePath("/council/socials");
+  revalidatePath("/manage/socials");
+  return { ok: "Deleted." };
+}
