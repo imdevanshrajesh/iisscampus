@@ -50,7 +50,7 @@ export default async function CouncilSocialsPage() {
                 </span>
               </div>
               <p className="text-xs text-muted mt-0.5">
-                {social.scixcomLabel || "SciXcom"} · @scixcom.27
+                {social.scixcomLabel || "SciXcom"} · @{social.scixcomLabel || "Instagram"} 
               </p>
             </div>
           </div>
@@ -80,7 +80,7 @@ export default async function CouncilSocialsPage() {
                 </span>
               </div>
               <p className="text-xs text-muted mt-0.5">
-                {social.instagramLabel || "Instagram"} · @iisscampus
+                {social.instagramLabel || "Instagram"} · @{social.instagramLabel || "Instagram"} 
               </p>
             </div>
           </div>
