@@ -61,7 +61,6 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
       <SiteChrome logoUrl={navLogoUrl ?? logoUrl} brandHref={navLogoHref} brandLabel={navLabel} groups={menu} />
       <PublicMain>
         <AnnouncementBar messages={marquee} events={events} />
-        <HomeLink />
         <PreviewProvider categories={categories} hosts={hosts} events={events}>
           {children}
         </PreviewProvider>

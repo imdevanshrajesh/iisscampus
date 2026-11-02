@@ -1,5 +1,6 @@
 import {
   Award,
+  Bell,
   CalendarDays,
   CircleHelp,
   HeartPulse,
@@ -19,6 +20,7 @@ const icons: Record<string, LucideIcon> = {
   "/events": CalendarDays,
   "/competitions": Trophy,
   "/council": Users,
+  "/announcements": Bell,
   "/council/socials": Share2,
   "/socials": Share2,
   "/achievements": Award,
@@ -41,6 +43,7 @@ function iconFor(href: string, label = "") {
   if (text.includes("home")) return Home;
   if (text.includes("comp")) return Trophy;
   if (text.includes("event")) return CalendarDays;
+  if (text.includes("announc") || text.includes("notice") || text.includes("dispatch")) return Bell;
   if (text.includes("council")) return Users;
   if (text.includes("gallery") || text.includes("photo")) return Images;
   if (text.includes("letter") || text.includes("news")) return Newspaper;

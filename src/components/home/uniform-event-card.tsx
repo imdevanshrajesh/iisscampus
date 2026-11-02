@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from "react";
 import Image from "next/image";
-import { ArrowUpRight, Calendar, Clock, MapPin, Sparkles } from "lucide-react";
+import { ArrowUpRight, Calendar, Clock, MapPin } from "lucide-react";
 import { PreviewTrigger } from "@/components/preview/preview-provider";
 import { TiltSurface } from "@/components/home/tilt-surface";
 import { categoryById, eventStatusLabel, formatEventDate } from "@/lib/data/catalog";
@@ -65,9 +65,9 @@ export function UniformEventCard({
                     <span className="font-display text-xs italic tracking-widest text-accent uppercase">
                       IISS Campus
                     </span>
-                    <div className="h-8 w-8 rounded-full border border-ink/10 bg-white/60 backdrop-blur-xs flex items-center justify-center text-ink/70">
-                      <Sparkles size={14} />
-                    </div>
+                    <span className="text-[10px] font-mono text-muted/70">
+                      ACTIVITY
+                    </span>
                   </div>
                   <div className="relative z-10">
                     <span className="font-display text-2xl font-bold leading-tight text-ink/20 line-clamp-2">

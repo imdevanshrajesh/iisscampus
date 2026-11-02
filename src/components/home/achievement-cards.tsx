@@ -110,16 +110,19 @@ export function AchievementCards({
           })}
         </div>
       ) : (
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          {["Competitions", "Awards"].map((label, index) => (
-            <RevealOnScroll key={label} delay={index * 90}>
-              <div className="rounded-2xl border border-dashed border-line bg-wash/30 p-8">
-                <span className="font-display text-4xl italic text-accent">{String(index + 1).padStart(2, "0")}</span>
-                <p className="kicker text-muted mt-3">{label}</p>
-                <p className="mt-2 text-sm leading-6 text-ink/75">Results appear here once published.</p>
-              </div>
-            </RevealOnScroll>
-          ))}
+        <div className="mt-8 rounded-2xl border border-line/70 bg-white/70 p-8 text-center flex flex-col items-center justify-center min-h-[16rem]">
+          <Trophy size={28} className="text-gold mb-2" />
+          <p className="font-display text-lg text-ink font-medium">Campus Honors &amp; Accolades</p>
+          <p className="mt-1 text-xs text-muted max-w-sm">
+            Official records for regional athletic championships, academic congresses, and student awards.
+          </p>
+          <Link
+            href="/achievements"
+            className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+          >
+            <span>Explore Achievements</span>
+            <ArrowRight size={12} />
+          </Link>
         </div>
       )}
     </div>

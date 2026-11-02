@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, ListFilter, MapPin, Sparkles } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, MapPin } from "lucide-react";
 import { PreviewTrigger } from "@/components/preview/preview-provider";
 import { formatEventDate } from "@/lib/data/catalog";
 import type { CampusEvent } from "@/lib/types";

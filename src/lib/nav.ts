@@ -8,6 +8,7 @@ export const primaryNav: NavLink[] = [
   { href: "/events", label: "Events" },
   { href: "/competitions", label: "Competitions" },
   { href: "/council", label: "Council" },
+  { href: "/announcements", label: "Notices" },
   { href: "/council/socials", label: "Socials" },
   { href: "/achievements", label: "Achievements" },
   { href: "/gallery", label: "Gallery" },
@@ -88,6 +89,7 @@ export const defaultNavGroups: NavGroup[] = [
     sortOrder: 30,
     items: [
       item("nav-council-page", "nav-council", "The council", "Meet the boys' student council", "/council", 0),
+      item("nav-notices", "nav-council", "Campus Notices", "Official circulars & directives", "/announcements", 3),
       item("nav-socials", "nav-council", "Socials", "Pinned Instagram posts and council accounts", "/council/socials", 5),
       item("nav-suggestions", "nav-council", "Suggestions", "Send a note to the council", "/suggestions", 10),
     ],
@@ -180,8 +182,17 @@ export function resolvePublicNav(
           }
         }
       } else {
-        if (!links.some((link) => link.href === "/council/socials")) {
+        if (!links.some((link) => link.href === "/announcements")) {
           const councilIdx = links.findIndex((l) => l.href === "/council");
+          const insertAt = councilIdx >= 0 ? councilIdx + 1 : 0;
+          links.splice(insertAt, 0, {
+            title: "Campus Notices",
+            description: "Official circulars & directives",
+            href: "/announcements",
+          });
+        }
+        if (!links.some((link) => link.href === "/council/socials")) {
+          const councilIdx = links.findIndex((l) => l.href === "/announcements" || l.href === "/council");
           const insertAt = councilIdx >= 0 ? councilIdx + 1 : 0;
           links.splice(insertAt, 0, {
             title: "Socials",

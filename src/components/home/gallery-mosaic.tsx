@@ -84,18 +84,19 @@ export function GalleryMosaic({
           })}
         </div>
       ) : (
-        <div className="mt-8 grid grid-cols-2 gap-4">
-          {["Events", "Campus Life"].map((label, index) => (
-            <RevealOnScroll key={label} delay={index * 90}>
-              <div className="rounded-2xl border border-dashed border-line bg-wash/30 p-8 flex flex-col justify-between aspect-[4/3]">
-                <span className="font-display text-4xl italic text-accent">{String(index + 1).padStart(2, "0")}</span>
-                <div>
-                  <p className="kicker text-muted">{label}</p>
-                  <p className="mt-1 text-xs text-muted">Pinned photos appear here once published.</p>
-                </div>
-              </div>
-            </RevealOnScroll>
-          ))}
+        <div className="mt-8 rounded-2xl border border-line/70 bg-white/70 p-8 text-center flex flex-col items-center justify-center min-h-[16rem]">
+          <Eye size={28} className="text-accent mb-2" />
+          <p className="font-display text-lg text-ink font-medium">Visual Campus Archive</p>
+          <p className="mt-1 text-xs text-muted max-w-sm">
+            High-resolution photography documenting sports tournaments, academic symposia, and campus life.
+          </p>
+          <Link
+            href="/gallery"
+            className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
+          >
+            <span>View Full Gallery</span>
+            <ArrowRight size={12} />
+          </Link>
         </div>
       )}
     </div>

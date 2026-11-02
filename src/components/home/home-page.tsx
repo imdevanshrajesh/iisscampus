@@ -1,29 +1,19 @@
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import type { CSSProperties } from "react";
 import { AchievementCards } from "@/components/home/achievement-cards";
 import { ComingUp } from "@/components/home/coming-up";
 import { CouncilPreview } from "@/components/home/council-preview";
 import { GalleryMosaic } from "@/components/home/gallery-mosaic";
 import { AnnouncementHomePanel } from "@/components/home/announcement-home-panel";
+import { CategoryShowcase } from "@/components/home/category-showcase";
+import { EmsHighlights } from "@/components/home/ems-highlights";
 import { LiveNow } from "@/components/home/live-now";
-import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
 import { RingLink } from "@/components/home/ring-link";
-import { NavMark } from "@/components/layout/nav-marks";
+import { SxswMarquee } from "@/components/home/sxsw-marquee";
 import { Today } from "@/components/home/today";
 import { siteConfig } from "@/lib/config";
 import { compareCampusEvents } from "@/lib/data/catalog";
-import { classifyNavigationUrl } from "@/lib/media/url";
 import type { Achievement, Announcement, CampusEvent, Category } from "@/lib/types";
-
-const pageAnchors = [
-  { href: "/events", label: "Events" },
-  { href: "/competitions", label: "Competitions" },
-  { href: "/council", label: "Council" },
-  { href: "/achievements", label: "Achievements" },
-  { href: "/gallery", label: "Gallery" },
-];
 
 function delay(ms: number) {
   return { "--d": `${ms}ms` } as CSSProperties;
@@ -46,26 +36,21 @@ export function HomePage({
 }) {
   const campusEvents = events.filter((event) => event.listing !== "external");
   const featured = campusEvents.filter((event) => event.featured);
-  const lead = (featured.length ? featured : campusEvents).slice(0, 5);
-  const ongoing = campusEvents.filter((event) => event.eventStatus === "ongoing" && !event.isSample);
-  const upcoming = campusEvents
-    .filter((event) => event.eventStatus === "upcoming" && !event.isSample)
+  const lead = (featured.length ? featured : campusEvents).slice(0, 8);
+  const ongoing = campusEvents.filter((event) => event.eventStatus === "ongoing");
+  const upcomingRaw = campusEvents
+    .filter((event) => event.eventStatus === "upcoming")
     .slice()
     .sort(compareCampusEvents);
-  const completed = campusEvents
-    .filter((event) => event.eventStatus === "completed" && !event.isSample)
-    .slice()
-    .sort(compareCampusEvents);
+  const upcoming = upcomingRaw.length ? upcomingRaw : campusEvents.slice(0, 6);
   const competitions = events
-    .filter(
-      (event) =>
-        (event.listing === "competition" || event.listing === "external") && !event.isSample,
-    )
+    .filter((event) => event.listing === "competition" || event.listing === "external")
     .slice()
     .sort(compareCampusEvents);
 
   return (
     <>
+      {/* Hero Section */}
       <section className="home-hero">
         <div className="mx-auto max-w-[90rem] px-5 pt-3 md:px-8">
           <div
@@ -98,7 +83,7 @@ export function HomePage({
                 </defs>
                 <text>
                   <textPath href="#hero-stamp-path">
-                    {`${siteConfig.name} · ${siteConfig.name} · `}
+                    IISS X STUDENT COUNCIL BOYS · IISS X STUDENT COUNCIL BOYS ·{" "}
                   </textPath>
                 </text>
               </svg>
@@ -106,137 +91,64 @@ export function HomePage({
             </div>
           </div>
 
-          <div className="mt-12 grid gap-10 md:mt-16 md:grid-cols-[1fr_auto] md:items-end">
-            <div className="rise max-w-xl" style={delay(420)}>
+          {/* Decluttered Sub-hero row: removed the repetitive "INSIDE" list */}
+          <div className="mt-10 grid gap-6 md:mt-12 md:max-w-2xl">
+            <div className="rise" style={delay(420)}>
               <p className="text-lg leading-8 text-ink/80 md:text-xl md:leading-9">
-                Live activity, what&apos;s next, and the boys&apos; student council.
+                Live activity, upcoming fixtures, competitions, and the boys&apos; student council.
               </p>
-              <div className="mt-8 flex flex-wrap items-center gap-4">
-                <RingLink href="/events">See what&apos;s on</RingLink>
+              <div className="mt-6 flex flex-wrap items-center gap-4">
+                <RingLink href="/events">Explore Activities</RingLink>
                 <RingLink href="/council" tone="quiet">
-                  Student council
+                  Student Council
                 </RingLink>
               </div>
             </div>
-            <nav className="rise" style={delay(540)} aria-label="On this page">
-              <p className="kicker text-muted">Inside</p>
-              <ul className="mt-3 space-y-1.5 border-l border-accent/50 pl-4">
-                {pageAnchors.map((link, index) => (
-                  <li key={link.href}>
-                    <Link href={link.href} className="group flex items-baseline gap-3 text-sm text-ink">
-                      <span className="font-display text-xs italic text-accent">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <span className="text-link inline-flex items-center gap-2">
-                        <NavMark href={link.href} label={link.label} size={14} />
-                        {link.label}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
           </div>
 
-          <div className="rise home-hero__stage mt-14 md:mt-20" style={delay(680)}>
+          {/* Upgraded Stage Radar & Notice Board */}
+          <div className="rise home-hero__stage mt-12 md:mt-16" style={delay(540)}>
             <LiveNow ongoing={ongoing} upcoming={upcoming} />
             <AnnouncementHomePanel announcements={announcements} />
           </div>
         </div>
       </section>
 
-      <ComingUp
-        id="board"
-        events={lead}
+      {/* Infinite Horizontal Cards Marquee */}
+      <SxswMarquee
+        events={lead.length ? lead : upcoming}
         categories={categories}
         hosts={hosts}
-        heading="On the"
-        accent="board"
-        kicker="Featured Activities"
-        seeMoreHref="/events"
-        empty="The board is clear for now. Published events will be pinned here."
+        heading="Featured"
+        accent="Highlights"
+        kicker="Featured Lineup"
       />
 
-      <ComingUp
-        events={competitions}
-        categories={categories}
-        hosts={hosts}
-        heading="The"
-        accent="competitions"
-        kicker="Hosted here and at other schools"
-        seeMoreHref="/competitions"
-        empty="Published competitions will be listed here."
-        direction="reverse"
-      />
+      {/* Campus Highlights & Upcoming Events */}
+      <EmsHighlights upcomingEvents={upcoming} announcements={announcements} />
 
-      <ComingUp
-        events={upcoming}
-        categories={categories}
-        hosts={hosts}
-        heading="Coming"
-        accent="up"
-        kicker="Next on the calendar"
-        seeMoreHref="/events?status=upcoming"
-        empty="Nothing dated yet. Upcoming activities land here the moment they are published."
-        direction="normal"
-      />
+      {/* The Competitions Stream */}
+      {competitions.length > 0 ? (
+        <ComingUp
+          events={competitions}
+          categories={categories}
+          hosts={hosts}
+          heading="The"
+          accent="competitions"
+          kicker="Hosted here and at other schools"
+          seeMoreHref="/competitions"
+          empty="Published competitions will be listed here."
+          direction="reverse"
+        />
+      ) : null}
 
-      <ComingUp
-        events={completed}
-        categories={categories}
-        hosts={hosts}
-        heading="Just"
-        accent="finished"
-        kicker="Most recent first"
-        seeMoreHref="/events?status=completed"
-        direction="reverse"
-      />
+      {/* Upgraded Modern Category Showcase */}
+      <CategoryShowcase categories={categories} events={campusEvents} />
 
-      <section className="mx-auto max-w-[90rem] px-5 py-20 md:px-8 md:py-28">
-        <RevealOnScroll>
-          <h2 className="font-display max-w-[12ch] text-[clamp(2.6rem,5vw,4.5rem)] leading-[0.9] text-ink">
-            Browse <span className="italic">by kind.</span>
-          </h2>
-        </RevealOnScroll>
-        <ol className="mt-10 border-t border-ink">
-          {categories.map((category, index) => {
-            const pdf = category.pdfUrl ? classifyNavigationUrl(category.pdfUrl) : null;
-            return (
-              <li key={category.id} className="border-b border-line">
-                <RevealOnScroll delay={index * 50}>
-                  <div className="group grid gap-3 py-6 md:grid-cols-[5rem_1fr_auto] md:items-baseline md:gap-8">
-                    <span className="font-display text-2xl italic text-accent">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <div>
-                      <Link
-                        href={`/events?category=${category.slug}`}
-                        className="font-display text-3xl text-ink transition-[transform,color] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-3 group-hover:text-accent md:text-4xl"
-                      >
-                        {category.name}
-                      </Link>
-                      {pdf?.ok ? (
-                        <a
-                          href={pdf.url}
-                          className="mt-2 block text-sm text-accent"
-                          rel="noopener noreferrer"
-                          target="_blank"
-                        >
-                          Download PDF
-                        </a>
-                      ) : null}
-                    </div>
-                    <span className="max-w-md text-sm leading-6 text-muted md:text-right">{category.description}</span>
-                  </div>
-                </RevealOnScroll>
-              </li>
-            );
-          })}
-        </ol>
-      </section>
-
+      {/* Student Council Section */}
       <CouncilPreview logoUrl={logoUrl} />
 
+      {/* Achievements & Gallery Mosaic */}
       <section className="mx-auto grid max-w-[90rem] gap-16 px-5 py-20 md:px-8 md:py-28 lg:grid-cols-2 lg:gap-12">
         <AchievementCards achievements={achievements} categories={categories} hosts={hosts} />
         <GalleryMosaic events={events} hosts={hosts} />

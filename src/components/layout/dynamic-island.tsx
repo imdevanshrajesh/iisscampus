@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { CouncilLogo } from "@/components/brand/council-logo";
 import { NavMark } from "@/components/layout/nav-marks";
-import { primaryNav } from "@/lib/nav";
 import type { PublicNavGroup, PublicNavLink } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +50,7 @@ const sectionHrefs = new Set([
   "/events",
   "/competitions",
   "/council",
+  "/announcements",
   "/council/socials",
   "/socials",
   "/achievements",
@@ -72,17 +72,7 @@ function splitLinks(links: PublicNavLink[]) {
 }
 
 export function HomeLink() {
-  const pathname = usePathname();
-  if (pathname === "/") return null;
-
-  return (
-    <div className="mx-auto max-w-6xl px-5 pt-3 md:px-8">
-      <Link href="/" className="mb-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-ink">
-        <Home aria-hidden="true" size={16} />
-        Home
-      </Link>
-    </div>
-  );
+  return null;
 }
 
 function LinkCards({ links, onNavigate }: { links: PublicNavLink[]; onNavigate: () => void }) {
@@ -93,13 +83,17 @@ function LinkCards({ links, onNavigate }: { links: PublicNavLink[]; onNavigate: 
           <Link
             href={link.href}
             onClick={onNavigate}
-            className="block h-full rounded-2xl border border-line bg-background px-4 py-3.5 transition hover:bg-wash"
+            className="group block h-full rounded-2xl border border-line/80 bg-white/80 p-4 transition-all duration-200 hover:border-accent/40 hover:bg-white hover:shadow-sm"
           >
-            <span className="flex items-center gap-2 text-sm font-medium text-ink">
+            <span className="flex items-center gap-2 text-sm font-semibold text-ink group-hover:text-accent transition-colors">
               <NavMark href={link.href} label={link.title} size={16} />
               {link.title}
             </span>
-            {link.description ? <span className="mt-1 block text-sm leading-5 text-muted">{link.description}</span> : null}
+            {link.description ? (
+              <span className="mt-1 block text-xs leading-5 text-muted group-hover:text-ink/80 transition-colors">
+                {link.description}
+              </span>
+            ) : null}
           </Link>
         </li>
       ))}
@@ -391,10 +385,44 @@ export function SiteChrome({
 }
 
 function fallbackGroups(): PublicNavGroup[] {
-  return primaryNav.map((link) => ({
-    id: link.href,
-    label: link.label,
-    href: link.href,
-    links: [],
-  }));
+  return [
+    {
+      id: "nav-home",
+      label: "Home",
+      href: "/",
+      links: [],
+    },
+    {
+      id: "nav-events",
+      label: "Events",
+      href: "/events",
+      links: [
+        { href: "/events", title: "All Events", description: "Upcoming and ongoing campus activities" },
+        { href: "/competitions", title: "Competitions", description: "Internal fixtures & inter-school contests" },
+      ],
+    },
+    {
+      id: "nav-council",
+      label: "Council",
+      href: "/council",
+      links: [
+        { href: "/council", title: "The Council", description: "Student executive leadership roster" },
+        { href: "/announcements", title: "Campus Notices", description: "NEED TO KNOW circulars & bulletins" },
+        { href: "/council/socials", title: "Pinned Socials", description: "Official Instagram accounts and feed" },
+        { href: "/suggestions", title: "Suggestions Box", description: "Direct suggestions to council reps" },
+      ],
+    },
+    {
+      id: "nav-school",
+      label: "School & Life",
+      href: "/gallery",
+      links: [
+        { href: "/gallery", title: "Gallery", description: "High-resolution campus photography" },
+        { href: "/newsletter", title: "Newsletter", description: "The latest student circular & letter" },
+        { href: "/wellness", title: "Wellness Corner", description: "A quiet space for student wellbeing" },
+        { href: "/achievements", title: "Achievements", description: "Trophies, awards, and victories" },
+        { href: "/about", title: "FAQ & About", description: "Questions and council governance" },
+      ],
+    },
+  ];
 }

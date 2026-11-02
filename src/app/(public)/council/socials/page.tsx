@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowUpRight, Sparkles } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { InstagramMark } from "@/components/brand/instagram-mark";
 import { SocialPostCard } from "@/components/council/social-post-card";
 import { getPublicSocial, getPublicSocialPosts } from "@/lib/data/queries";

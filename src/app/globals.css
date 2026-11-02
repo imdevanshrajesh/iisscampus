@@ -54,32 +54,59 @@ body {
 body::before {
   content: "";
   position: fixed;
-  z-index: -1;
-  inset: -4px;
+  z-index: -2;
+  inset: 0;
   pointer-events: none;
-  background-color: #faf9ea;
-  background-repeat: repeat;
-  background-size: 480px 480px;
-  background-image: url("/textures/drift/paper-0.webp");
-  animation: paper-drift 6s linear infinite;
+  background-color: #fcfbf5;
+  background-image:
+    radial-gradient(at 15% 10%, rgba(198, 90, 18, 0.045) 0px, transparent 50%),
+    radial-gradient(at 85% 15%, rgba(196, 165, 116, 0.08) 0px, transparent 50%),
+    radial-gradient(at 50% 45%, rgba(246, 239, 217, 0.6) 0px, transparent 80%),
+    radial-gradient(at 80% 85%, rgba(31, 42, 68, 0.035) 0px, transparent 55%),
+    radial-gradient(at 20% 90%, rgba(198, 90, 18, 0.03) 0px, transparent 50%);
 }
 
 body::after {
   content: "";
   position: fixed;
   z-index: -1;
-  inset: -4px;
+  inset: 0;
   pointer-events: none;
-  background: #f1efda66;
+  background-image: url("/textures/abc-paper.avif");
+  background-repeat: repeat;
+  background-size: 480px 480px;
+  opacity: 0.16;
 }
 
-@keyframes paper-drift {
-  0%, 16.66% { background-image: url("/textures/drift/paper-0.webp"); }
-  16.67%, 33.32% { background-image: url("/textures/drift/paper-1.webp"); }
-  33.33%, 49.99% { background-image: url("/textures/drift/paper-2.webp"); }
-  50%, 66.65% { background-image: url("/textures/drift/paper-3.webp"); }
-  66.66%, 83.32% { background-image: url("/textures/drift/paper-4.webp"); }
-  83.33%, 100% { background-image: url("/textures/drift/paper-5.webp"); }
+@keyframes sxsw-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.sxsw-track {
+  display: flex;
+  width: max-content;
+  animation: sxsw-marquee 38s linear infinite;
+  will-change: transform;
+}
+
+.sxsw-track:hover {
+  animation-play-state: paused;
+}
+
+.radar-ping {
+  animation: radar-ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes radar-ping {
+  75%, 100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
 }
 
 html[data-intro="play"] body {

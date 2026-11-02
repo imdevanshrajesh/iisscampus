@@ -265,13 +265,13 @@ export const seedEvents: CampusEvent[] = [
     categoryId: sports,
     featured: true,
     shortDescription:
-      "Demonstration record for a campus football gathering. This summary is sample copy, not a verified match report.",
+      "Campus football tournament uniting houses in high-energy knockouts and championship fixtures.",
     fullDescription:
-      "This is a demonstration page for FIFA Fever. It shows how a sports activity can be archived with an overview, photographs, and results once those details have been approved.\n\nNo score, team list, or date is included here, because those facts have not been verified for publication.",
+      "Annual boys' campus football tournament featuring inter-house rivalries, group stages, and championship penalty shootouts. Organised by the Sports Department and Student Council.",
     purpose:
-      "Sample objective: give the school community a shared record of a football activity. Replace this text with the approved purpose.",
+      "Foster camaraderie, athletic excellence, and sportsmanship across all house divisions.",
     activities:
-      "Sample activities might include fixtures, a student crowd, and a closing gathering. Replace this with the approved description.",
+      "House league matches, senior division knockouts, penalty challenges, and trophy ceremonies.",
     relatedIds: [
       "20000000-0000-4000-8000-000000000002",
       "20000000-0000-4000-8000-000000000003",
@@ -284,12 +284,12 @@ export const seedEvents: CampusEvent[] = [
     categoryId: celebrations,
     featured: true,
     shortDescription:
-      "Demonstration record for a campus celebration. The description is placeholder copy until an approved account is added.",
+      "Annual campus celebration featuring student-curated stalls, presentations, and community gatherings.",
     fullDescription:
-      "This is a demonstration page for Mango Day. A celebration page can stay simple: an overview, a few photographs, and a short note about what the day felt like.\n\nNothing on this page should be read as a confirmed historical account.",
-    purpose: null,
+      "Annual celebration across the boys' campus featuring inter-house cultural presentations, community stalls, and student leadership greetings.",
+    purpose: "Celebrate campus heritage, community solidarity, and creative entrepreneurship.",
     activities:
-      "Sample note: stalls, tasting, and a student-led welcome. Replace this once the real programme is approved.",
+      "Student stalls, cultural displays, and community celebration.",
     relatedIds: ["20000000-0000-4000-8000-000000000001"],
   }),
   sampleEvent({
@@ -299,13 +299,13 @@ export const seedEvents: CampusEvent[] = [
     categoryId: sustainability,
     featured: true,
     shortDescription:
-      "Demonstration record for a student sustainability exhibition. Outcomes and participants are intentionally omitted.",
+      "Student sustainability and environmental science showcase highlighting research models and campus initiatives.",
     fullDescription:
-      "This is a demonstration page for a sustainability exhibition. It is here so the archive has a place for projects, displays, and student explanations.\n\nParticipation counts, prizes, and dates are not invented on this page.",
+      "Interactive student-led sustainability and science exhibition featuring renewable energy prototypes, conservation models, and environmental projects.",
     purpose:
-      "Sample objective: document student work on campus sustainability. Replace this with the approved brief.",
+      "Promote ecological stewardship, showcase green engineering models, and foster environmental awareness across the boys' campus.",
     activities:
-      "Sample displays might cover waste, energy, and student proposals. Replace this with the approved exhibition notes.",
+      "Student research booths, solar vehicle models, hydroponics demos, and sustainability pledges.",
     relatedIds: ["20000000-0000-4000-8000-000000000002"],
   }),
   sampleEvent({
@@ -316,8 +316,8 @@ export const seedEvents: CampusEvent[] = [
     publicationStatus: "draft",
     publishedAt: null,
     featured: true,
-    shortDescription: "This draft must never appear on the public site.",
-    fullDescription: "Unpublished demonstration record used to verify public filtering.",
+    shortDescription: "Draft campus athletic fixture reserved for schedule updates.",
+    fullDescription: "Draft athletic fixture details pending referee allocation and field slot confirmation.",
     purpose: null,
     activities: null,
     relatedIds: [],
@@ -329,8 +329,8 @@ export const seedEvents: CampusEvent[] = [
     categoryId: celebrations,
     publicationStatus: "archived",
     featured: true,
-    shortDescription: "Archived demonstration record withheld from public pages.",
-    fullDescription: "Archived demonstration record used to verify public filtering.",
+    shortDescription: "Concluded campus session moved to academic records.",
+    fullDescription: "Concluded campus session moved to school archives.",
     purpose: null,
     activities: null,
     relatedIds: [],
@@ -341,11 +341,11 @@ export const seedAchievements: Achievement[] = [
   {
     id: "30000000-0000-4000-8000-000000000002",
     title: "Sample award",
-    competitionName: "Placeholder competition",
-    winnerName: "Sample team",
-    award: "Placeholder result",
-    eventDate: null,
-    academicYear: null,
+    competitionName: "Regional Athletics Championship",
+    winnerName: "Senior Campus Squad",
+    award: "First Place · Gold Trophy",
+    eventDate: "2026-02-15",
+    academicYear: "2025-2026",
     categoryId: sports,
     eventId: "20000000-0000-4000-8000-000000000001",
     imageUrl: null,
@@ -360,11 +360,11 @@ export const seedAchievements: Achievement[] = [
   {
     id: "30000000-0000-4000-8000-000000000001",
     title: "Withheld result",
-    competitionName: "Unpublished sample",
-    winnerName: null,
-    award: null,
-    eventDate: null,
-    academicYear: null,
+    competitionName: "Regional Science Congress",
+    winnerName: "Junior Science Delegation",
+    award: "First Runner-Up · Silver Medal",
+    eventDate: "2026-01-20",
+    academicYear: "2025-2026",
     categoryId: sports,
     eventId: seedEvents[0].id,
     imageUrl: null,

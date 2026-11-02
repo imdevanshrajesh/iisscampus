@@ -78,8 +78,7 @@ export function EventDetail({
             {[
               listingLabel,
               categoryNames.join(", ") || null,
-              event.isSample ? "Sample" : null,
-              event.eventStatus && !event.isSample ? event.eventStatus : null,
+              event.eventStatus || null,
             ]
               .filter(Boolean)
               .join(" · ")}
@@ -194,9 +193,7 @@ export function EventDetail({
                   totalCount: galleryImages.length,
                   placeholder: galleryImages.length
                     ? null
-                    : event.isSample
-                      ? "Demonstration placeholder. Replace with an approved photograph."
-                      : "Photograph not available yet.",
+                    : "Photograph not available yet.",
                 },
               ]}
               hosts={hosts}

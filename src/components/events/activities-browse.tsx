@@ -1,8 +1,5 @@
-import Link from "next/link";
-import { ActivityCalendar } from "@/components/events/activity-calendar";
-import { ExpandableFilters } from "@/components/events/expandable-filters";
-import { EventCard } from "@/components/events/event-card";
 import { PreviewTrigger } from "@/components/preview/preview-provider";
+import { UnifiedBrowseConsole } from "@/components/events/unified-browse-console";
 import { filterPublishedEvents, formatEventDate, publishedYears } from "@/lib/data/catalog";
 import type { CampusEvent, Category, EventListing } from "@/lib/types";
 
@@ -40,40 +37,48 @@ export function ActivitiesBrowse({
 }) {
   const filtered = filterPublishedEvents(events, categories, { ...filters, listing });
   const page = 1;
-  const pageSize = 12;
+  const pageSize = 18;
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const current = Math.min(page, pageCount);
   const visible = filtered.slice((current - 1) * pageSize, current * pageSize);
   const years = publishedYears(events.filter((event) => (event.listing ?? "event") === listing));
-  const active = Boolean(
-    filters.query ||
-      filters.category ||
-      filters.year ||
-      filters.status ||
-      filters.grade ||
-      filters.from ||
-      filters.to ||
-      filters.fee,
-  );
+
   const ongoing = events.filter(
     (event) =>
       (event.listing ?? "event") === listing && event.eventStatus === "ongoing" && !event.isSample,
   );
-  const calendarEvents = events.filter((event) => (event.listing ?? "event") === listing && !event.isSample);
+  const allListingEvents = events.filter(
+    (event) => (event.listing ?? "event") === listing && !event.isSample,
+  );
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-10 md:px-8 md:py-14">
-      <p className="text-sm text-accent">{kicker}</p>
-      <h1 className="font-display mt-3 text-5xl text-ink md:text-6xl">{title}</h1>
-      <p className="mt-4 max-w-xl text-base leading-7 text-muted">{intro}</p>
+      {/* Header */}
+      <div className="border-b border-line/70 pb-8">
+        <p className="text-sm font-semibold tracking-wider text-accent uppercase">{kicker}</p>
+        <h1 className="font-display mt-2 text-4xl sm:text-5xl md:text-6xl text-ink tracking-tight">
+          {title}
+        </h1>
+        <p className="mt-3 max-w-2xl text-base leading-7 text-muted">{intro}</p>
+      </div>
 
+      {/* Ongoing Live Banner */}
       {ongoing.length ? (
-        <section className="mt-8 rounded-[1.5rem] bg-navy px-5 py-5 text-white md:px-6">
-          <p className="text-sm text-white/60">On now</p>
-          <ul className="mt-3 divide-y divide-white/15">
+        <section className="mt-8 rounded-[1.75rem] border border-white/10 bg-navy p-5 text-white shadow-xl md:p-6">
+          <div className="flex items-center justify-between border-b border-white/15 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-accent animate-pulse" />
+              <p className="text-xs uppercase tracking-wider text-white/70 font-semibold">
+                Happening On Stage Now
+              </p>
+            </div>
+            <span className="text-xs text-white/50">{ongoing.length} Ongoing</span>
+          </div>
+
+          <ul className="mt-3 divide-y divide-white/10">
             {ongoing.map((event) => (
               <li key={event.id} className="flex flex-wrap items-baseline justify-between gap-3 py-3">
-                <PreviewTrigger event={event} className="font-display text-left text-2xl">
+                <PreviewTrigger event={event} className="font-display text-left text-2xl text-white hover:text-gold transition">
                   {event.title}
                 </PreviewTrigger>
                 <span className="text-sm text-white/60">{formatEventDate(event.eventDate) ?? "Dates open"}</span>
@@ -81,38 +86,28 @@ export function ActivitiesBrowse({
             ))}
           </ul>
         </section>
-      ) : (
-        <p className="mt-8 text-sm text-muted">Nothing marked as happening right now.</p>
-      )}
+      ) : null}
 
-      <div className="mt-10">
-        <ActivityCalendar events={calendarEvents} />
-      </div>
-
-      <ExpandableFilters
+      {/* Unified Search, Filter, Category Tabs & Multi-View Console */}
+      <UnifiedBrowseConsole
         basePath={basePath}
         categories={categories}
         years={years}
         filters={filters}
+        events={visible}
+        allEvents={allListingEvents}
+        hosts={hosts}
       />
 
-      {visible.length ? (
-        <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {visible.map((event) => (
-            <EventCard key={event.id} event={event} categories={categories} hosts={hosts} />
-          ))}
-        </div>
-      ) : (
-        <div className="mt-10 rounded-xl border border-line px-6 py-12">
-          <p className="text-lg font-medium">{active ? "Nothing matches those filters." : "Nothing published here yet."}</p>
-        </div>
-      )}
-
+      {/* Pagination */}
       {pageCount > 1 ? (
-        <nav className="mt-10 flex gap-4 text-sm" aria-label="Pagination">
+        <nav className="mt-12 flex items-center justify-between border-t border-line/60 pt-6 text-sm" aria-label="Pagination">
           <span className="text-muted">
-            Page {current} of {pageCount}
+            Showing Page {current} of {pageCount} ({filtered.length} total)
           </span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-lg bg-navy px-3 py-1 text-white font-medium">1</span>
+          </div>
         </nav>
       ) : null}
     </div>

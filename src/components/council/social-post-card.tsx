@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ExternalLink, Heart, MessageCircle, Share2, Sparkles } from "lucide-react";
+import { ExternalLink, Heart, MessageCircle, Share2 } from "lucide-react";
 import { InstagramMark } from "@/components/brand/instagram-mark";
 import type { SocialPost } from "@/lib/types";
 
