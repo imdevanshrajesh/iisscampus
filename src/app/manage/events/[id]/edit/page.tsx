@@ -24,6 +24,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
           events={access.workspace.events}
           role={access.role}
           mediaHosts={access.workspace.mediaHosts}
+          announcements={access.workspace.announcements}
         />
       </div>
       {canDelete({ userId: "staff", role: access.role }, event.publicationStatus) ? (

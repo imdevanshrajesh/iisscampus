@@ -1,13 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpRight, Bell, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
 import { saveEvent, type ActionState } from "@/lib/manage/actions";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
 import { ResourceRepeater } from "@/components/manage/resource-repeater";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import { classifyMediaUrl } from "@/lib/media/url";
 import type {
+  Announcement,
   CampusEvent,
   CampusRole,
   Category,
@@ -33,12 +34,14 @@ export function EventForm({
   events,
   role,
   mediaHosts,
+  announcements = [],
 }: {
   event: CampusEvent | null;
   categories: Category[];
   events: CampusEvent[];
   role: CampusRole;
   mediaHosts: string[];
+  announcements?: Announcement[];
 }) {
   const [state, action, pending] = useActionState(saveEvent, {} as ActionState);
   const [title, setTitle] = useState(event?.title ?? "");
@@ -76,6 +79,27 @@ export function EventForm({
     role === "editor" &&
     (event?.publicationStatus === "published" || event?.publicationStatus === "archived");
   const cover = classifyMediaUrl(coverUrl, mediaHosts);
+  const linkedNotices = event ? announcements.filter((a) => a.eventId === event.id) : [];
+
+  const ALL_PANEL_IDS = ["event", "venue", "cover", "gallery", "programme", "registration", "links", "notices"];
+  // Collapsed by default (all false)
+  const [openPanels, setOpenPanels] = useState<Record<string, boolean>>(() => ({}));
+
+  const togglePanel = (id: string) => {
+    setOpenPanels((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const expandAllPanels = () => {
+    const map: Record<string, boolean> = {};
+    for (const id of ALL_PANEL_IDS) map[id] = true;
+    setOpenPanels(map);
+  };
+
+  const collapseAllPanels = () => {
+    setOpenPanels({});
+  };
+
+  const allPanelsCollapsed = Object.values(openPanels).every((v) => !v);
 
   function updateImage(index: number, patch: Partial<ImageDraft>) {
     setImages((current) => current.map((image, imageIndex) => (imageIndex === index ? { ...image, ...patch } : image)));
@@ -108,8 +132,42 @@ export function EventForm({
         </p>
       ) : null}
 
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-3.5 shadow-xs">
+        <div>
+          <p className="text-xs font-semibold text-ink">Form Sections</p>
+          <p className="text-[11px] text-muted">All sections collapsed by default for fast navigation.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {allPanelsCollapsed ? (
+            <button
+              type="button"
+              onClick={expandAllPanels}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-[#fbfaf4] px-3 py-1.5 text-xs font-medium text-ink transition hover:border-navy hover:bg-white"
+            >
+              <ChevronsUpDown className="h-3.5 w-3.5 text-accent" />
+              <span>Expand All Sections</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={collapseAllPanels}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-[#fbfaf4] px-3 py-1.5 text-xs font-medium text-ink transition hover:border-navy hover:bg-white"
+            >
+              <ChevronsDownUp className="h-3.5 w-3.5 text-accent" />
+              <span>Collapse All</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       <fieldset disabled={locked} className="grid gap-5">
-        <Panel title="Event" hint="The title, description, and where this appears on the site.">
+        <Panel
+          title="Event Details"
+          hint="The title, address slug, category, and descriptions."
+          badge={title ? <span className="rounded-full bg-navy/5 px-2 py-0.5 text-[10px] font-bold text-navy truncate max-w-[200px]">{title}</span> : null}
+          isOpen={Boolean(openPanels.event)}
+          onToggle={() => togglePanel("event")}
+        >
         <label className="grid gap-1.5 text-sm">
           Title
           <input name="title" value={title} onChange={(event) => {
@@ -205,7 +263,13 @@ export function EventForm({
         <p className="text-sm text-muted">Hold Ctrl or Cmd to select more than one. The primary category is always included.</p>
         </Panel>
 
-        <Panel title="When and where" hint="Start and end days, times, venue, and who can take part.">
+        <Panel
+          title="When and Where"
+          hint="Start and end days, times, venue, and who can take part."
+          badge={event?.eventDate ? <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">{event.eventDate}</span> : null}
+          isOpen={Boolean(openPanels.venue)}
+          onToggle={() => togglePanel("venue")}
+        >
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-1.5 text-sm">
             Start date
@@ -283,7 +347,13 @@ export function EventForm({
         ) : null}
         </Panel>
 
-        <Panel title="Cover image">
+        <Panel
+          title="Cover Image"
+          hint="The main hero photo displayed in cards and page headers."
+          badge={coverUrl ? <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700">Image set</span> : null}
+          isOpen={Boolean(openPanels.cover)}
+          onToggle={() => togglePanel("cover")}
+        >
           <label className="grid gap-1.5 text-sm">
             Image URL
             <input name="coverImageUrl" value={coverUrl} onChange={(event) => {
@@ -316,8 +386,11 @@ export function EventForm({
         </Panel>
 
         <Panel
-          title="Gallery"
+          title="Gallery Images"
           hint="Pin photographs to show them on the Gallery page and in the event preview. The order here is the order visitors see."
+          badge={<span className="rounded-full bg-navy/5 px-2 py-0.5 text-[10px] font-bold text-navy">{images.length} photo{images.length === 1 ? "" : "s"}</span>}
+          isOpen={Boolean(openPanels.gallery)}
+          onToggle={() => togglePanel("gallery")}
         >
           <div className="flex justify-end">
             <button
@@ -379,7 +452,12 @@ export function EventForm({
           })}
         </Panel>
 
-        <Panel title="Programme" hint="Purpose, activities, the running order, and files visitors can open.">
+        <Panel
+          title="Programme, Schedule & Resources"
+          hint="Purpose, activities, the running order, and files visitors can open."
+          isOpen={Boolean(openPanels.programme)}
+          onToggle={() => togglePanel("programme")}
+        >
         <label className="grid gap-1.5 text-sm">
           Purpose
           <textarea name="purpose" defaultValue={event?.purpose ?? ""} rows={4} className={fieldClass} />
@@ -420,8 +498,11 @@ export function EventForm({
         </Panel>
 
         <Panel
-          title="Registration"
+          title="Registration & Capacity"
           hint="The due date sits next to the button. When the recorded number reaches the limit, visitors get the other form instead."
+          badge={event?.registrationEnabled ? <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700">Enabled</span> : null}
+          isOpen={Boolean(openPanels.registration)}
+          onToggle={() => togglePanel("registration")}
         >
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="registrationEnabled" defaultChecked={event?.registrationEnabled} />
@@ -554,7 +635,12 @@ export function EventForm({
           </label>
         </Panel>
 
-        <Panel title="Links">
+        <Panel
+          title="Links & Related Fixtures"
+          hint="External social links and related campus activities."
+          isOpen={Boolean(openPanels.links)}
+          onToggle={() => togglePanel("links")}
+        >
         <label className="grid gap-1.5 text-sm">
           Instagram URL
           <input name="instagramUrl" defaultValue={event?.instagramUrl ?? ""} className={fieldClass} />
@@ -571,6 +657,68 @@ export function EventForm({
             ))}
           </select>
         </label>
+        </Panel>
+
+        <Panel
+          title="Official Notices & Circulars"
+          hint="Urgent bulletins, permission slips, or logistical updates attached directly to this event. They will show prominently on the public event page."
+          badge={linkedNotices.length > 0 ? <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent">{linkedNotices.length} notice{linkedNotices.length === 1 ? "" : "s"}</span> : null}
+          isOpen={Boolean(openPanels.notices)}
+          onToggle={() => togglePanel("notices")}
+        >
+          {event ? (
+            <div className="grid gap-3">
+              {linkedNotices.length > 0 ? (
+                <div className="divide-y divide-line rounded-xl border border-line bg-[#fbfaf4]">
+                  {linkedNotices.map((notice) => (
+                    <div key={notice.id} className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-block h-2 w-2 rounded-full ${notice.enabled ? "bg-emerald-500" : "bg-muted"}`} />
+                          <span className="font-medium text-ink">{notice.title}</span>
+                          {!notice.enabled ? (
+                            <span className="rounded bg-muted/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-muted">Disabled</span>
+                          ) : null}
+                          {notice.resources.length > 0 ? (
+                            <span className="text-xs text-muted">({notice.resources.length} resource{notice.resources.length > 1 ? "s" : ""})</span>
+                          ) : null}
+                        </div>
+                        <p className="mt-0.5 line-clamp-1 text-xs text-muted">{notice.body}</p>
+                      </div>
+                      <a
+                        href={`/manage/announcements?edit=${notice.id}`}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Edit notice
+                        <ArrowUpRight className="h-3 w-3" />
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted">No campus notices or circulars are currently linked to this event.</p>
+              )}
+
+              <div className="pt-1">
+                <a
+                  href={`/manage/announcements?eventId=${event.id}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-3 py-2 text-xs font-medium text-ink transition-colors hover:border-navy hover:bg-[#fbfaf4]"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Bell className="h-3.5 w-3.5 text-accent" />
+                  + Issue Notice for This Event
+                  <ArrowUpRight className="h-3 w-3 text-muted" />
+                </a>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted">
+              You can issue and attach official notices, circulars, or permission slips once this event has been created and saved.
+            </p>
+          )}
         </Panel>
       </fieldset>
 
@@ -623,19 +771,43 @@ export function EventForm({
 function Panel({
   title,
   hint,
+  badge,
+  isOpen,
+  onToggle,
   children,
 }: {
   title: string;
   hint?: string;
+  badge?: React.ReactNode;
+  isOpen: boolean;
+  onToggle: () => void;
   children: React.ReactNode;
 }) {
   return (
-    <section className="grid gap-4 rounded-2xl border border-line bg-white p-5 shadow-[0_1px_0_rgba(20,27,56,0.04)]">
-      <div>
-        <h2 className="text-base font-medium tracking-tight">{title}</h2>
-        {hint ? <p className="mt-1 text-sm leading-6 text-muted">{hint}</p> : null}
-      </div>
-      {children}
+    <section className="rounded-2xl border border-line bg-white shadow-[0_1px_0_rgba(20,27,56,0.04)] overflow-hidden transition">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between p-4 sm:p-5 text-left bg-white hover:bg-[#fbfaf4] transition cursor-pointer select-none border-b border-transparent data-[open=true]:border-line"
+        data-open={isOpen}
+      >
+        <div className="min-w-0 pr-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-base font-semibold tracking-tight text-ink">{title}</h2>
+            {badge}
+          </div>
+          {hint ? <p className="mt-0.5 text-xs text-muted leading-5">{hint}</p> : null}
+        </div>
+        <div className="flex items-center gap-2 text-muted shrink-0">
+          <span className="text-xs font-medium">{isOpen ? "Hide" : "Edit"}</span>
+          {isOpen ? (
+            <ChevronDown className="h-4 w-4 text-accent transition-transform" />
+          ) : (
+            <ChevronRight className="h-4 w-4 transition-transform" />
+          )}
+        </div>
+      </button>
+      {isOpen && <div className="p-4 sm:p-5 pt-3 grid gap-4 bg-[#faf9f5]/40">{children}</div>}
     </section>
   );
 }

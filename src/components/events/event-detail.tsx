@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowUpRight, Bell, Calendar } from "lucide-react";
 import { ResourceCards } from "@/components/content/resource-cards";
 import { GalleryView } from "@/components/gallery/gallery-view";
 import { MediaFrame } from "@/components/media/media-frame";
@@ -7,10 +8,11 @@ import { EventHighlights } from "@/components/events/event-highlights";
 import { RegistrationOffer } from "@/components/events/registration-offer";
 import { VenueBlock } from "@/components/events/venue-block";
 import { EventCard } from "@/components/events/event-card";
+import { formatAnnouncementDate, renderAnnouncementMessage } from "@/lib/announcements";
 import { categoryById, eventCategoryIds, paragraphs, relatedPublishedEvents } from "@/lib/data/catalog";
 import { classifyMediaUrl, classifyNavigationUrl } from "@/lib/media/url";
 import { presentVideo } from "@/lib/media/video";
-import type { Achievement, CampusEvent, Category } from "@/lib/types";
+import type { Achievement, Announcement, CampusEvent, Category } from "@/lib/types";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -27,6 +29,7 @@ export function EventDetail({
   categories,
   achievements,
   hosts,
+  notices = [],
   preview = false,
 }: {
   event: CampusEvent;
@@ -34,6 +37,7 @@ export function EventDetail({
   categories: Category[];
   achievements: Achievement[];
   hosts: readonly string[];
+  notices?: Announcement[];
   preview?: boolean;
 }) {
   const categoryNames = eventCategoryIds(event)
@@ -89,6 +93,18 @@ export function EventDetail({
           ) : null}
           <p className="mt-6 max-w-xl text-lg leading-8 text-muted">{event.shortDescription}</p>
           <EventHighlights event={event} />
+          {notices.length > 0 ? (
+            <div className="mt-4">
+              <a
+                href="#event-notices"
+                className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-1.5 text-xs font-semibold text-accent transition hover:bg-accent hover:text-white"
+              >
+                <Bell size={13} />
+                <span>{notices.length} Official Notice{notices.length === 1 ? "" : "s"} Issued</span>
+                <span className="text-[11px] underline opacity-85">Read notice ↓</span>
+              </a>
+            </div>
+          ) : null}
           <RegistrationOffer event={event}>
             {instagram.ok ? (
               <a
@@ -149,6 +165,64 @@ export function EventDetail({
               ))}
             </ul>
           </Section>
+        ) : null}
+        {notices.length ? (
+          <section id="event-notices" className="border-t border-line py-10 scroll-mt-24">
+            <div className="flex items-center gap-2 text-accent">
+              <Bell size={20} />
+              <h2 className="text-2xl font-medium tracking-tight text-ink">Official Notices &amp; Circulars</h2>
+            </div>
+            <p className="mt-2 text-sm text-muted">
+              Official campus directives, rosters, and administrative bulletins published for this activity.
+            </p>
+
+            <div className="mt-6 space-y-4 max-w-3xl">
+              {notices.map((notice) => (
+                <div
+                  key={notice.id}
+                  className="rounded-2xl border border-line/90 bg-white/95 p-5 sm:p-6 shadow-xs transition hover:border-accent hover:shadow-md"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="rounded-full bg-navy/5 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-navy">
+                      Official Bulletin
+                    </span>
+                    {formatAnnouncementDate(notice.createdAt) ? (
+                      <span className="text-muted text-[11px] flex items-center gap-1">
+                        <Calendar size={11} />
+                        {formatAnnouncementDate(notice.createdAt)}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <h3 className="font-display mt-3 text-xl font-medium text-ink">
+                    {notice.title}
+                  </h3>
+
+                  {notice.body ? (
+                    <div className="mt-3 text-sm leading-relaxed text-ink/85 border-t border-line/50 pt-3">
+                      {renderAnnouncementMessage(notice.body)}
+                    </div>
+                  ) : null}
+
+                  {notice.resources.length ? (
+                    <div className="mt-4 pt-3 border-t border-line/60">
+                      <ResourceCards resources={notice.resources} title="Notice Downloads &amp; Attachments" />
+                    </div>
+                  ) : null}
+
+                  <div className="mt-4 pt-3 border-t border-line/50 flex items-center justify-between text-xs">
+                    <Link
+                      href={`/announcements?open=${notice.id}`}
+                      className="font-semibold text-accent hover:underline flex items-center gap-1"
+                    >
+                      <span>Open on Main Bulletin Board</span>
+                      <ArrowUpRight size={13} />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         ) : null}
         <ResourceCards resources={event.resources} title="Competition details" />
         {results.length ? (

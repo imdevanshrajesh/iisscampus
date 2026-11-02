@@ -17,6 +17,7 @@ export default async function NewEventPage() {
           events={access.workspace.events}
           role={access.role}
           mediaHosts={access.workspace.mediaHosts}
+          announcements={access.workspace.announcements}
         />
       </div>
     </div>

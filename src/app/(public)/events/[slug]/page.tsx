@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { EventDetail } from "@/components/events/event-detail";
 import { getCampusActor } from "@/lib/auth/session";
 import { getStaffWorkspace } from "@/lib/data/staff";
-import { achievementsForEvent, getPublicEvent } from "@/lib/data/queries";
+import { achievementsForEvent, getPublicAnnouncements, getPublicEvent } from "@/lib/data/queries";
 import { siteConfig } from "@/lib/config";
 
 export async function generateMetadata({
@@ -37,6 +37,9 @@ export default async function EventPage({
   const { catalog, event } = await getPublicEvent(slug);
 
   if (event) {
+    const allNotices = await getPublicAnnouncements();
+    const eventNotices = allNotices.filter((notice) => notice.eventId === event.id);
+
     return (
       <>
         {event.eventDate && !event.isSample ? (
@@ -48,6 +51,7 @@ export default async function EventPage({
           categories={catalog.categories}
           achievements={achievementsForEvent(catalog.achievements, event.id)}
           hosts={catalog.mediaHosts}
+          notices={eventNotices}
         />
       </>
     );
@@ -59,6 +63,7 @@ export default async function EventPage({
       const workspace = await getStaffWorkspace();
       const draft = workspace?.events.find((item) => item.slug === slug);
       if (draft && draft.publicationStatus !== "published") {
+        const draftNotices = (workspace?.announcements ?? []).filter((notice) => notice.eventId === draft.id);
         return (
           <EventDetail
             event={draft}
@@ -66,6 +71,7 @@ export default async function EventPage({
             categories={workspace?.categories ?? catalog.categories}
             achievements={achievementsForEvent(workspace?.achievements ?? [], draft.id)}
             hosts={workspace?.mediaHosts ?? []}
+            notices={draftNotices}
             preview
           />
         );
