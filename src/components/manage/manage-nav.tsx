@@ -20,6 +20,8 @@ import {
   HelpCircle,
   Compass,
   Settings,
+  Shield,
+  GraduationCap,
 } from "lucide-react";
 
 type NavLink = {
@@ -54,6 +56,7 @@ const navigationCategories: NavSection[] = [
     category: "Council & Community",
     links: [
       { href: "/manage/council", label: "Council", icon: Users },
+      { href: "/manage/houses", label: "Houses", icon: Shield },
       { href: "/manage/achievements", label: "Achievements", icon: Trophy },
       { href: "/manage/socials", label: "Social Posts", icon: Share2 },
       { href: "/manage/wellness", label: "Wellness", icon: HeartHandshake },
@@ -62,10 +65,10 @@ const navigationCategories: NavSection[] = [
   {
     category: "Editorial & Notices",
     links: [
-      { href: "/manage/announcements", label: "Announcements", icon: Megaphone },
+      { href: "/manage/announcements", label: "Council Notices & Blog", icon: Megaphone },
       { href: "/manage/marquee", label: "Marquee", icon: Radio },
       { href: "/manage/newsletter", label: "Newsletter", icon: Mail },
-      { href: "/manage/programs", label: "Custom Programs", icon: BookOpen },
+      { href: "/manage/programs", label: "Programs & Activities", icon: BookOpen },
     ],
   },
   {

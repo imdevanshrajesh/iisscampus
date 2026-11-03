@@ -191,7 +191,7 @@ REQUIREMENTS & RULES:
 1. Target Section: ${
         targetSection !== "auto"
           ? `The user specifically wants an "${targetSection}".`
-          : "Auto-detect: 'event', 'announcement', 'achievement', 'faq', 'marquee', or 'wellness'."
+          : "Auto-detect: 'event', 'announcement', 'achievement', 'faq', 'marquee', 'wellness', 'incharge', or 'program'."
       }
 2. DESCRIPTIONS (VERY IMPORTANT):
    - If the user did not provide a description or only provided brief bullet points, YOU MUST AUTO-GENERATE high-quality, inspiring, informative descriptions!
@@ -214,7 +214,7 @@ REQUIREMENTS & RULES:
 OUTPUT FORMAT:
 Respond ONLY with a valid JSON object matching this exact schema:
 {
-  "section": "event" | "announcement" | "achievement" | "faq" | "marquee" | "wellness",
+  "section": "event" | "announcement" | "achievement" | "faq" | "marquee" | "wellness" | "incharge" | "program" | "house",
   "summary": "One sentence summary of the generated content",
   "checklist": [
     { "item": "Name of upload/item", "required": boolean, "detail": "Specific instructions on what to add" }

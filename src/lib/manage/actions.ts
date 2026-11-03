@@ -1676,6 +1676,10 @@ export async function saveContactEmail(_state: ActionState, formData: FormData):
 export async function saveAnnouncement(_state: ActionState, formData: FormData): Promise<ActionState> {
   const id = String(formData.get("id") ?? "").trim();
   const eventIdRaw = String(formData.get("eventId") ?? "").trim();
+  const programIdRaw = String(formData.get("programId") ?? "").trim();
+  const wellnessIdRaw = String(formData.get("wellnessId") ?? "").trim();
+  const categoryRaw = String(formData.get("category") ?? "General").trim();
+  const coverImageUrlRaw = String(formData.get("coverImageUrl") ?? "").trim();
   const enabled = formData.get("enabled") === "on";
   const resources = readList(formData, "resources");
   if (!resources) return { error: "A list field could not be read." };
@@ -1686,6 +1690,10 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
     body: formData.get("body"),
     resources,
     eventId: /^[0-9a-f-]{36}$/i.test(eventIdRaw) ? eventIdRaw : null,
+    programId: /^[0-9a-f-]{36}$/i.test(programIdRaw) ? programIdRaw : null,
+    wellnessId: wellnessIdRaw || null,
+    category: categoryRaw || "General",
+    coverImageUrl: coverImageUrlRaw || null,
     enabled,
   });
   if (!parsed.success) {
@@ -1693,7 +1701,7 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
     return { error: issue?.message ?? "Check the announcement fields and try again." };
   }
 
-  const { title, body, eventId } = parsed.data;
+  const { title, body, eventId, programId, wellnessId, category, coverImageUrl } = parsed.data;
 
   if ((await contentMode()) === "file") {
     const access = await fileActor((actor) => can(actor, "manage_settings"));
@@ -1706,6 +1714,10 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
         body,
         resources: parsed.data.resources,
         eventId,
+        programId,
+        wellnessId,
+        category,
+        coverImageUrl,
         enabled: parsed.data.enabled,
       })
     ) {
@@ -1727,6 +1739,10 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
     body,
     resources: parsed.data.resources,
     event_id: eventId,
+    program_id: programId,
+    wellness_id: wellnessId,
+    category,
+    cover_image_url: coverImageUrl,
     enabled: parsed.data.enabled,
   };
   const saved = id
@@ -1958,6 +1974,9 @@ export async function saveCustomProgram(_state: ActionState, formData: FormData)
     eventId: /^[0-9a-f-]{36}$/i.test(eventIdRaw) ? eventIdRaw : null,
     published: formData.get("published") === "on",
     sortOrder: Number(formData.get("sortOrder") ?? 0) || 0,
+    category: formData.get("category") || "Awareness",
+    timing: formData.get("timing") || null,
+    pdfUrl: formData.get("pdfUrl") || null,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Check the program fields and try again." };
@@ -1995,11 +2014,16 @@ export async function saveCustomProgram(_state: ActionState, formData: FormData)
         eventId: parsed.data.eventId,
         published: parsed.data.published,
         sortOrder: parsed.data.sortOrder,
+        category: parsed.data.category,
+        timing: parsed.data.timing,
+        pdfUrl: parsed.data.pdfUrl,
       })
     ) {
       return { error: "The program could not be saved." };
     }
     revalidatePath("/about");
+    revalidatePath("/programs");
+    revalidatePath("/school/programs");
     revalidatePath("/manage/programs");
     return { ok: "Program saved." };
   }
@@ -2027,6 +2051,9 @@ export async function saveCustomProgram(_state: ActionState, formData: FormData)
     event_id: parsed.data.eventId,
     published: parsed.data.published,
     sort_order: parsed.data.sortOrder,
+    category: parsed.data.category,
+    timing: parsed.data.timing,
+    pdf_url: parsed.data.pdfUrl,
   };
   const saved = id
     ? await context.supabase.from("campus_custom_programs").update(record).eq("id", id).select("id").maybeSingle()
@@ -2619,4 +2646,278 @@ export async function deleteSocialPost(_state: ActionState, formData: FormData):
   revalidatePath("/council/socials");
   revalidatePath("/manage/socials");
   return { ok: "Deleted." };
+}
+
+export async function saveSchoolIncharge(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  const { schoolInchargeInputSchema } = await import("@/lib/validation/content");
+  const rawMessage = String(formData.get("message") || formData.get("about") || "").trim();
+  const rawTier = String(formData.get("tier") || "section").toLowerCase();
+  const validTier = rawTier === "executive" || rawTier === "department" ? rawTier : "section";
+
+  const parsed = schoolInchargeInputSchema.safeParse({
+    name: formData.get("name"),
+    role: formData.get("role"),
+    tier: validTier,
+    tierLabel: formData.get("tierLabel") || null,
+    department: formData.get("department") || null,
+    photoUrl: formData.get("photoUrl") || null,
+    message: rawMessage,
+    about: rawMessage,
+    email: formData.get("email") || null,
+    phone: formData.get("phone") || null,
+    sortOrder: formData.get("sortOrder") || 0,
+    published: formData.get("published") === "on",
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the head leadership fields and try again." };
+  }
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_council"));
+    if ("error" in access) return access;
+    const { saveSchoolInchargeToStore } = await import("@/lib/data/file-content");
+    if (!saveSchoolInchargeToStore({ id: id || undefined, ...parsed.data })) {
+      return { error: "The school head could not be saved." };
+    }
+    revalidatePath("/school/heads");
+    revalidatePath("/heads");
+    revalidatePath("/manage/heads");
+    revalidatePath("/school/incharges");
+    revalidatePath("/incharges");
+    revalidatePath("/manage/incharges");
+    return { ok: "School head saved successfully." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_council")) return { error: genericDenial };
+
+  const record = {
+    name: parsed.data.name,
+    role: parsed.data.role,
+    tier: parsed.data.tier,
+    tier_label: parsed.data.tierLabel,
+    department: parsed.data.department,
+    photo_url: parsed.data.photoUrl,
+    message: parsed.data.message,
+    about: parsed.data.about,
+    email: parsed.data.email,
+    phone: parsed.data.phone,
+    sort_order: parsed.data.sortOrder,
+    published: parsed.data.published,
+  };
+
+  const saved = id
+    ? await context.supabase.from("campus_school_incharges").update(record).eq("id", id).select("id").maybeSingle()
+    : await context.supabase.from("campus_school_incharges").insert(record).select("id").maybeSingle();
+
+  if (saved.error) {
+    return { error: databaseError(saved.error, "The school head could not be saved.") };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, id ? "update" : "create", "campus_school_incharges", saved.data?.id ?? null);
+  revalidatePath("/school/heads");
+  revalidatePath("/heads");
+  revalidatePath("/manage/heads");
+  revalidatePath("/school/incharges");
+  revalidatePath("/incharges");
+  revalidatePath("/manage/incharges");
+  return { ok: "School head saved successfully." };
+}
+
+export const saveSchoolHead = saveSchoolIncharge;
+
+export async function deleteSchoolIncharge(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return { error: "Missing record id." };
+  if (formData.get("confirm") !== "yes") return { error: "Tick confirm delete to remove this school head." };
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_council"));
+    if ("error" in access) return access;
+    const { deleteSchoolInchargeFromStore } = await import("@/lib/data/file-content");
+    if (!deleteSchoolInchargeFromStore(id)) return { error: deleteFailed };
+    revalidatePath("/school/heads");
+    revalidatePath("/heads");
+    revalidatePath("/manage/heads");
+    revalidatePath("/school/incharges");
+    revalidatePath("/incharges");
+    revalidatePath("/manage/incharges");
+    return { ok: "School head removed." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_council")) return { error: genericDenial };
+
+  const removed = await context.supabase.from("campus_school_incharges").delete().eq("id", id);
+  if (removed.error) return { error: databaseError(removed.error, deleteFailed) };
+
+  await writeAudit(context.supabase, context.actor.userId, "delete", "campus_school_incharges", id);
+  revalidatePath("/school/heads");
+  revalidatePath("/heads");
+  revalidatePath("/manage/heads");
+  revalidatePath("/school/incharges");
+  revalidatePath("/incharges");
+  revalidatePath("/manage/incharges");
+  return { ok: "School head removed." };
+}
+
+export const deleteSchoolHead = deleteSchoolIncharge;
+
+export async function saveHouse(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  const { houseInputSchema } = await import("@/lib/validation/content");
+  const parsed = houseInputSchema.safeParse({
+    name: formData.get("name"),
+    slug: formData.get("slug"),
+    color: formData.get("color"),
+    points: formData.get("points") ? Number(formData.get("points")) : undefined,
+    inchargeName: formData.get("inchargeName"),
+    inchargeTitle: formData.get("inchargeTitle") || null,
+    inchargePhotoUrl: formData.get("inchargePhotoUrl") || null,
+    inchargeMessage: formData.get("inchargeMessage") || null,
+    captainName: formData.get("captainName"),
+    captainPhotoUrl: formData.get("captainPhotoUrl") || null,
+    viceCaptainName: formData.get("viceCaptainName"),
+    viceCaptainPhotoUrl: formData.get("viceCaptainPhotoUrl") || null,
+    motto: formData.get("motto") || null,
+    description: formData.get("description") || null,
+    sortOrder: formData.get("sortOrder") || 0,
+    published: formData.get("published") === "on",
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the house fields and try again." };
+  }
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_council"));
+    if ("error" in access) return access;
+    const { saveHouseToStore } = await import("@/lib/data/file-content");
+    if (!saveHouseToStore({ id: id || undefined, ...parsed.data })) {
+      return { error: "The house details could not be saved." };
+    }
+    revalidatePath("/council/houses");
+    revalidatePath("/houses");
+    revalidatePath("/school/houses");
+    revalidatePath("/manage/houses");
+    return { ok: `${parsed.data.name} saved successfully.` };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_council")) return { error: genericDenial };
+
+  const record = {
+    name: parsed.data.name,
+    slug: parsed.data.slug,
+    color: parsed.data.color,
+    points: parsed.data.points,
+    incharge_name: parsed.data.inchargeName,
+    incharge_title: parsed.data.inchargeTitle,
+    incharge_photo_url: parsed.data.inchargePhotoUrl,
+    incharge_message: parsed.data.inchargeMessage,
+    captain_name: parsed.data.captainName,
+    captain_photo_url: parsed.data.captainPhotoUrl,
+    vice_captain_name: parsed.data.viceCaptainName,
+    vice_captain_photo_url: parsed.data.viceCaptainPhotoUrl,
+    motto: parsed.data.motto,
+    description: parsed.data.description,
+    sort_order: parsed.data.sortOrder,
+    published: parsed.data.published,
+  };
+
+  const saved = id
+    ? await context.supabase.from("campus_houses").update(record).eq("id", id).select("id").maybeSingle()
+    : await context.supabase.from("campus_houses").upsert(record, { onConflict: "slug" }).select("id").maybeSingle();
+
+  if (saved.error) {
+    return { error: databaseError(saved.error, "The house details could not be saved.") };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, id ? "update" : "create", "campus_houses", saved.data?.id ?? null);
+  revalidatePath("/council/houses");
+  revalidatePath("/houses");
+  revalidatePath("/school/houses");
+  revalidatePath("/manage/houses");
+  return { ok: `${parsed.data.name} saved successfully.` };
+}
+
+export async function quickUpdateHousePoints(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  const points = Number(formData.get("points") ?? 0);
+
+  if (!id) return { error: "House identifier is missing." };
+  if (isNaN(points) || points < 0) return { error: "House points must be a valid non-negative number." };
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_council"));
+    if ("error" in access) return access;
+    const { updateHousePointsInStore } = await import("@/lib/data/file-content");
+    if (!updateHousePointsInStore(id, points)) {
+      return { error: "Could not update house points." };
+    }
+    revalidatePath("/school/houses");
+    revalidatePath("/houses");
+    revalidatePath("/school/house-points");
+    revalidatePath("/manage/houses");
+    return { ok: "House points updated." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_council")) return { error: genericDenial };
+
+  const updated = await context.supabase
+    .from("campus_houses")
+    .update({ points, updated_at: new Date().toISOString() })
+    .or(`id.eq.${id},slug.eq.${id}`)
+    .select("id, name")
+    .maybeSingle();
+
+  if (updated.error) {
+    return { error: databaseError(updated.error, "Could not update house points.") };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, "update", "campus_houses", updated.data?.id ?? id);
+  revalidatePath("/school/houses");
+  revalidatePath("/houses");
+  revalidatePath("/school/house-points");
+  revalidatePath("/manage/houses");
+  return { ok: `${updated.data?.name || "House"} points updated.` };
+}
+
+export async function deleteHouse(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return { error: "Missing house id." };
+  if (formData.get("confirm") !== "yes") return { error: "Tick confirm delete to remove this house." };
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_council"));
+    if ("error" in access) return access;
+    const { deleteHouseFromStore } = await import("@/lib/data/file-content");
+    if (!deleteHouseFromStore(id)) return { error: deleteFailed };
+    revalidatePath("/school/houses");
+    revalidatePath("/houses");
+    revalidatePath("/school/house-points");
+    revalidatePath("/manage/houses");
+    return { ok: "House removed." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_council")) return { error: genericDenial };
+
+  const removed = await context.supabase.from("campus_houses").delete().eq("id", id);
+  if (removed.error) return { error: databaseError(removed.error, deleteFailed) };
+
+  await writeAudit(context.supabase, context.actor.userId, "delete", "campus_houses", id);
+  revalidatePath("/school/houses");
+  revalidatePath("/houses");
+  revalidatePath("/school/house-points");
+  revalidatePath("/manage/houses");
+  return { ok: "House removed." };
 }

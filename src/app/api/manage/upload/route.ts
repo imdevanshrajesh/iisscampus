@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       }
       if (!mimeType || !ALLOWED_MIME_TYPES.has(mimeType)) {
         return NextResponse.json(
-          { error: `Unsupported image type (${mimeType}). Allowed: JPEG, PNG, WebP, GIF, SVG.` },
+          { error: `Unsupported file type (${mimeType}). Allowed: JPEG, PNG, WebP, GIF, SVG, and PDF.` },
           { status: 400 },
         );
       }
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
       const folder = (formData.get("folder") as string) || "General";
 
       if (!file || !(file instanceof Blob)) {
-        return NextResponse.json({ error: "No image file provided." }, { status: 400 });
+        return NextResponse.json({ error: "No media or document file provided." }, { status: 400 });
       }
 
       if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -104,15 +104,21 @@ export async function POST(request: Request) {
         );
       }
 
-      const mimeType = file.type || "image/jpeg";
+      const filename = (file as File).name || "image.webp";
+      let mimeType = file.type;
+      if (!mimeType && filename.toLowerCase().endsWith(".pdf")) {
+        mimeType = "application/pdf";
+      }
+      if (!mimeType) {
+        mimeType = "image/jpeg";
+      }
+
       if (!ALLOWED_MIME_TYPES.has(mimeType)) {
         return NextResponse.json(
-          { error: `Unsupported image format (${mimeType}). Allowed: JPEG, PNG, WebP, GIF, SVG.` },
+          { error: `Unsupported file format (${mimeType}). Allowed: JPEG, PNG, WebP, GIF, SVG, and PDF.` },
           { status: 400 },
         );
       }
-
-      const filename = (file as File).name || "image.webp";
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 

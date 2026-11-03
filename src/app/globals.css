@@ -66,6 +66,19 @@ body::before {
     radial-gradient(at 20% 90%, rgba(198, 90, 18, 0.03) 0px, transparent 50%);
 }
 
+body.dark-canvas {
+  background-color: #0a0e1a !important;
+}
+
+body.dark-canvas::before {
+  background-color: #0a0e1a !important;
+  background-image: none !important;
+}
+
+body.dark-canvas::after {
+  opacity: 0.25;
+}
+
 body::after {
   content: "";
   position: fixed;
@@ -75,7 +88,7 @@ body::after {
   background-image: url("/textures/abc-paper.avif");
   background-repeat: repeat;
   background-size: 480px 480px;
-  opacity: 0.16;
+  opacity: 0.35;
 }
 
 @keyframes sxsw-marquee {

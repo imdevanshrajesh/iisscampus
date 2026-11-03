@@ -499,7 +499,52 @@ export const announcementInputSchema = z.object({
   body: z.string().trim().max(8000).default(""),
   resources: z.array(resourceSchema).max(40).default([]),
   eventId: z.string().uuid().nullable().default(null),
+  programId: z.string().uuid().nullable().optional().default(null),
+  wellnessId: z.string().trim().max(100).nullable().optional().default(null),
+  category: z.string().trim().max(100).default("General"),
+  coverImageUrl: z.string().trim().max(2048).nullable().optional().default(null),
   enabled: z.boolean().default(true),
+});
+
+export const schoolInchargeInputSchema = z.object({
+  name: z.string().trim().min(2, "Name must be at least 2 characters.").max(120),
+  role: z.string().trim().min(2, "Role / Designation is required.").max(120),
+  tier: z.enum(["executive", "section", "department"]).default("section"),
+  tierLabel: optionalText(80),
+  department: optionalText(120),
+  photoUrl: optionalText(2048),
+  message: z.string().trim().max(4000).default(""),
+  about: z.string().trim().max(4000).optional(),
+  email: optionalText(160),
+  phone: optionalText(60),
+  sortOrder: z.coerce.number().int().min(-9999).max(9999).default(0),
+  published: z.boolean().default(true),
+});
+
+export const schoolHeadInputSchema = schoolInchargeInputSchema;
+
+export const houseInputSchema = z.object({
+  name: z.string().trim().min(2, "House name is required.").max(80),
+  slug: z.string().trim().min(2).max(40),
+  color: z.enum(["ruby", "sapphire", "topaz", "emerald"]),
+  points: z.coerce.number().int().min(0, "Points must be non-negative.").max(999999).optional().nullable(),
+  inchargeName: z.string().trim().min(2, "Incharge name is required.").max(120),
+  inchargeTitle: optionalText(120),
+  inchargePhotoUrl: optionalText(2048),
+  inchargeMessage: optionalText(1000),
+  captainName: z.string().trim().min(2, "Captain name is required.").max(120),
+  captainPhotoUrl: optionalText(2048),
+  viceCaptainName: z.string().trim().min(2, "Vice captain name is required.").max(120),
+  viceCaptainPhotoUrl: optionalText(2048),
+  motto: optionalText(240),
+  description: optionalText(4000),
+  sortOrder: z.coerce.number().int().min(-9999).max(9999).default(0),
+  published: z.boolean().default(true),
+});
+
+export const housePointsUpdateSchema = z.object({
+  id: z.string().min(1, "House ID or Slug is required."),
+  points: z.coerce.number().int().min(0, "Points must be non-negative.").max(999999),
 });
 
 const customProgramPhotoSchema = z.object({
@@ -529,11 +574,14 @@ export const customProgramInputSchema = z
     summary: z.string().trim().max(4000).default(""),
     websiteLabel: optionalText(80),
     websiteUrl: optionalText(2048),
-    photos: z.array(customProgramPhotoSchema).max(12).default([]),
+    photos: z.array(customProgramPhotoSchema).max(24).default([]),
     links: z.array(customProgramLinkSchema).max(12).default([]),
     eventId: z.string().uuid().nullable().default(null),
     published: z.boolean().default(true),
-    sortOrder: z.number().int().min(0).max(500).default(0),
+    sortOrder: z.coerce.number().int().min(-9999).max(9999).default(0),
+    category: z.string().trim().max(100).default("Awareness"),
+    timing: optionalText(120),
+    pdfUrl: optionalText(2048),
   })
   .superRefine((value, context) => {
     if (!value.websiteUrl) return;

@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Crop,
   Link as LinkIcon,
+  FileText,
 } from "lucide-react";
 import { ImageCropModal, type CropAspectRatio } from "./image-crop-modal";
 import { DEFAULT_UPLOAD_FOLDERS } from "@/lib/media/rustfs";
@@ -27,6 +28,7 @@ type ImageUploaderProps = {
   aspectRatio?: CropAspectRatio;
   className?: string;
   required?: boolean;
+  allowPdf?: boolean;
 };
 
 export function ImageUploader({
@@ -39,6 +41,7 @@ export function ImageUploader({
   aspectRatio = "16:10",
   className = "",
   required = false,
+  allowPdf = false,
 }: ImageUploaderProps) {
   const [selectedFolder, setSelectedFolder] = useState<string>(folder);
   const [customFolder, setCustomFolder] = useState<string>("");
@@ -68,8 +71,19 @@ export function ImageUploader({
 
   // Process selected file
   const processFile = (file: File) => {
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (isPdf && allowPdf) {
+      setUploadError(null);
+      executeUpload(file, file.name);
+      return;
+    }
+
     if (!file.type.startsWith("image/")) {
-      setUploadError("Please select an image file (PNG, JPG, WebP, GIF, or SVG).");
+      setUploadError(
+        allowPdf
+          ? "Please select an image or PDF document file."
+          : "Please select an image file (PNG, JPG, WebP, GIF, or SVG)."
+      );
       return;
     }
 
@@ -285,15 +299,22 @@ export function ImageUploader({
 
       {hint ? <p className="text-xs text-muted -mt-1">{hint}</p> : null}
 
-      {/* Existing Uploaded Image Display */}
+      {/* Existing Uploaded Image / Document Display */}
       {value ? (
         <div className="relative overflow-hidden rounded-2xl border border-line bg-wash/30 p-3.5 transition hover:border-line/80">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3.5">
-            {/* Image Thumbnail */}
-            <div className="relative aspect-[16/10] w-full sm:w-36 shrink-0 overflow-hidden rounded-xl border border-line bg-surface shadow-xs">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={value} alt="Preview" className="h-full w-full object-cover" />
-            </div>
+            {/* Thumbnail or PDF Document Icon */}
+            {value.toLowerCase().split("?")[0].endsWith(".pdf") ? (
+              <div className="flex aspect-[16/10] w-full sm:w-36 shrink-0 flex-col items-center justify-center rounded-xl border border-line bg-white text-navy shadow-xs p-3">
+                <FileText size={32} className="text-accent" />
+                <span className="mt-1 text-[11px] font-bold uppercase tracking-wider text-accent">PDF Document</span>
+              </div>
+            ) : (
+              <div className="relative aspect-[16/10] w-full sm:w-36 shrink-0 overflow-hidden rounded-xl border border-line bg-surface shadow-xs">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={value} alt="Preview" className="h-full w-full object-cover" />
+              </div>
+            )}
 
             {/* URL & Controls */}
             <div className="flex-1 min-w-0 grid gap-1.5 w-full">
@@ -345,7 +366,7 @@ export function ImageUploader({
                   type="button"
                   onClick={() => onChange("")}
                   className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition"
-                  title="Remove image"
+                  title="Remove file"
                 >
                   <Trash2 size={12} />
                   Remove
@@ -393,15 +414,17 @@ export function ImageUploader({
               </div>
               <div className="mt-2.5 space-y-1">
                 <p className="text-sm font-medium text-ink">
-                  Click to upload or drag &amp; drop photograph
+                  {allowPdf ? "Click to upload photograph or PDF document" : "Click to upload or drag & drop photograph"}
                 </p>
                 <p className="text-xs text-muted">
-                  Includes visual cropping &amp; visible area framing before saving.
+                  {allowPdf
+                    ? "PNG, JPG, WebP, GIF, SVG or PDF files up to 20MB."
+                    : "Includes visual cropping & visible area framing before saving."}
                 </p>
               </div>
               <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-surface border border-line px-3 py-1 text-[11px] font-medium text-muted">
-                <Crop size={11} className="text-navy" />
-                Framing tool included &bull; Up to 20MB
+                {allowPdf ? <FileText size={11} className="text-navy" /> : <Crop size={11} className="text-navy" />}
+                {allowPdf ? "PDF documents & images supported" : "Framing tool included &bull; Up to 20MB"}
               </div>
             </>
           )}
@@ -412,7 +435,11 @@ export function ImageUploader({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+        accept={
+          allowPdf
+            ? "image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf"
+            : "image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+        }
         onChange={handleFileChange}
         className="hidden"
       />

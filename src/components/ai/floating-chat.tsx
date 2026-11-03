@@ -1,8 +1,23 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Sparkles, X, Send, RotateCcw, Bot, Calendar, Users, Award, Megaphone, AlertCircle, Info } from "lucide-react";
+import { usePathname } from "next/navigation";
+import {
+  X,
+  Send,
+  RotateCcw,
+  Calendar,
+  Users,
+  Award,
+  Megaphone,
+  Maximize2,
+  Minimize2,
+  GraduationCap,
+  Sparkles,
+} from "lucide-react";
+import { CouncilLogo } from "@/components/brand/council-logo";
 import { ChatMarkdown } from "./chat-markdown";
+import { cn } from "@/lib/utils";
 
 type Message = {
   id: string;
@@ -12,13 +27,17 @@ type Message = {
 
 const STARTER_PROMPTS = [
   { label: "What events are coming up?", icon: Calendar },
+  { label: "Who are the School Incharges?", icon: GraduationCap },
   { label: "Who is on the Student Council?", icon: Users },
+  { label: "What are the latest announcements?", icon: Megaphone },
+  { label: "What are the awareness & fun programs?", icon: Sparkles },
   { label: "What are the latest achievements?", icon: Award },
-  { label: "What are the current announcements?", icon: Megaphone },
 ];
 
 export function FloatingAiChat() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [isManuallyExpanded, setIsManuallyExpanded] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -26,11 +45,22 @@ export function FloatingAiChat() {
       id: "initial",
       role: "assistant",
       content:
-        "Hello! I am your **Campus AI Assistant**. Ask me anything about upcoming campus events, competitions, student council members, or school achievements!",
+        "Hello! I am your **Campus Guide**. Ask me anything about upcoming campus events, competitions, school incharges, student council members, awareness programs, or school achievements!",
     },
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto minimize when visiting a new page / route
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
+  // Check if any message contains markdown tables or wide formatting
+  const hasTableContent = messages.some(
+    (m) => m.content.includes("|") && m.content.includes("---"),
+  );
+  const isExpanded = isManuallyExpanded || hasTableContent;
 
   useEffect(() => {
     if (isOpen) {
@@ -106,7 +136,7 @@ export function FloatingAiChat() {
         {
           id: `err-${Date.now()}`,
           role: "assistant",
-          content: "**Connection Notice**: Unable to reach the Campus AI service. Please check your network connection.",
+          content: "**Connection Notice**: Unable to reach the Campus Guide service. Please check your network connection.",
         },
       ]);
     } finally {
@@ -127,9 +157,18 @@ export function FloatingAiChat() {
         id: `initial-${Date.now()}`,
         role: "assistant",
         content:
-          "Chat reset! Ask me anything about campus events, student council, achievements, or announcements.",
+          "Guide reset! Ask me anything about campus events, school incharges, student council, achievements, or awareness programs.",
       },
     ]);
+  };
+
+  // Auto minimize when any link or button inside the messages area is clicked
+  const handleMessagesContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("a") || target.closest("button:not(.chat-internal-btn)")) {
+      // User clicked a navigation link or action button inside markdown
+      setIsOpen(false);
+    }
   };
 
   return (
@@ -138,28 +177,42 @@ export function FloatingAiChat() {
       {isOpen && (
         <div
           role="dialog"
-          aria-label="Campus AI Assistant"
-          className="mb-3 flex h-[520px] max-h-[85vh] w-[calc(100vw-2.5rem)] sm:w-[420px] flex-col overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-200"
+          aria-label="Campus Guide"
+          className={cn(
+            "mb-3 flex max-h-[85vh] flex-col overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-200 transition-[width,height]",
+            isExpanded
+              ? "w-[calc(100vw-2.5rem)] sm:w-[680px] lg:w-[740px] h-[580px]"
+              : "w-[calc(100vw-2.5rem)] sm:w-[420px] h-[520px]"
+          )}
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-100 bg-[#12141c] px-4 py-3 text-white">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-600 text-white shadow-xs">
-                <Sparkles className="h-4 w-4" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 p-1 border border-white/15 overflow-hidden shadow-xs">
+                <CouncilLogo width={26} height={26} className="h-full w-full object-contain" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-semibold tracking-tight text-white">Campus Assistant</h3>
+                  <h3 className="text-sm font-semibold tracking-tight text-white">Campus Guide</h3>
                   <span className="flex h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30" />
                 </div>
-                <p className="text-[11px] text-white/70">Events & Council Guide</p>
+                <p className="text-[11px] text-white/70">Events, Incharges &amp; School Guide</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
               <button
                 type="button"
+                onClick={() => setIsManuallyExpanded((prev) => !prev)}
+                title={isExpanded ? "Collapse width" : "Expand width"}
+                className="hidden sm:inline-flex rounded-lg p-1.5 text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+                aria-label={isExpanded ? "Collapse window width" : "Expand window width"}
+              >
+                {isExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+              </button>
+              <button
+                type="button"
                 onClick={clearChat}
-                title="Restart chat"
+                title="Restart conversation"
                 className="rounded-lg p-1.5 text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
                 aria-label="Reset chat conversation"
               >
@@ -168,9 +221,9 @@ export function FloatingAiChat() {
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                title="Close chat"
+                title="Minimize guide"
                 className="rounded-lg p-1.5 text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
-                aria-label="Close assistant"
+                aria-label="Minimize guide"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -178,7 +231,10 @@ export function FloatingAiChat() {
           </div>
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-[#fbfcfd]">
+          <div
+            onClick={handleMessagesContainerClick}
+            className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-[#fbfcfd]"
+          >
             {messages.map((m) => {
               const isUser = m.role === "user";
               return (
@@ -187,16 +243,17 @@ export function FloatingAiChat() {
                   className={`flex items-end gap-2 ${isUser ? "justify-end" : "justify-start"}`}
                 >
                   {!isUser && (
-                    <div className="h-6 w-6 rounded-full bg-orange-100 border border-orange-200 text-orange-700 flex items-center justify-center shrink-0 mb-1">
-                      <Bot className="h-3.5 w-3.5" />
+                    <div className="h-7 w-7 rounded-full bg-navy/5 border border-line flex items-center justify-center shrink-0 mb-1 overflow-hidden p-0.5">
+                      <CouncilLogo width={20} height={20} className="h-full w-full object-contain rounded-full" />
                     </div>
                   )}
                   <div
-                    className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
+                    className={cn(
+                      "rounded-2xl px-3.5 py-2.5 text-sm transition-all",
                       isUser
-                        ? "bg-[#1c2438] text-white rounded-br-xs shadow-xs"
-                        : "bg-white text-gray-800 border border-gray-200/80 rounded-bl-xs shadow-xs"
-                    }`}
+                        ? "max-w-[85%] bg-[#1c2438] text-white rounded-br-xs shadow-xs"
+                        : "max-w-[95%] bg-white text-gray-800 border border-gray-200/80 rounded-bl-xs shadow-xs overflow-hidden"
+                    )}
                   >
                     {isUser ? (
                       <p className="whitespace-pre-wrap">{m.content}</p>
@@ -210,15 +267,15 @@ export function FloatingAiChat() {
 
             {loading && (
               <div className="flex items-end gap-2 justify-start">
-                <div className="h-6 w-6 rounded-full bg-orange-100 border border-orange-200 text-orange-700 flex items-center justify-center shrink-0 mb-1">
-                  <Bot className="h-3.5 w-3.5" />
+                <div className="h-7 w-7 rounded-full bg-navy/5 border border-line flex items-center justify-center shrink-0 mb-1 overflow-hidden p-0.5">
+                  <CouncilLogo width={20} height={20} className="h-full w-full object-contain rounded-full" />
                 </div>
                 <div className="rounded-2xl rounded-bl-xs bg-white border border-gray-200/80 px-4 py-3 shadow-xs">
                   <div className="flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full bg-orange-600 animate-bounce" />
                     <span className="h-2 w-2 rounded-full bg-orange-600 animate-bounce [animation-delay:0.2s]" />
                     <span className="h-2 w-2 rounded-full bg-orange-600 animate-bounce [animation-delay:0.4s]" />
-                    <span className="ml-2 text-xs text-muted font-medium">Assistant is thinking...</span>
+                    <span className="ml-2 text-xs text-muted font-medium">Guide is looking up information...</span>
                   </div>
                 </div>
               </div>
@@ -237,9 +294,9 @@ export function FloatingAiChat() {
                     key={prompt.label}
                     type="button"
                     onClick={() => handleSend(prompt.label)}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-gray-600 hover:border-orange-500 hover:bg-orange-50 hover:text-orange-700 transition-colors cursor-pointer"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-gray-600 hover:border-navy hover:bg-navy/5 hover:text-navy transition-colors cursor-pointer"
                   >
-                    <IconComponent className="h-3 w-3 text-orange-600 shrink-0" />
+                    <IconComponent className="h-3 w-3 text-accent shrink-0" />
                     <span>{prompt.label}</span>
                   </button>
                 );
@@ -262,21 +319,21 @@ export function FloatingAiChat() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about events, council, achievements..."
-                className="flex-1 rounded-xl border border-gray-200 bg-gray-50/80 px-3.5 py-2 text-sm text-gray-900 placeholder-gray-400 focus:bg-white focus:border-orange-600 focus:outline-hidden transition-all"
+                placeholder="Ask about events, incharges, council, awareness..."
+                className="flex-1 rounded-xl border border-gray-200 bg-gray-50/80 px-3.5 py-2 text-sm text-gray-900 placeholder-gray-400 focus:bg-white focus:border-navy focus:outline-hidden transition-all"
                 disabled={loading}
               />
               <button
                 type="submit"
                 disabled={!input.trim() || loading}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-600 text-white transition-opacity disabled:opacity-40 hover:bg-orange-700 cursor-pointer disabled:cursor-not-allowed shadow-xs"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-navy text-white transition-opacity disabled:opacity-40 hover:bg-navy/90 cursor-pointer disabled:cursor-not-allowed shadow-xs"
                 aria-label="Send query"
               >
                 <Send className="h-4 w-4" />
               </button>
             </form>
             <p className="mt-1.5 text-center text-[10px] text-gray-400">
-              Only answers questions regarding IISS Campus activities & council.
+              Answers questions regarding IISS Campus activities, incharges, notices &amp; council.
             </p>
           </div>
         </div>
@@ -287,17 +344,17 @@ export function FloatingAiChat() {
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         className="group flex items-center gap-2.5 rounded-full bg-[#12141c] px-4 py-2.5 text-white shadow-xl hover:bg-[#1c2438] hover:shadow-2xl transition-all duration-200 active:scale-95 border border-white/10 cursor-pointer"
-        aria-label="Open Campus AI Assistant"
+        aria-label="Open Campus Guide"
       >
-        <span className="relative flex h-6 w-6 items-center justify-center rounded-full bg-orange-600 text-white">
-          <Sparkles className="h-3.5 w-3.5" />
+        <span className="relative flex h-6 w-6 items-center justify-center rounded-full bg-white/15 p-0.5 overflow-hidden">
+          <CouncilLogo width={20} height={20} className="h-full w-full object-contain rounded-full" />
           <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500" />
           </span>
         </span>
         <span className="text-xs font-semibold tracking-wide text-white">
-          {isOpen ? "Close Assistant" : "Ask Campus AI"}
+          {isOpen ? "Close Guide" : "Campus Guide"}
         </span>
       </button>
     </div>

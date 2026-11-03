@@ -3,16 +3,20 @@
 import { useMemo, useState } from "react";
 import { ChevronsDownUp, ChevronsUpDown, Filter, Plus, Search } from "lucide-react";
 import { AnnouncementForm } from "@/components/manage/announcement-form";
-import type { Announcement, CampusEvent } from "@/lib/types";
+import type { Announcement, CampusEvent, CustomProgram, WellnessItem } from "@/lib/types";
 
 export function ManageAnnouncementsList({
   announcements,
   events,
+  programs = [],
+  wellnessItems = [],
   defaultEventId = null,
   initialEditId = null,
 }: {
   announcements: Announcement[];
   events: CampusEvent[];
+  programs?: CustomProgram[];
+  wellnessItems?: WellnessItem[];
   defaultEventId?: string | null;
   initialEditId?: string | null;
 }) {
@@ -129,6 +133,8 @@ export function ManageAnnouncementsList({
         <AnnouncementForm
           announcement={null}
           events={events}
+          programs={programs}
+          wellnessItems={wellnessItems}
           defaultEventId={defaultEventId}
           isOpen={openIds.new}
           onToggle={() => toggleOpen("new")}
@@ -145,6 +151,8 @@ export function ManageAnnouncementsList({
             <AnnouncementForm
               announcement={item}
               events={events}
+              programs={programs}
+              wellnessItems={wellnessItems}
               isOpen={openIds[item.id] || (Boolean(query) && true)}
               onToggle={() => toggleOpen(item.id)}
             />

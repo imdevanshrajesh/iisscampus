@@ -3,13 +3,15 @@ import {
   getPublicCatalog,
   getPublicCustomPrograms,
   getPublicFaqs,
+  getPublicSchoolIncharges,
+  getPublicHouses,
   getPublicSocial,
   getPublicWellnessItems,
   getSiteBrand,
 } from "@/lib/data/queries";
 
 export async function buildCampusAiSystemPrompt(): Promise<string> {
-  const [catalog, brand, social, announcements, faqs, wellnessItems, programs] =
+  const [catalog, brand, social, announcements, faqs, wellnessItems, programs, incharges, houses] =
     await Promise.all([
       getPublicCatalog(),
       getSiteBrand(),
@@ -18,6 +20,8 @@ export async function buildCampusAiSystemPrompt(): Promise<string> {
       getPublicFaqs(),
       getPublicWellnessItems(),
       getPublicCustomPrograms(),
+      getPublicSchoolIncharges(),
+      getPublicHouses(),
     ]);
 
   const now = new Date();
@@ -80,6 +84,18 @@ export async function buildCampusAiSystemPrompt(): Promise<string> {
   const faqsSummary = faqs.map((f) => ({
     question: f.question,
     answer: f.answer,
+  }));
+
+  // Format Houses
+  const housesSummary = houses.map((h) => ({
+    name: h.name,
+    color: h.color,
+    incharge: h.inchargeName,
+    inchargeMessage: h.inchargeMessage,
+    captain: h.captainName,
+    viceCaptain: h.viceCaptainName,
+    motto: h.motto,
+    link: "/school/houses",
   }));
 
   // Format Categories
@@ -159,13 +175,16 @@ ${JSON.stringify(councilSummary, null, 2)}
 Achievements:
 ${JSON.stringify(achievementsSummary, null, 2)}
 
-Active Announcements:
+Official Houses (Ruby, Sapphire, Topaz, Emerald):
+${JSON.stringify(housesSummary, null, 2)}
+
+Active Announcements & Directives:
 ${JSON.stringify(announcementsSummary, null, 2)}
 
 Frequently Asked Questions (FAQ):
 ${JSON.stringify(faqsSummary, null, 2)}
 
-Custom Programs & Wellness:
+Awareness & Fun Programs & Wellness:
 ${JSON.stringify({ programs, wellnessItems }, null, 2)}
 `;
 }

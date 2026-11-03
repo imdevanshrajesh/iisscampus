@@ -50,12 +50,12 @@ describe("RustFS media integration", () => {
     assert.ok(DEFAULT_UPLOAD_FOLDERS.includes("Gallery"));
   });
 
-  it("validates permitted image MIME types", () => {
+  it("validates permitted image and document MIME types", () => {
     assert.ok(ALLOWED_MIME_TYPES.has("image/jpeg"));
     assert.ok(ALLOWED_MIME_TYPES.has("image/png"));
     assert.ok(ALLOWED_MIME_TYPES.has("image/webp"));
     assert.ok(ALLOWED_MIME_TYPES.has("image/gif"));
-    assert.ok(!ALLOWED_MIME_TYPES.has("application/pdf"));
+    assert.ok(ALLOWED_MIME_TYPES.has("application/pdf"));
     assert.ok(!ALLOWED_MIME_TYPES.has("text/html"));
   });
 });

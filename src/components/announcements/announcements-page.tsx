@@ -1,12 +1,16 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Bell, Newspaper, Search, Tag } from "lucide-react";
+import { Bell, Newspaper, Search, Tag, Share2 } from "lucide-react";
 import { AnnouncementList } from "@/components/announcements/announcement-list";
-import type { Announcement, CampusEvent } from "@/lib/types";
+import type { Announcement, CampusEvent, CustomProgram, WellnessItem } from "@/lib/types";
 
-function noticeTag(title: string): string {
-  const lower = title.toLowerCase();
+function noticeTag(item: Announcement): string {
+  if (item.category && item.category !== "General") return item.category;
+  const lower = (item.title + " " + item.body).toLowerCase();
+  if (lower.includes("wellness") || lower.includes("wellbeing") || lower.includes("mental health")) return "Wellness";
+  if (lower.includes("child") || lower.includes("protect") || lower.includes("safety")) return "Child Protection";
+  if (lower.includes("mango") || lower.includes("awareness") || lower.includes("program")) return "Awareness Programs";
   if (lower.includes("exam") || lower.includes("academic") || lower.includes("study")) return "Academic";
   if (lower.includes("sport") || lower.includes("league") || lower.includes("match")) return "Athletics";
   if (lower.includes("council") || lower.includes("lead") || lower.includes("prefect")) return "Leadership";
@@ -15,15 +19,28 @@ function noticeTag(title: string): string {
   return "General";
 }
 
-const TAG_FILTERS = ["All", "Academic", "Athletics", "Leadership", "Innovation", "Campus Code"] as const;
+const TAG_FILTERS = [
+  "All",
+  "Wellness",
+  "Awareness Programs",
+  "Child Protection",
+  "Academic",
+  "Leadership",
+  "Athletics",
+  "Campus Code",
+] as const;
 
 export function AnnouncementsPage({
   announcements,
   events,
+  programs = [],
+  wellnessItems = [],
   initialOpenId,
 }: {
   announcements: Announcement[];
   events: CampusEvent[];
+  programs?: CustomProgram[];
+  wellnessItems?: WellnessItem[];
   initialOpenId?: string | null;
 }) {
   const [selectedTag, setSelectedTag] = useState<string>("All");
@@ -31,11 +48,14 @@ export function AnnouncementsPage({
 
   const filtered = useMemo(() => {
     return announcements.filter((item) => {
-      const tag = noticeTag(item.title);
-      const matchesTag = selectedTag === "All" || tag === selectedTag;
+      const tag = noticeTag(item);
+      const matchesTag = selectedTag === "All" || tag === selectedTag || item.category === selectedTag;
       const q = searchQuery.trim().toLowerCase();
       const matchesSearch =
-        !q || item.title.toLowerCase().includes(q) || item.body.toLowerCase().includes(q);
+        !q ||
+        item.title.toLowerCase().includes(q) ||
+        item.body.toLowerCase().includes(q) ||
+        (item.category && item.category.toLowerCase().includes(q));
       return matchesTag && matchesSearch;
     });
   }, [announcements, selectedTag, searchQuery]);
@@ -108,6 +128,8 @@ export function AnnouncementsPage({
           <AnnouncementList
             announcements={filtered}
             events={events}
+            programs={programs}
+            wellnessItems={wellnessItems}
             initialOpenId={initialOpenId}
           />
         </div>

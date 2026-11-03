@@ -16,10 +16,11 @@ export const primaryNav: NavLink[] = [
   { href: "/competitions", label: "Competitions" },
   { href: "/council", label: "Council" },
   { href: "/announcements", label: "Notices" },
+  { href: "/newsletter", label: "Newsletter" },
   { href: "/council/socials", label: "Socials" },
   { href: "/achievements", label: "Achievements" },
+  { href: "/school/houses", label: "Houses" },
   { href: "/gallery", label: "Gallery" },
-  { href: "/newsletter", label: "Newsletter" },
   { href: "/wellness", label: "Wellness" },
   { href: "/about", label: "FAQ & About" },
   { href: "/suggestions", label: "Suggestions" },
@@ -97,6 +98,7 @@ export const defaultNavGroups: NavGroup[] = [
     items: [
       item("nav-council-page", "nav-council", "The council", "Meet the boys' student council", "/council", 0),
       item("nav-notices", "nav-council", "Campus Notices", "Official circulars & directives", "/announcements", 3),
+      item("nav-newsletter", "nav-council", "Newsletter", "The latest student circular & letter", "/newsletter", 4),
       item("nav-socials", "nav-council", "Socials", "Pinned Instagram posts and council accounts", "/council/socials", 5),
       item("nav-suggestions", "nav-council", "Suggestions", "Send a note to the council", "/suggestions", 10),
     ],
@@ -109,8 +111,8 @@ export const defaultNavGroups: NavGroup[] = [
     enabled: true,
     sortOrder: 40,
     items: [
-      item("nav-gallery", "nav-school", "Gallery", "Photographs from campus", "/gallery", 0),
-      item("nav-newsletter", "nav-school", "Newsletter", "The latest letter", "/newsletter", 10),
+      item("nav-houses", "nav-school", "Houses", "Ruby, Sapphire, Topaz & Emerald", "/school/houses", 0),
+      item("nav-gallery", "nav-school", "Gallery", "Photographs from campus", "/gallery", 10),
       item("nav-wellness", "nav-school", "Wellness", "A quiet corner for wellbeing", "/wellness", 20),
       item("nav-achievements", "nav-school", "Achievements", "Awards and results", "/achievements", 30),
       item("nav-about", "nav-school", "FAQ & About", "Questions and how the council works", "/about", 40),
@@ -187,13 +189,33 @@ export function resolvePublicNav(
 
       const councilGroup =
         group.label.trim().toLowerCase() === "council" || group.items.some((entry) => entry.href === "/council");
+      const schoolGroup =
+        group.label.trim().toLowerCase().includes("school") || group.items.some((entry) => entry.href === "/gallery");
+
       if (!councilGroup) {
         for (let index = links.length - 1; index >= 0; index -= 1) {
-          if (links[index]?.href === "/suggestions" || links[index]?.href === "/council/socials") {
+          if (
+            links[index]?.href === "/suggestions" ||
+            links[index]?.href === "/council/socials" ||
+            links[index]?.href === "/newsletter" ||
+            links[index]?.href === "/school/houses" ||
+            links[index]?.href === "/council/houses" ||
+            links[index]?.href === "/houses"
+          ) {
             links.splice(index, 1);
           }
         }
       } else {
+        // Strip houses from Council group
+        for (let index = links.length - 1; index >= 0; index -= 1) {
+          if (
+            links[index]?.href === "/school/houses" ||
+            links[index]?.href === "/council/houses" ||
+            links[index]?.href === "/houses"
+          ) {
+            links.splice(index, 1);
+          }
+        }
         if (!links.some((link) => link.href === "/announcements")) {
           const councilIdx = links.findIndex((l) => l.href === "/council");
           const insertAt = councilIdx >= 0 ? councilIdx + 1 : 0;
@@ -203,8 +225,19 @@ export function resolvePublicNav(
             href: "/announcements",
           });
         }
+        if (!links.some((link) => link.href === "/newsletter")) {
+          const noticeIdx = links.findIndex((l) => l.href === "/announcements" || l.href === "/council");
+          const insertAt = noticeIdx >= 0 ? noticeIdx + 1 : 1;
+          links.splice(insertAt, 0, {
+            title: "Newsletter",
+            description: "The latest student circular & letter",
+            href: "/newsletter",
+          });
+        }
         if (!links.some((link) => link.href === "/council/socials")) {
-          const councilIdx = links.findIndex((l) => l.href === "/announcements" || l.href === "/council");
+          const councilIdx = links.findIndex(
+            (l) => l.href === "/newsletter" || l.href === "/announcements" || l.href === "/council",
+          );
           const insertAt = councilIdx >= 0 ? councilIdx + 1 : 0;
           links.splice(insertAt, 0, {
             title: "Socials",
@@ -217,6 +250,32 @@ export function resolvePublicNav(
             title: "Suggestions",
             description: "Send a note to the council",
             href: "/suggestions",
+          });
+        }
+      }
+
+      if (schoolGroup) {
+        // Explicitly remove any heads, incharges, custom programs, and newsletter from School group
+        for (let index = links.length - 1; index >= 0; index -= 1) {
+          const h = links[index]?.href;
+          if (
+            h === "/school/heads" ||
+            h === "/heads" ||
+            h === "/school/incharges" ||
+            h === "/incharges" ||
+            h === "/school/programs" ||
+            h === "/programs" ||
+            h === "/newsletter"
+          ) {
+            links.splice(index, 1);
+          }
+        }
+        // Ensure Houses is the primary item under School
+        if (!links.some((link) => link.href === "/school/houses" || link.href === "/houses")) {
+          links.unshift({
+            title: "Houses",
+            description: "Ruby, Sapphire, Topaz & Emerald",
+            href: "/school/houses",
           });
         }
       }

@@ -14,10 +14,14 @@ import type {
   CouncilMember,
   CouncilYear,
   Faq,
+  HeadTier,
+  House,
   NavGroup,
   NavItem,
   Newsletter,
   PublicationStatus,
+  SchoolHead,
+  SchoolIncharge,
   SocialLinks,
   SocialPost,
   WellnessCategory,
@@ -40,6 +44,8 @@ type Store = {
   navLogoHref?: string | null;
   navLabel?: string | null;
   announcements?: Announcement[];
+  schoolIncharges?: SchoolIncharge[];
+  houses?: House[];
   marquee?: MarqueeMessage[];
   navGroups?: NavGroup[];
   faqs?: Faq[];
@@ -83,11 +89,202 @@ function normalizeAnnouncement(item: Announcement & { message?: string }): Annou
     body: String(item.body ?? ""),
     resources: Array.isArray(item.resources) ? item.resources : [],
     eventId: item.eventId ?? null,
+    programId: item.programId ?? null,
+    wellnessId: item.wellnessId ?? null,
+    category: item.category || "General",
+    coverImageUrl: item.coverImageUrl ?? null,
     enabled: Boolean(item.enabled),
     sortOrder: Number(item.sortOrder ?? 0),
     createdAt: item.createdAt ?? new Date().toISOString(),
   };
 }
+
+function normalizeCustomProgram(item: CustomProgram): CustomProgram {
+  return {
+    ...item,
+    category: item.category || "Awareness",
+    timing: item.timing ?? null,
+    pdfUrl: item.pdfUrl ?? null,
+  };
+}
+
+export const seedSchoolIncharges: SchoolHead[] = [
+  {
+    id: "head-principal",
+    name: "Dr. Manzoor Ahmad",
+    role: "Principal & Campus Director",
+    tier: "executive",
+    tierLabel: "Executive Leadership",
+    department: "Campus Directorate",
+    photoUrl: "/brand/student-council.png",
+    message: "Education is not merely the accumulation of facts, but the training of the mind to think, lead with humility, and serve our society with unshakeable moral strength.",
+    about: "Education is not merely the accumulation of facts, but the training of the mind to think, lead with humility, and serve our society with unshakeable moral strength.",
+    email: "principal@iissboys.com",
+    phone: null,
+    sortOrder: 1,
+    published: true,
+    createdAt: "2026-10-01T08:00:00Z",
+  },
+  {
+    id: "head-vice-principal",
+    name: "Mrs. Shabana Parveen",
+    role: "Vice Principal",
+    tier: "executive",
+    tierLabel: "Executive Leadership",
+    department: "Academic Administration",
+    photoUrl: null,
+    message: "Every student who walks through these corridors carries boundless potential. Our mission is to guide you toward purposeful excellence with dedication and character.",
+    about: "Every student who walks through these corridors carries boundless potential. Our mission is to guide you toward purposeful excellence with dedication and character.",
+    email: "viceprincipal@iissboys.com",
+    phone: null,
+    sortOrder: 2,
+    published: true,
+    createdAt: "2026-10-01T08:00:00Z",
+  },
+  {
+    id: "head-senior-boys",
+    name: "Mr. Tariq Mansoor",
+    role: "Senior Section Head",
+    tier: "section",
+    tierLabel: "Section Heads",
+    department: "Senior Secondary (Grades 11-12)",
+    photoUrl: null,
+    message: "To our senior young men: Seize these formative years. Aim high in board examinations, uphold campus pride, and lead your junior peers by sterling example.",
+    about: "To our senior young men: Seize these formative years. Aim high in board examinations, uphold campus pride, and lead your junior peers by sterling example.",
+    email: "tariq.m@iissboys.com",
+    phone: null,
+    sortOrder: 3,
+    published: true,
+    createdAt: "2026-10-01T08:00:00Z",
+  },
+  {
+    id: "head-middle-boys",
+    name: "Mr. Suhail Hashim",
+    role: "Middle Section Supervisor",
+    tier: "section",
+    tierLabel: "Section Heads",
+    department: "Middle School (Grades 7-10)",
+    photoUrl: null,
+    message: "Middle school is where curiosity transforms into discipline. Stay inquisitive, respect your teachers, and build lasting friendships founded on honor.",
+    about: "Middle school is where curiosity transforms into discipline. Stay inquisitive, respect your teachers, and build lasting friendships founded on honor.",
+    email: "suhail.h@iissboys.com",
+    phone: null,
+    sortOrder: 4,
+    published: true,
+    createdAt: "2026-10-01T08:00:00Z",
+  },
+  {
+    id: "head-activities",
+    name: "Mr. Abdul Razak",
+    role: "Activities & Co-Curricular Head",
+    tier: "department",
+    tierLabel: "Department Heads",
+    department: "Student Affairs & CCA",
+    photoUrl: null,
+    message: "Co-curricular activities are where classroom knowledge meets character. Step onto the field, take the stage, and celebrate campus spirit.",
+    about: "Co-curricular activities are where classroom knowledge meets character. Step onto the field, take the stage, and celebrate campus spirit.",
+    email: "activities@iissboys.com",
+    phone: null,
+    sortOrder: 5,
+    published: true,
+    createdAt: "2026-10-01T08:00:00Z",
+  },
+  {
+    id: "head-discipline",
+    name: "Mr. Faisal Siddiqui",
+    role: "Discipline & Campus Welfare Head",
+    tier: "department",
+    tierLabel: "Department Heads",
+    department: "Campus Welfare & Student Life",
+    photoUrl: null,
+    message: "True discipline is not restraint; it is the freedom that comes from self-command, mutual respect, and upholding our campus ethos.",
+    about: "True discipline is not restraint; it is the freedom that comes from self-command, mutual respect, and upholding our campus ethos.",
+    email: "welfare@iissboys.com",
+    phone: null,
+    sortOrder: 6,
+    published: true,
+    createdAt: "2026-10-01T08:00:00Z",
+  },
+];
+
+export const seedHouses: House[] = [
+  {
+    id: "house-ruby",
+    name: "Ruby",
+    slug: "ruby",
+    color: "ruby",
+    inchargeName: "Mr. Tariq Mansoor",
+    inchargeTitle: "Faculty Incharge",
+    inchargePhotoUrl: null,
+    inchargeMessage: "Strive with courage, give your utmost on every sports field, and hold your head high in triumph or defeat.",
+    captainName: "ZAYAN JASSEER",
+    captainPhotoUrl: null,
+    viceCaptainName: "DANIAL POULOSE",
+    viceCaptainPhotoUrl: null,
+    motto: "Courage, Passion & Strength",
+    description: "United under the scarlet banner of courage, valor, and unwavering sportsmanship.",
+    sortOrder: 1,
+    published: true,
+    updatedAt: "2026-11-03T12:00:00Z",
+  },
+  {
+    id: "house-sapphire",
+    name: "Sapphire",
+    slug: "sapphire",
+    color: "sapphire",
+    inchargeName: "Mr. Suhail Hashim",
+    inchargeTitle: "Faculty Incharge",
+    inchargePhotoUrl: null,
+    inchargeMessage: "Wisdom is our armor, truth our shield. Compete with dignity and excel through brotherhood.",
+    captainName: "ZAYAN MUHAMMED RIZAM",
+    captainPhotoUrl: null,
+    viceCaptainName: "SALAH MAHARUS NISAN",
+    viceCaptainPhotoUrl: null,
+    motto: "Wisdom, Loyalty & Honor",
+    description: "Soaring with the spirit of the ocean and sky, guided by integrity and sharp intellect.",
+    sortOrder: 2,
+    published: true,
+    updatedAt: "2026-11-03T12:00:00Z",
+  },
+  {
+    id: "house-topaz",
+    name: "Topaz",
+    slug: "topaz",
+    color: "topaz",
+    inchargeName: "Mr. Abdul Razak",
+    inchargeTitle: "Faculty Incharge",
+    inchargePhotoUrl: null,
+    inchargeMessage: "Bring radiant enthusiasm, never surrender to doubt, and illuminate the campus with golden resolve.",
+    captainName: "MOHAMMED IHSAN",
+    captainPhotoUrl: null,
+    viceCaptainName: "STEPHEN MASCARENHAS",
+    viceCaptainPhotoUrl: null,
+    motto: "Brilliance, Energy & Optimism",
+    description: "Radiating warmth, unstoppable enthusiasm, creativity, and tireless perseverance.",
+    sortOrder: 3,
+    published: true,
+    updatedAt: "2026-11-03T12:00:00Z",
+  },
+  {
+    id: "house-emerald",
+    name: "Emerald",
+    slug: "emerald",
+    color: "emerald",
+    inchargeName: "Mr. Faisal Siddiqui",
+    inchargeTitle: "Faculty Incharge",
+    inchargePhotoUrl: null,
+    inchargeMessage: "Rooted like mighty trees, we grow together in resilience, discipline, and quiet determination.",
+    captainName: "MOHAMMED AAZIM",
+    captainPhotoUrl: null,
+    viceCaptainName: "SHAZ MOHAMMED",
+    viceCaptainPhotoUrl: null,
+    motto: "Growth, Harmony & Resilience",
+    description: "Rooted in discipline and unity, flourishing through team spirit and quiet determination.",
+    sortOrder: 4,
+    published: true,
+    updatedAt: "2026-11-03T12:00:00Z",
+  },
+];
 
 function normalizeNavItem(item: NavItem, groupId: string): NavItem {
   return {
@@ -190,6 +387,10 @@ export function readContentStore(): Store {
       announcements: Array.isArray(parsed.announcements)
         ? parsed.announcements.map((item) => normalizeAnnouncement(item as Announcement))
         : [],
+      schoolIncharges: Array.isArray(parsed.schoolIncharges)
+        ? parsed.schoolIncharges
+        : seedSchoolIncharges,
+      houses: Array.isArray(parsed.houses) ? parsed.houses : seedHouses,
       marquee: Array.isArray(parsed.marquee)
         ? parsed.marquee.map((item) => normalizeMarquee(item as MarqueeMessage))
         : [],
@@ -197,7 +398,9 @@ export function readContentStore(): Store {
         ? parsed.navGroups.map((group) => normalizeNavGroup(group as NavGroup))
         : undefined,
       faqs: Array.isArray(parsed.faqs) ? parsed.faqs : [],
-      customPrograms: Array.isArray(parsed.customPrograms) ? parsed.customPrograms : [],
+      customPrograms: Array.isArray(parsed.customPrograms)
+        ? parsed.customPrograms.map(normalizeCustomProgram)
+        : [],
       wellnessCategories: Array.isArray(parsed.wellnessCategories)
         ? parsed.wellnessCategories
         : [],
@@ -648,6 +851,10 @@ export function saveAnnouncementToStore(input: {
   body: string;
   resources: Announcement["resources"];
   eventId: string | null;
+  programId?: string | null;
+  wellnessId?: string | null;
+  category?: string;
+  coverImageUrl?: string | null;
   enabled: boolean;
 }) {
   const store = readContentStore();
@@ -659,6 +866,10 @@ export function saveAnnouncementToStore(input: {
     body: input.body,
     resources: input.resources,
     eventId: input.eventId,
+    programId: input.programId ?? null,
+    wellnessId: input.wellnessId ?? null,
+    category: input.category || "General",
+    coverImageUrl: input.coverImageUrl ?? null,
     enabled: input.enabled,
     sortOrder: existing?.sortOrder ?? 0,
     createdAt: existing?.createdAt ?? new Date().toISOString(),
@@ -672,6 +883,137 @@ export function saveAnnouncementToStore(input: {
 export function deleteAnnouncementFromStore(id: string) {
   const store = readContentStore();
   store.announcements = (store.announcements ?? []).filter((item) => item.id !== id);
+  return writeContentStore(store);
+}
+
+export function saveSchoolInchargeToStore(input: {
+  id?: string;
+  name: string;
+  role: string;
+  tier?: HeadTier;
+  tierLabel?: string | null;
+  department?: string | null;
+  photoUrl?: string | null;
+  message?: string;
+  about?: string;
+  email?: string | null;
+  phone?: string | null;
+  sortOrder?: number;
+  published?: boolean;
+}) {
+  const store = readContentStore();
+  const list = store.schoolIncharges ?? seedSchoolIncharges;
+  const existing = input.id ? list.find((item) => item.id === input.id) : undefined;
+  const tier: HeadTier = input.tier ?? existing?.tier ?? "section";
+  const defaultTierLabel =
+    tier === "executive"
+      ? "Executive Leadership"
+      : tier === "department"
+      ? "Department Heads"
+      : "Section Heads";
+  const message = input.message ?? input.about ?? existing?.message ?? existing?.about ?? "";
+
+  const record: SchoolHead = {
+    id: existing?.id ?? crypto.randomUUID(),
+    name: input.name,
+    role: input.role,
+    tier,
+    tierLabel: input.tierLabel ?? existing?.tierLabel ?? defaultTierLabel,
+    department: input.department ?? null,
+    photoUrl: input.photoUrl ?? null,
+    message,
+    about: message,
+    email: input.email ?? null,
+    phone: input.phone ?? null,
+    sortOrder: input.sortOrder ?? existing?.sortOrder ?? 0,
+    published: input.published ?? existing?.published ?? true,
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
+  };
+  store.schoolIncharges = existing
+    ? list.map((item) => (item.id === existing.id ? record : item))
+    : [...list, record];
+  return writeContentStore(store);
+}
+
+export function deleteSchoolInchargeFromStore(id: string) {
+  const store = readContentStore();
+  const list = store.schoolIncharges ?? seedSchoolIncharges;
+  store.schoolIncharges = list.filter((item) => item.id !== id);
+  return writeContentStore(store);
+}
+
+export function saveHouseToStore(input: {
+  id?: string;
+  name: string;
+  slug: string;
+  color: House["color"];
+  points?: number | null;
+  inchargeName: string;
+  inchargeTitle?: string | null;
+  inchargePhotoUrl?: string | null;
+  inchargeMessage?: string | null;
+  captainName: string;
+  captainPhotoUrl?: string | null;
+  viceCaptainName: string;
+  viceCaptainPhotoUrl?: string | null;
+  motto?: string | null;
+  description?: string | null;
+  sortOrder?: number;
+  published?: boolean;
+}) {
+  const store = readContentStore();
+  const list = store.houses ?? seedHouses;
+  const existing = input.id
+    ? list.find((item) => item.id === input.id || item.slug === input.slug)
+    : list.find((item) => item.slug === input.slug);
+
+  const record: House = {
+    id: existing?.id ?? crypto.randomUUID(),
+    name: input.name,
+    slug: input.slug,
+    color: input.color,
+    points: input.points !== undefined ? input.points : existing?.points,
+    inchargeName: input.inchargeName,
+    inchargeTitle: input.inchargeTitle ?? null,
+    inchargePhotoUrl: input.inchargePhotoUrl ?? null,
+    inchargeMessage: input.inchargeMessage ?? null,
+    captainName: input.captainName,
+    captainPhotoUrl: input.captainPhotoUrl ?? null,
+    viceCaptainName: input.viceCaptainName,
+    viceCaptainPhotoUrl: input.viceCaptainPhotoUrl ?? null,
+    motto: input.motto ?? null,
+    description: input.description ?? null,
+    sortOrder: input.sortOrder ?? existing?.sortOrder ?? 0,
+    published: input.published ?? existing?.published ?? true,
+    updatedAt: new Date().toISOString(),
+  };
+
+  store.houses = existing
+    ? list.map((item) => (item.id === existing.id ? record : item))
+    : [...list, record];
+  return writeContentStore(store);
+}
+
+export function updateHousePointsInStore(idOrSlug: string, points: number) {
+  const store = readContentStore();
+  const list = store.houses ?? seedHouses;
+  const existing = list.find((item) => item.id === idOrSlug || item.slug === idOrSlug);
+  if (!existing) return false;
+
+  const updated: House = {
+    ...existing,
+    points: Math.max(0, points),
+    updatedAt: new Date().toISOString(),
+  };
+
+  store.houses = list.map((item) => (item.id === existing.id ? updated : item));
+  return writeContentStore(store);
+}
+
+export function deleteHouseFromStore(id: string) {
+  const store = readContentStore();
+  const list = store.houses ?? seedHouses;
+  store.houses = list.filter((item) => item.id !== id && item.slug !== id);
   return writeContentStore(store);
 }
 
@@ -850,6 +1192,9 @@ export function saveCustomProgramToStore(input: {
   eventId: string | null;
   published: boolean;
   sortOrder: number;
+  category?: string;
+  timing?: string | null;
+  pdfUrl?: string | null;
 }) {
   const store = readContentStore();
   const list = store.customPrograms ?? [];
@@ -866,6 +1211,9 @@ export function saveCustomProgramToStore(input: {
     event: null,
     published: input.published,
     sortOrder: input.sortOrder,
+    category: input.category || "Awareness",
+    timing: input.timing ?? null,
+    pdfUrl: input.pdfUrl ?? null,
   };
   store.customPrograms = existing ? list.map((item) => (item.id === existing.id ? record : item)) : [...list, record];
   return writeContentStore(store);

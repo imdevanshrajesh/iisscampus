@@ -3,6 +3,7 @@ import {
   Bell,
   CalendarDays,
   CircleHelp,
+  GraduationCap,
   HeartPulse,
   Home,
   Images,
@@ -10,6 +11,8 @@ import {
   Newspaper,
   School,
   Share2,
+  Shield,
+  Sparkles,
   Trophy,
   Users,
   type LucideIcon,
@@ -26,6 +29,13 @@ const icons: Record<string, LucideIcon> = {
   "/achievements": Award,
   "/gallery": Images,
   "/newsletter": Newspaper,
+  "/school/heads": GraduationCap,
+  "/heads": GraduationCap,
+  "/school/incharges": GraduationCap,
+  "/incharges": GraduationCap,
+  "/council/houses": Shield,
+  "/school/houses": Shield,
+  "/houses": Shield,
   "/wellness": HeartPulse,
   "/about": CircleHelp,
   "/suggestions": MessageSquare,
@@ -51,6 +61,8 @@ function iconFor(href: string, label = "") {
   if (text.includes("achiev") || text.includes("award")) return Award;
   if (text.includes("social") || text.includes("insta")) return Share2;
   if (text.includes("suggest")) return MessageSquare;
+  if (text.includes("incharge") || text.includes("head") || text.includes("faculty")) return GraduationCap;
+  if (text.includes("house")) return Shield;
   if (text.includes("school")) return School;
   return CircleHelp;
 }

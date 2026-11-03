@@ -24,6 +24,8 @@ import {
   mapCustomProgram,
   mapFaq,
   mapImage,
+  mapHouse,
+  mapSchoolIncharge,
   mapSocialPost,
   mapWellnessCategory,
   mapWellnessItem,
@@ -44,9 +46,11 @@ import type {
   Category,
   CouncilYear,
   Faq,
+  House,
   NavGroup,
   Newsletter,
   PublicCatalog,
+  SchoolIncharge,
   SiteBrand,
   SocialLinks,
   SocialPost,
@@ -623,6 +627,88 @@ export async function getPublicCustomPrograms(): Promise<CustomProgram[]> {
 
 export async function getEditableCustomPrograms(): Promise<CustomProgram[]> {
   return loadCustomPrograms(false);
+}
+
+async function loadSchoolIncharges(publishedOnly: boolean): Promise<SchoolIncharge[]> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = publishedOnly ? createPublicClient() : await createStaffClient();
+      if (supabase) {
+        let query = supabase.from("campus_school_incharges").select("*").order("sort_order");
+        if (publishedOnly) {
+          query = query.eq("published", true);
+        }
+        const result = await query;
+        if (!result.error && result.data) {
+          return result.data.map((row) => mapSchoolIncharge(row as Record<string, unknown>));
+        }
+        if (result.error && !isMissingTableError(result.error)) {
+          console.error(result.error);
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+
+  const store = readContentStore();
+  const list = store.schoolIncharges ?? [];
+  return list
+    .filter((item) => (publishedOnly ? item.published : true))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export async function getPublicSchoolIncharges(): Promise<SchoolIncharge[]> {
+  return loadSchoolIncharges(true);
+}
+
+export async function getEditableSchoolIncharges(): Promise<SchoolIncharge[]> {
+  return loadSchoolIncharges(false);
+}
+
+export const getPublicSchoolHeads = getPublicSchoolIncharges;
+export const getEditableSchoolHeads = getEditableSchoolIncharges;
+
+async function loadHouses(publishedOnly: boolean): Promise<House[]> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = publishedOnly ? createPublicClient() : await createStaffClient();
+      if (supabase) {
+        let query = supabase.from("campus_houses").select("*").order("sort_order");
+        if (publishedOnly) {
+          query = query.eq("published", true);
+        }
+        const result = await query;
+        if (!result.error && result.data) {
+          return result.data.map((row) => mapHouse(row as Record<string, unknown>));
+        }
+        if (result.error && !isMissingTableError(result.error)) {
+          console.error(result.error);
+        }
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+
+  const store = readContentStore();
+  const list = store.houses ?? [];
+  return list
+    .filter((item) => (publishedOnly ? item.published : true))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export async function getPublicHouses(): Promise<House[]> {
+  return loadHouses(true);
+}
+
+export async function getEditableHouses(): Promise<House[]> {
+  return loadHouses(false);
+}
+
+export async function getHouseBySlug(slug: string): Promise<House | null> {
+  const houses = await getPublicHouses();
+  return houses.find((h) => h.slug.toLowerCase() === slug.toLowerCase()) ?? null;
 }
 
 const defaultWellnessPage: WellnessPageSettings = {

@@ -269,10 +269,35 @@ export type Announcement = {
   body: string;
   resources: ContentResource[];
   eventId: string | null;
+  programId?: string | null;
+  wellnessId?: string | null;
+  category?: string;
+  coverImageUrl?: string | null;
   enabled: boolean;
   sortOrder: number;
   createdAt: string;
 };
+
+export type HeadTier = "executive" | "section" | "department";
+
+export type SchoolHead = {
+  id: string;
+  name: string;
+  role: string;
+  tier: HeadTier;
+  tierLabel: string;
+  department: string | null;
+  photoUrl: string | null;
+  message: string;
+  about?: string;
+  email: string | null;
+  phone: string | null;
+  sortOrder: number;
+  published: boolean;
+  createdAt: string;
+};
+
+export type SchoolIncharge = SchoolHead;
 
 export type Faq = {
   id: string;
@@ -309,6 +334,9 @@ export type CustomProgram = {
   event: CustomProgramEvent | null;
   sortOrder: number;
   published: boolean;
+  category?: string;
+  timing?: string | null;
+  pdfUrl?: string | null;
 };
 
 export type WellnessImageOrientation = "auto" | "portrait" | "landscape" | "square";
@@ -345,4 +373,27 @@ export type PublicCatalog = {
   councilYears: CouncilYear[];
   mediaHosts: string[];
   councilLogoUrl: string | null;
+};
+
+export type HouseColor = "ruby" | "sapphire" | "topaz" | "emerald";
+
+export type House = {
+  id: string;
+  name: string;
+  slug: string;
+  color: HouseColor;
+  points?: number | null;
+  inchargeName: string;
+  inchargeTitle: string | null;
+  inchargePhotoUrl: string | null;
+  inchargeMessage: string | null;
+  captainName: string;
+  captainPhotoUrl: string | null;
+  viceCaptainName: string;
+  viceCaptainPhotoUrl: string | null;
+  motto: string | null;
+  description: string | null;
+  sortOrder: number;
+  published: boolean;
+  updatedAt: string;
 };

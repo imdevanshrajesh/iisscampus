@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
+import { ImageUploader } from "@/components/manage/image-uploader";
 import { deleteCustomProgram, saveCustomProgram, type ActionState } from "@/lib/manage/actions";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import { classifyMediaUrl } from "@/lib/media/url";
@@ -41,6 +42,7 @@ export function CustomProgramForm({
   const [deleteState, deleteAction, deleting] = useActionState(deleteCustomProgram, {} as ActionState);
   const [photos, setPhotos] = useState<CustomProgramPhoto[]>(program?.photos ?? []);
   const [links, setLinks] = useState<CustomProgramLink[]>(program?.links ?? []);
+  const [pdfUrl, setPdfUrl] = useState<string>(program?.pdfUrl ?? "");
 
   const photoPayload = photos.filter((photo) => photo.url.trim() && photo.alt.trim());
   const linkPayload = links.filter((link) => link.label.trim() && link.url.trim());
@@ -108,6 +110,31 @@ export function CustomProgramForm({
             {program ? <input type="hidden" name="id" value={program.id} /> : null}
             <input type="hidden" name="photos" value={JSON.stringify(photoPayload)} />
             <input type="hidden" name="links" value={JSON.stringify(linkPayload)} />
+            <input type="hidden" name="pdfUrl" value={pdfUrl} />
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1.5 text-sm">
+                Program Type / Category
+                <select name="category" defaultValue={program?.category ?? "Awareness"} className={fieldClass}>
+                  <option value="Awareness">Awareness Campaign</option>
+                  <option value="Celebrations & Fun Activities">Celebrations & Fun Days (e.g. Mango Day)</option>
+                  <option value="Campus Traditions">Campus Traditions & Special Days</option>
+                  <option value="Workshops & Drives">Workshops & Student Drives</option>
+                  <option value="Miscellaneous">Miscellaneous Activity</option>
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-sm">
+                Timing / Season Tag
+                <input
+                  name="timing"
+                  defaultValue={program?.timing ?? ""}
+                  maxLength={120}
+                  className={fieldClass}
+                  placeholder="e.g. Annual Mango Day or Spring Term 2026"
+                />
+              </label>
+            </div>
+
             <label className="grid gap-1.5 text-sm">
               Title
               <input name="title" defaultValue={program?.title ?? ""} required maxLength={120} className={fieldClass} />
@@ -120,8 +147,22 @@ export function CustomProgramForm({
                 rows={4}
                 maxLength={4000}
                 className={fieldClass}
+                placeholder="Describe the fun activities, student participation, and highlights..."
               />
             </label>
+
+            {/* Flyer / PDF upload via RustFS */}
+            <div className="pt-1">
+              <ImageUploader
+                name="programPdfUploader"
+                value={pdfUrl}
+                onChange={setPdfUrl}
+                folder="Programs"
+                label="Activity Flyer / PDF Guide (Optional)"
+                hint="Upload an event flyer, poster, or PDF guide using RustFS."
+                allowPdf
+              />
+            </div>
             <div className="grid gap-3 md:grid-cols-[8rem_1fr]">
               <label className="grid gap-1.5 text-sm">
                 Order

@@ -17,8 +17,13 @@ import type {
   CustomProgramLink,
   CustomProgramPhoto,
   Faq,
+  HeadTier,
+  House,
+  HouseColor,
   NavGroup,
   NavItem,
+  SchoolHead,
+  SchoolIncharge,
   WellnessCategory,
   WellnessImageOrientation,
   WellnessItem,
@@ -277,9 +282,44 @@ export function mapAnnouncement(row: Record<string, unknown>): Announcement {
     body: String(row.body ?? ""),
     resources: mapResources(row.resources),
     eventId: row.event_id ? String(row.event_id) : null,
+    programId: row.program_id ? String(row.program_id) : null,
+    wellnessId: row.wellness_id ? String(row.wellness_id) : null,
+    category: row.category ? String(row.category) : "General",
+    coverImageUrl: row.cover_image_url ? String(row.cover_image_url) : null,
     enabled: Boolean(row.enabled),
     sortOrder: Number(row.sort_order ?? 0),
     createdAt: String(row.created_at ?? new Date().toISOString()),
+  };
+}
+
+export function mapSchoolIncharge(row: Record<string, unknown>): SchoolHead {
+  const rawTier = String(row.tier ?? "section").toLowerCase();
+  const tier: HeadTier =
+    rawTier === "executive" || rawTier === "department" ? rawTier : "section";
+  const defaultTierLabel =
+    tier === "executive"
+      ? "Executive Leadership"
+      : tier === "department"
+      ? "Department Heads"
+      : "Section Heads";
+
+  const message = String(row.message ?? row.about ?? "");
+
+  return {
+    id: String(row.id),
+    name: String(row.name ?? ""),
+    role: String(row.role ?? ""),
+    tier,
+    tierLabel: row.tier_label ? String(row.tier_label) : row.tierLabel ? String(row.tierLabel) : defaultTierLabel,
+    department: row.department ? String(row.department) : null,
+    photoUrl: row.photo_url ? String(row.photo_url).trim() || null : row.photoUrl ? String(row.photoUrl).trim() || null : null,
+    message,
+    about: message,
+    email: row.email ? String(row.email).trim() || null : null,
+    phone: row.phone ? String(row.phone).trim() || null : null,
+    sortOrder: Number(row.sort_order ?? row.sortOrder ?? 0),
+    published: Boolean(row.published ?? true),
+    createdAt: String(row.created_at ?? row.createdAt ?? new Date().toISOString()),
   };
 }
 
@@ -324,6 +364,9 @@ export function mapCustomProgram(row: Record<string, unknown>): CustomProgram {
     event: null,
     sortOrder: Number(row.sort_order ?? 0),
     published: Boolean(row.published),
+    category: row.category ? String(row.category) : "Awareness",
+    timing: row.timing ? String(row.timing) : null,
+    pdfUrl: row.pdf_url ? String(row.pdf_url) : null,
   };
 }
 
@@ -422,5 +465,34 @@ export function mapSocialPost(row: Record<string, unknown>): SocialPost {
     councilTag: String(row.council_tag ?? row.councilTag ?? "all"),
     publishedOn: String(row.published_on ?? row.publishedOn ?? new Date().toISOString()),
     createdAt: String(row.created_at ?? row.createdAt ?? new Date().toISOString()),
+  };
+}
+
+export function mapHouse(row: Record<string, unknown>): House {
+  const color = String(row.color ?? "ruby").toLowerCase();
+  const validColor: HouseColor =
+    color === "ruby" || color === "sapphire" || color === "topaz" || color === "emerald"
+      ? color
+      : "ruby";
+
+  return {
+    id: String(row.id),
+    name: String(row.name ?? ""),
+    slug: String(row.slug ?? validColor),
+    color: validColor,
+    points: row.points !== undefined && row.points !== null ? Number(row.points) : undefined,
+    inchargeName: String(row.incharge_name ?? row.inchargeName ?? ""),
+    inchargeTitle: row.incharge_title ? String(row.incharge_title) : row.inchargeTitle ? String(row.inchargeTitle) : null,
+    inchargePhotoUrl: row.incharge_photo_url ? String(row.incharge_photo_url).trim() || null : row.inchargePhotoUrl ? String(row.inchargePhotoUrl).trim() || null : null,
+    inchargeMessage: row.incharge_message ? String(row.incharge_message) : row.inchargeMessage ? String(row.inchargeMessage) : null,
+    captainName: String(row.captain_name ?? row.captainName ?? ""),
+    captainPhotoUrl: row.captain_photo_url ? String(row.captain_photo_url).trim() || null : row.captainPhotoUrl ? String(row.captainPhotoUrl).trim() || null : null,
+    viceCaptainName: String(row.vice_captain_name ?? row.vice_captain_name ?? row.viceCaptainName ?? ""),
+    viceCaptainPhotoUrl: row.vice_captain_photo_url ? String(row.vice_captain_photo_url).trim() || null : row.viceCaptainPhotoUrl ? String(row.viceCaptainPhotoUrl).trim() || null : null,
+    motto: row.motto ? String(row.motto) : null,
+    description: row.description ? String(row.description) : null,
+    sortOrder: Number(row.sort_order ?? row.sortOrder ?? 0),
+    published: Boolean(row.published ?? true),
+    updatedAt: String(row.updated_at ?? row.updatedAt ?? new Date().toISOString()),
   };
 }

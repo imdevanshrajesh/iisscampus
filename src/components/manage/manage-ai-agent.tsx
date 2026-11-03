@@ -21,6 +21,8 @@ import {
   Megaphone,
   Award,
   HelpCircle,
+  GraduationCap,
+  Shield,
 } from "lucide-react";
 import { autoAddAiRecord } from "@/lib/manage/ai-actions";
 import { AiSettingsManager } from "@/components/manage/ai-settings-manager";
@@ -34,7 +36,7 @@ type ChecklistItem = {
 };
 
 type GeneratedData = {
-  section: "event" | "announcement" | "achievement" | "faq" | "marquee" | "wellness";
+  section: "event" | "announcement" | "achievement" | "faq" | "marquee" | "wellness" | "incharge" | "program" | "house";
   summary: string;
   checklist: ChecklistItem[];
   fields: Record<string, any>;
@@ -46,6 +48,24 @@ const PRESET_EXAMPLES = [
     icon: Trophy,
     section: "event",
     text: "Organizing an Inter-House Football Championship on November 28, 2026 at the Main Turf Ground from 3:00 PM to 6:30 PM. For grades 7 to 12. Free entry. Boys need to wear official house jerseys and bring water bottles. Knockout matches, penalty shootouts, and house trophy presentation. Refreshments provided.",
+  },
+  {
+    label: "School Incharge Profile",
+    icon: GraduationCap,
+    section: "incharge",
+    text: "Add Mr. Tariq Mansoor as Senior Section Incharge for Boys Secondary (Grades 11-12). He has been mentoring students for 12 years with a focus on student leadership, board examination preparations, and house council mentoring. Email: tariq.m@iissboys.com",
+  },
+  {
+    label: "Mango Day Celebration",
+    icon: Sparkles,
+    section: "program",
+    text: "Annual Mango Day celebration & tropical nutrition awareness program held in campus central courtyard for grades 5-12. Features fresh mango carving, smoothie stalls, eco-friendly packaging awareness, and inter-class fruit trivia.",
+  },
+  {
+    label: "House Points Update",
+    icon: Shield,
+    section: "house",
+    text: "Update Ruby House standings: Add 150 points for winning the inter-house volleyball championship and 100% attendance during sports week. Incharge: Mr. Tariq Mansoor, Captain: ZAYAN JASSEER, Vice Captain: DANIAL POULOSE. Motto: Courage, Passion & Strength.",
   },
   {
     label: "Early Dismissal Notice",
@@ -267,7 +287,10 @@ export function ManageAiAgent({
             {[
               { id: "auto", label: "Auto Detect (Recommended)" },
               { id: "event", label: "Campus Event" },
-              { id: "announcement", label: "Announcement" },
+              { id: "announcement", label: "Council Notice" },
+              { id: "incharge", label: "School Incharge" },
+              { id: "program", label: "Program & Activity" },
+              { id: "house", label: "House Points" },
               { id: "achievement", label: "Achievement" },
               { id: "faq", label: "FAQ" },
               { id: "marquee", label: "Marquee Ticker" },

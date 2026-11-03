@@ -17,7 +17,7 @@ import { createStaffClient } from "@/lib/supabase/server";
 import type { EventInput, AchievementInput } from "@/lib/validation/content";
 
 export type AutoAddPayload = {
-  section: "event" | "announcement" | "achievement" | "faq" | "marquee" | "wellness";
+  section: "event" | "announcement" | "achievement" | "faq" | "marquee" | "wellness" | "incharge" | "program" | "house";
   fields: Record<string, any>;
 };
 
@@ -304,6 +304,162 @@ export async function autoAddAiRecord(payload: AutoAddPayload): Promise<AutoAddR
           viewUrl: "/wellness",
         };
       }
+    }
+
+    if (section === "incharge") {
+      const name = String(fields.name || fields.title || "School Incharge").trim();
+      const role = String(fields.role || fields.designation || "Section Incharge").trim();
+      const department = fields.department ? String(fields.department).trim() : null;
+      const about = String(fields.about || fields.bio || fields.shortDescription || "").trim();
+      const email = fields.email ? String(fields.email).trim() : null;
+
+      if (isFile) {
+        const { saveSchoolInchargeToStore } = await import("@/lib/data/file-content");
+        const saved = saveSchoolInchargeToStore({
+          name,
+          role,
+          department,
+          photoUrl: fields.photoUrl || null,
+          about,
+          email,
+          sortOrder: 0,
+          published: true,
+        });
+        if (!saved) return { ok: false, error: "Could not save school incharge." };
+        revalidatePath("/school/heads");
+        revalidatePath("/heads");
+        revalidatePath("/manage/heads");
+        revalidatePath("/school/incharges");
+        revalidatePath("/incharges");
+        revalidatePath("/manage/incharges");
+        return {
+          ok: true,
+          id: "head-new",
+          section: "incharge",
+          title: `${name} (${role})`,
+          editUrl: "/manage/heads",
+          viewUrl: "/school/heads",
+        };
+      }
+    }
+
+    if (section === "program") {
+      const title = String(fields.title || "Awareness / Activity Program").trim();
+      const summary = String(fields.summary || fields.shortDescription || fields.fullDescription || "").trim();
+      const category = String(fields.category || "Awareness").trim();
+      const timing = fields.timing ? String(fields.timing).trim() : null;
+
+      if (isFile) {
+        const { saveCustomProgramToStore } = await import("@/lib/data/file-content");
+        const saved = saveCustomProgramToStore({
+          title,
+          summary,
+          websiteLabel: null,
+          websiteUrl: null,
+          photos: fields.photoUrl ? [{ url: fields.photoUrl, alt: title }] : [],
+          links: [],
+          eventId: null,
+          published: true,
+          sortOrder: 0,
+          category,
+          timing,
+          pdfUrl: fields.pdfUrl || null,
+        });
+        if (!saved) return { ok: false, error: "Could not save program." };
+        revalidatePath("/school/programs");
+        revalidatePath("/programs");
+        revalidatePath("/manage/programs");
+        return {
+          ok: true,
+          id: "program-new",
+          section: "program",
+          title,
+          editUrl: "/manage/programs",
+          viewUrl: "/school/programs",
+        };
+      }
+    }
+
+    if (section === "house") {
+      const name = String(fields.name || "").trim();
+      const slug = String(fields.slug || name.toLowerCase().replace(/\s*house\s*/i, "")).trim();
+      const color = (fields.color || slug || "ruby").toLowerCase();
+      const validColor = color === "sapphire" || color === "topaz" || color === "emerald" ? color : "ruby";
+      const points = Math.max(0, Number(fields.points || 0));
+      const inchargeName = String(fields.inchargeName || fields.incharge || "").trim();
+      const captainName = String(fields.captainName || fields.captain || "").trim();
+      const viceCaptainName = String(fields.viceCaptainName || fields.viceCaptain || "").trim();
+
+      if (!name) return { ok: false, error: "House name is required." };
+
+      if (isFile) {
+        const { saveHouseToStore } = await import("@/lib/data/file-content");
+        const saved = saveHouseToStore({
+          name,
+          slug,
+          color: validColor,
+          points,
+          inchargeName: inchargeName || "Faculty Incharge",
+          inchargeTitle: fields.inchargeTitle || "Faculty Incharge",
+          captainName: captainName || "House Captain",
+          viceCaptainName: viceCaptainName || "Vice Captain",
+          motto: fields.motto || null,
+          description: fields.description || null,
+          sortOrder: Number(fields.sortOrder || 0),
+          published: true,
+        });
+        if (!saved) return { ok: false, error: "Could not save house." };
+        revalidatePath("/council/houses");
+        revalidatePath("/houses");
+        revalidatePath("/manage/houses");
+        return {
+          ok: true,
+          id: slug,
+          section: "house",
+          title: name,
+          editUrl: "/manage/houses",
+          viewUrl: "/council/houses",
+        };
+      }
+
+      const client = await createStaffClient();
+      if (!client) return { ok: false, error: "Supabase client unavailable." };
+
+      const { data, error } = await client
+        .from("campus_houses")
+        .upsert(
+          {
+            name,
+            slug,
+            color: validColor,
+            points,
+            incharge_name: inchargeName || "Faculty Incharge",
+            incharge_title: fields.inchargeTitle || "Faculty Incharge",
+            captain_name: captainName || "House Captain",
+            vice_captain_name: viceCaptainName || "Vice Captain",
+            motto: fields.motto || null,
+            description: fields.description || null,
+            sort_order: Number(fields.sortOrder || 0),
+            published: true,
+          },
+          { onConflict: "slug" }
+        )
+        .select("id")
+        .single();
+
+      if (error) return { ok: false, error: error.message };
+
+      revalidatePath("/council/houses");
+      revalidatePath("/houses");
+      revalidatePath("/manage/houses");
+      return {
+        ok: true,
+        id: data.id,
+        section: "house",
+        title: name,
+        editUrl: "/manage/houses",
+        viewUrl: "/council/houses",
+      };
     }
 
     return { ok: false, error: `Section '${section}' auto-add is not supported yet.` };

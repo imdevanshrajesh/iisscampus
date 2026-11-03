@@ -14,6 +14,7 @@ export const ALLOWED_MIME_TYPES = new Set([
   "image/webp",
   "image/gif",
   "image/svg+xml",
+  "application/pdf",
 ]);
 
 export const DEFAULT_UPLOAD_FOLDERS = [
@@ -23,6 +24,10 @@ export const DEFAULT_UPLOAD_FOLDERS = [
   "Announcements",
   "Faculty",
   "Students",
+  "Documents",
+  "Notices",
+  "Programs",
+  "Incharges",
   "General",
 ] as const;
 
@@ -81,7 +86,9 @@ export function sanitizeFileName(name: string): string {
 
   const timestamp = Date.now();
   const randomSuffix = Math.random().toString(36).substring(2, 7);
-  return `${cleanBase || "image"}-${timestamp}-${randomSuffix}${ext || ".webp"}`;
+  const fallbackBase = ext === ".pdf" ? "document" : "image";
+  const fallbackExt = ext || ".webp";
+  return `${cleanBase || fallbackBase}-${timestamp}-${randomSuffix}${fallbackExt}`;
 }
 
 export function getPermanentUrl(objectKey: string): string {
