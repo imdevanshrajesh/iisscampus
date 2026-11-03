@@ -74,11 +74,11 @@ export function AnnouncementsPage({
         </div>
 
         <h1 className="font-display mt-3 text-[clamp(2.8rem,6vw,5rem)] leading-[0.92] text-ink">
-          Campus <span className="italic">Notices</span>
+          Notices &amp; <span className="italic">Posts</span>
         </h1>
 
         <p className="mt-4 text-base md:text-lg leading-relaxed text-ink/80">
-          Official circulars, examination schedules, leadership directives, and dispatches from
+          Official circulars, student blog articles, examination schedules, directives, and dispatches from
           the boys&apos; student council. Direct from the campus administration.
         </p>
       </div>

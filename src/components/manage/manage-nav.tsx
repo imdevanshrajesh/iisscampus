@@ -65,7 +65,7 @@ const navigationCategories: NavSection[] = [
   {
     category: "Editorial & Notices",
     links: [
-      { href: "/manage/announcements", label: "Council Notices & Blog", icon: Megaphone },
+      { href: "/manage/announcements", label: "Notices & Posts", icon: Megaphone },
       { href: "/manage/marquee", label: "Marquee", icon: Radio },
       { href: "/manage/newsletter", label: "Newsletter", icon: Mail },
       { href: "/manage/programs", label: "Programs & Activities", icon: BookOpen },

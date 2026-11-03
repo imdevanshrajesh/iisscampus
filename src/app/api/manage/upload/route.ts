@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import path from "node:path";
+import fs from "node:fs/promises";
 import { getCampusSession } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/config";
 import {
@@ -9,6 +11,8 @@ import {
   RUSTFS_BUCKET,
   RUSTFS_ENDPOINT,
   RUSTFS_PUBLIC_BASE_URL,
+  sanitizeFolderName,
+  sanitizeFileName,
 } from "@/lib/media/rustfs";
 
 export const dynamic = "force-dynamic";
@@ -16,13 +20,13 @@ export const dynamic = "force-dynamic";
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
 
 async function authorizeRequest() {
-  if (!isSupabaseConfigured()) {
-    // Local / file development mode allows testing uploads
+  if (process.env.NODE_ENV === "development" || !isSupabaseConfigured()) {
+    // Local development mode allows seamless staff uploads
     return { ok: true, role: "administrator" as const };
   }
   const session = await getCampusSession();
   if (session.status !== "ok") {
-    return { ok: false, error: "Sign in is required to upload photographs." };
+    return { ok: false, error: "Sign in is required to upload files." };
   }
   return { ok: true, role: session.actor.role };
 }
@@ -48,16 +52,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: auth.error }, { status: 401 });
     }
 
-    if (!isRustFSConfigured()) {
-      return NextResponse.json(
-        {
-          error:
-            "RustFS is not configured yet. Please add RUSTFS_ACCESS_KEY and RUSTFS_SECRET_KEY to .env.local on the website.",
-        },
-        { status: 503 },
-      );
-    }
-
     const contentType = request.headers.get("content-type") || "";
 
     // Flow 1: Direct JSON request for presigned upload URL
@@ -67,10 +61,17 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
       }
 
-      const { filename, mimeType, folder = "General" } = body;
+      const { filename, folder = "General" } = body;
+      let mimeType = body.mimeType;
+
       if (!filename || typeof filename !== "string") {
         return NextResponse.json({ error: "Filename is required." }, { status: 400 });
       }
+
+      if (filename.toLowerCase().endsWith(".pdf") || (mimeType && mimeType.includes("pdf"))) {
+        mimeType = "application/pdf";
+      }
+
       if (!mimeType || !ALLOWED_MIME_TYPES.has(mimeType)) {
         return NextResponse.json(
           { error: `Unsupported file type (${mimeType}). Allowed: JPEG, PNG, WebP, GIF, SVG, and PDF.` },
@@ -78,16 +79,27 @@ export async function POST(request: Request) {
         );
       }
 
-      const presigned = await createPresignedUploadUrl({
-        filename,
-        mimeType,
-        folder: typeof folder === "string" ? folder : "General",
-      });
+      if (isRustFSConfigured()) {
+        const presigned = await createPresignedUploadUrl({
+          filename,
+          mimeType,
+          folder: typeof folder === "string" ? folder : "General",
+        });
+        return NextResponse.json(presigned);
+      }
 
-      return NextResponse.json(presigned);
+      // If RustFS credentials aren't set yet, return local upload URL
+      const cleanFolder = sanitizeFolderName(typeof folder === "string" ? folder : "General");
+      const cleanFilename = sanitizeFileName(filename);
+      return NextResponse.json({
+        ok: true,
+        uploadUrl: `/api/manage/upload`,
+        publicUrl: `/uploads/${cleanFolder}/${cleanFilename}`,
+        key: `${cleanFolder}/${cleanFilename}`,
+      });
     }
 
-    // Flow 2: Multipart FormData upload (Proxied server-to-server to avoid browser CORS)
+    // Flow 2: Multipart FormData upload (Proxied server-to-server)
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
       const file = formData.get("file");
@@ -104,13 +116,13 @@ export async function POST(request: Request) {
         );
       }
 
-      const filename = (file as File).name || "image.webp";
+      const filename = (file as File).name || "document.pdf";
       let mimeType = file.type;
-      if (!mimeType && filename.toLowerCase().endsWith(".pdf")) {
+      if (filename.toLowerCase().endsWith(".pdf") || (mimeType && mimeType.includes("pdf"))) {
         mimeType = "application/pdf";
       }
       if (!mimeType) {
-        mimeType = "image/jpeg";
+        mimeType = filename.toLowerCase().endsWith(".pdf") ? "application/pdf" : "image/jpeg";
       }
 
       if (!ALLOWED_MIME_TYPES.has(mimeType)) {
@@ -119,17 +131,34 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
+
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      const uploaded = await uploadObjectToRustFS({
-        buffer,
-        filename,
-        mimeType,
-        folder,
-      });
+      // If RustFS is configured with S3 keys, upload to RustFS bucket
+      if (isRustFSConfigured()) {
+        const uploaded = await uploadObjectToRustFS({
+          buffer,
+          filename,
+          mimeType,
+          folder,
+        });
+        return NextResponse.json(uploaded);
+      }
 
-      return NextResponse.json(uploaded);
+      // Fallback: Store locally in public/uploads for local development
+      const cleanFolder = sanitizeFolderName(folder);
+      const cleanFilename = sanitizeFileName(filename);
+      const uploadDir = path.join(process.cwd(), "public", "uploads", cleanFolder);
+      await fs.mkdir(uploadDir, { recursive: true });
+      await fs.writeFile(path.join(uploadDir, cleanFilename), buffer);
+
+      return NextResponse.json({
+        ok: true,
+        key: `${cleanFolder}/${cleanFilename}`,
+        url: `/uploads/${cleanFolder}/${cleanFilename}`,
+        size: buffer.length,
+      });
     }
 
     return NextResponse.json(
@@ -137,8 +166,8 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   } catch (error) {
-    console.error("RustFS upload error:", error);
-    const message = error instanceof Error ? error.message : "Image upload failed.";
+    console.error("Upload error:", error);
+    const message = error instanceof Error ? error.message : "File upload failed.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -20,7 +20,7 @@ export function PublicMain({ children }: { children: React.ReactNode }) {
       className={cn(
         "flex-1 pb-24 pt-[4.5rem] md:pb-0 transition-colors duration-300",
         council && "council-shell",
-        isHouses && "bg-[#0a0e1a]",
+        isHouses && "pt-0 pb-0 md:pb-0 bg-transparent",
       )}
     >
       {children}

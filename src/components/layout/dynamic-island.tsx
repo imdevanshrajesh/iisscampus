@@ -409,7 +409,7 @@ function fallbackGroups(): PublicNavGroup[] {
       href: "/council",
       links: [
         { href: "/council", title: "The Council", description: "Student executive leadership roster" },
-        { href: "/announcements", title: "Campus Notices", description: "NEED TO KNOW circulars & bulletins" },
+        { href: "/announcements", title: "Notices & Posts", description: "Official circulars, blogs & posts" },
         { href: "/newsletter", title: "Newsletter", description: "The latest student circular & letter" },
         { href: "/council/socials", title: "Pinned Socials", description: "Official Instagram accounts and feed" },
         { href: "/suggestions", title: "Suggestions Box", description: "Direct suggestions to council reps" },

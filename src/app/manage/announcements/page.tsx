@@ -29,10 +29,10 @@ export default async function AnnouncementsPage({
     <div className="mx-auto max-w-6xl px-5 py-12 md:px-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Official Circulars &amp; Directives</p>
-          <h1 className="text-3xl font-medium tracking-tight text-ink mt-1">Council Notices &amp; Blog</h1>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Official Circulars, Directives &amp; Articles</p>
+          <h1 className="text-3xl font-medium tracking-tight text-ink mt-1">Notices &amp; Posts</h1>
           <p className="mt-1 text-sm leading-6 text-muted">
-            Publish circulars, directives, safety policies, or blog articles with PDF attachments and linked wellness or awareness programs.
+            Publish circulars, directives, safety policies, or blog posts with PDF attachments and linked wellness or awareness programs.
           </p>
         </div>
       </div>

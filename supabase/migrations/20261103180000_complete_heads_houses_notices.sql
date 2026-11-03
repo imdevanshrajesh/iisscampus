@@ -181,3 +181,9 @@ set title = 'Houses',
     href = '/school/houses',
     sort_order = 0
 where href in ('/school/houses', '/houses');
+
+-- Update Notices & Posts nav label
+update public.campus_nav_items
+set title = 'Notices & Posts',
+    description = 'Official circulars, blogs & posts'
+where href = '/announcements';

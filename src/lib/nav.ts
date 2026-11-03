@@ -97,7 +97,7 @@ export const defaultNavGroups: NavGroup[] = [
     sortOrder: 30,
     items: [
       item("nav-council-page", "nav-council", "The council", "Meet the boys' student council", "/council", 0),
-      item("nav-notices", "nav-council", "Campus Notices", "Official circulars & directives", "/announcements", 3),
+      item("nav-notices", "nav-council", "Notices & Posts", "Official circulars, blogs & posts", "/announcements", 3),
       item("nav-newsletter", "nav-council", "Newsletter", "The latest student circular & letter", "/newsletter", 4),
       item("nav-socials", "nav-council", "Socials", "Pinned Instagram posts and council accounts", "/council/socials", 5),
       item("nav-suggestions", "nav-council", "Suggestions", "Send a note to the council", "/suggestions", 10),
@@ -220,8 +220,8 @@ export function resolvePublicNav(
           const councilIdx = links.findIndex((l) => l.href === "/council");
           const insertAt = councilIdx >= 0 ? councilIdx + 1 : 0;
           links.splice(insertAt, 0, {
-            title: "Campus Notices",
-            description: "Official circulars & directives",
+            title: "Notices & Posts",
+            description: "Official circulars, blogs & posts",
             href: "/announcements",
           });
         }

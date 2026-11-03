@@ -1,18 +1,7 @@
-import { DeleteRecord } from "@/components/manage/delete-record";
+import { ManageSuggestionsList } from "@/components/manage/manage-suggestions-list";
 import { ManageUnavailable } from "@/components/manage/unavailable";
 import { getStaffSuggestions } from "@/lib/data/queries";
 import { requireAdministrator } from "@/lib/manage/access";
-import { deleteSuggestion } from "@/lib/suggestions/actions";
-
-const when = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-  timeZone: "Asia/Dubai",
-});
 
 export default async function SuggestionsManagePage() {
   const access = await requireAdministrator();
@@ -21,36 +10,33 @@ export default async function SuggestionsManagePage() {
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-12 md:px-8">
-      <h1 className="text-3xl font-medium tracking-tight">Suggestions</h1>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-        Notes sent from the public suggestions page. They stay in this workspace.
-      </p>
+      <div className="flex flex-wrap items-baseline justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-medium tracking-tight">Student Suggestions</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+            Notes and ideas sent from students via the public suggestion box. Click any row to expand details.
+          </p>
+        </div>
+        <div className="text-xs text-muted">
+          Total notes: <span className="font-semibold text-ink">{items.length}</span>
+        </div>
+      </div>
+
       {missing ? (
-        <p className="mt-6 text-sm">Run supabase/SUGGESTIONS.sql in the database, then refresh this page.</p>
+        <p className="mt-6 text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
+          Run supabase/SUGGESTIONS.sql in the database, then refresh this page.
+        </p>
       ) : null}
-      {items.length ? (
-        <ul className="mt-8 grid gap-4">
-          {items.map((item) => (
-            <li key={item.id} className="rounded-lg border border-[#e3e6ea] bg-white p-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-3">
-                <a href={`mailto:${item.email}`} className="text-sm font-medium">
-                  {item.email}
-                </a>
-                <time className="text-xs text-muted" dateTime={item.createdAt}>
-                  {when.format(new Date(item.createdAt))}
-                </time>
-              </div>
-              <p className="mt-3 text-sm leading-6 whitespace-pre-wrap">{item.body}</p>
-              <div className="mt-4">
-                <DeleteRecord action={deleteSuggestion} id={item.id} label="Delete" />
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : missing ? null : (
-        <p className="mt-8 text-sm text-muted">No suggestions yet.</p>
-      )}
-      {items.length === 200 ? <p className="mt-4 text-sm text-muted">Showing the latest 200.</p> : null}
+
+      <div className="mt-8">
+        {items.length ? (
+          <ManageSuggestionsList items={items} />
+        ) : missing ? null : (
+          <p className="mt-8 text-sm text-muted">No student suggestions submitted yet.</p>
+        )}
+      </div>
+
+      {items.length === 200 ? <p className="mt-4 text-xs text-muted">Showing the latest 200.</p> : null}
     </div>
   );
 }

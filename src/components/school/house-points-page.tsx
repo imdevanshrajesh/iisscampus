@@ -214,9 +214,9 @@ export function HousePointsPage({ houses }: { houses: House[] }) {
   ];
 
   return (
-    <div className="w-full min-h-[calc(100vh-4.5rem)] flex flex-col bg-[#0a0e1a]">
+    <div className="w-full min-h-screen flex flex-col">
       {/* Mobile Switcher (Sticky at top on small screens) */}
-      <div className="lg:hidden sticky top-16 z-30 flex items-center justify-center gap-1 p-2 bg-[#0a0e1a]/95 backdrop-blur-md border-b border-white/10">
+      <div className="lg:hidden sticky top-16 z-30 flex items-center justify-center gap-1 p-2 bg-black/60 backdrop-blur-md border-b border-white/10">
         <button
           type="button"
           onClick={() => {
@@ -224,7 +224,7 @@ export function HousePointsPage({ houses }: { houses: House[] }) {
             setActiveMobileHouse(null);
           }}
           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
-            activeTab === "all" ? "bg-white text-[#0a0e1a] shadow-sm" : "text-zinc-400 hover:text-white"
+            activeTab === "all" ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-400 hover:text-white"
           }`}
         >
           All 4
@@ -238,7 +238,7 @@ export function HousePointsPage({ houses }: { houses: House[] }) {
               setActiveMobileHouse(h.id);
             }}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition cursor-pointer ${
-              activeTab === h.color ? "bg-white text-[#0a0e1a] shadow-sm" : "text-zinc-400 hover:text-white"
+              activeTab === h.color ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-400 hover:text-white"
             }`}
           >
             {h.color}
@@ -246,8 +246,8 @@ export function HousePointsPage({ houses }: { houses: House[] }) {
         ))}
       </div>
 
-      {/* 4 Full-Screen Minimal Vertical Pillars with Interactive Hover Expansion */}
-      <main className="flex-1 w-full flex flex-col lg:flex-row min-h-[calc(100vh-4.5rem)]">
+      {/* 4 Full-Screen Minimal Vertical Pillars with Interactive Hover Expansion running edge-to-edge */}
+      <div className="flex-1 w-full flex flex-col lg:flex-row min-h-screen">
         {orderedHouses.map((house) => {
           const theme = PILLAR_THEMES[house.color];
           const cleanName =
@@ -268,7 +268,7 @@ export function HousePointsPage({ houses }: { houses: House[] }) {
               onClick={() => {
                 setActiveMobileHouse(activeMobileHouse === house.id ? null : house.id);
               }}
-              className={`relative flex flex-col justify-center items-center text-center ${theme.bg} ${theme.textColor} px-6 sm:px-8 lg:px-6 py-14 lg:py-16 border-b lg:border-b-0 lg:border-r border-white/10 last:border-r-0 transition-all duration-500 ease-out cursor-pointer select-none overflow-hidden ${
+              className={`relative flex flex-col justify-center items-center text-center ${theme.bg} ${theme.textColor} px-6 sm:px-8 lg:px-6 pt-24 pb-12 lg:pt-28 lg:pb-16 border-b lg:border-b-0 lg:border-r border-white/10 last:border-r-0 transition-all duration-500 ease-out cursor-pointer select-none overflow-hidden ${
                 isHiddenOnMobile ? "hidden lg:flex" : "flex"
               } ${
                 isDesktopHovered
@@ -400,7 +400,7 @@ export function HousePointsPage({ houses }: { houses: House[] }) {
             </section>
           );
         })}
-      </main>
+      </div>
     </div>
   );
 }

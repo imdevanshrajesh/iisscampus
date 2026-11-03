@@ -341,7 +341,7 @@ export function HouseForm({
                 <button
                   type="submit"
                   disabled={pending}
-                  className="px-5 py-2.5 bg-ink text-cream hover:bg-navy rounded-lg font-medium text-sm transition shadow-sm disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2.5 bg-navy text-white hover:bg-navy/90 rounded-lg font-semibold text-sm transition shadow-sm disabled:opacity-50 cursor-pointer"
                 >
                   {pending ? "Saving..." : house ? "Update House Details" : "Create House"}
                 </button>

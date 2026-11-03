@@ -43,3 +43,4 @@ next-env.d.ts
 
 # local content store shared by the public site and /manage
 /data/campus.json
+/public/uploads

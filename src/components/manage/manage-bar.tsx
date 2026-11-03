@@ -1,11 +1,17 @@
 import { Wordmark } from "@/components/brand/wordmark";
 import { ManageNav } from "@/components/manage/manage-nav";
+import { FloatingManageAi } from "@/components/manage/floating-manage-ai";
 import { signOut } from "@/lib/manage/actions";
 import { getCampusActor } from "@/lib/auth/session";
-import { getSiteBrand } from "@/lib/data/queries";
+import { getSiteBrand, getAiConfig, getPublicCatalog } from "@/lib/data/queries";
 
 export async function ManageBar({ children }: { children: React.ReactNode }) {
-  const [actor, brand] = await Promise.all([getCampusActor(), getSiteBrand()]);
+  const [actor, brand, aiConfig, catalog] = await Promise.all([
+    getCampusActor(),
+    getSiteBrand(),
+    getAiConfig(),
+    getPublicCatalog(),
+  ]);
 
   if (!actor) {
     return (
@@ -41,7 +47,16 @@ export async function ManageBar({ children }: { children: React.ReactNode }) {
           </form>
         </div>
       </aside>
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0 relative">
+        {children}
+        <FloatingManageAi
+          initialProvider={aiConfig.provider}
+          initialApiKey={aiConfig.apiKey ?? ""}
+          initialModel={aiConfig.model}
+          initialBaseUrl={aiConfig.baseUrl ?? ""}
+          categories={catalog.categories}
+        />
+      </div>
     </div>
   );
 }

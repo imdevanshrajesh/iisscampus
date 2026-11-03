@@ -8,8 +8,8 @@ import {
 } from "@/lib/data/queries";
 
 export const metadata: Metadata = {
-  title: "Campus Notices & Blog",
-  description: "Campus announcements, directives, safety policies, and dispatches for IISS x Student Council Boys.",
+  title: "Notices & Posts",
+  description: "Official campus circulars, directives, safety policies, and student blog posts for IISS x Student Council Boys.",
   alternates: { canonical: "/announcements" },
 };
 
