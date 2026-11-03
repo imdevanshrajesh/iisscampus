@@ -161,7 +161,7 @@ export function EventAiCopilot({
             </div>
             <p className="text-xs text-muted">
               {isEditing
-                ? `Enhance & fill missing descriptions, schedule, or details for "${event.title}".`
+                ? `Enhance & fill missing descriptions, schedule, or details for "${event?.title || "this event"}".`
                 : "Paste raw notes, WhatsApp messages, or bullet points to auto-populate all event fields."}
             </p>
           </div>

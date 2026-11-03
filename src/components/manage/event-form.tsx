@@ -82,6 +82,61 @@ export function EventForm({
   const cover = classifyMediaUrl(coverUrl, mediaHosts);
   const linkedNotices = event ? announcements.filter((a) => a.eventId === event.id) : [];
 
+  const [shortDescription, setShortDescription] = useState(event?.shortDescription ?? "");
+  const [fullDescription, setFullDescription] = useState(event?.fullDescription ?? "");
+  const [categoryId, setCategoryId] = useState(event?.categoryId ?? categories[0]?.id ?? "");
+  const [hostName, setHostName] = useState(event?.hostName ?? "");
+  const [locationName, setLocationName] = useState(event?.locationName ?? "");
+  const [locationMapUrl, setLocationMapUrl] = useState(event?.locationMapUrl ?? "");
+  const [eventDate, setEventDate] = useState(event?.eventDate ?? "");
+  const [endDate, setEndDate] = useState(event?.endDate ?? "");
+  const [startTime, setStartTime] = useState(event?.startTime ?? "");
+  const [endTime, setEndTime] = useState(event?.endTime ?? "");
+  const [gradeFrom, setGradeFrom] = useState(event?.gradeFrom != null ? String(event.gradeFrom) : "");
+  const [gradeTo, setGradeTo] = useState(event?.gradeTo != null ? String(event.gradeTo) : "");
+  const [feeAed, setFeeAed] = useState(event?.feeAed != null ? String(event.feeAed) : "");
+  const [capacity, setCapacity] = useState(event?.capacity != null ? String(event.capacity) : "");
+  const [packingList, setPackingList] = useState(event?.packingList ?? "");
+  const [purpose, setPurpose] = useState(event?.purpose ?? "");
+  const [activities, setActivities] = useState(event?.activities ?? "");
+  const [eventStatus, setEventStatus] = useState(event?.eventStatus ?? "");
+
+  const handleAiApply = (fields: Record<string, any>) => {
+    if (fields.title) {
+      setTitle(fields.title);
+      setSlug(fields.slug || slugify(fields.title));
+      setSlugEdited(true);
+    }
+    if (fields.shortDescription) setShortDescription(fields.shortDescription);
+    if (fields.fullDescription) setFullDescription(fields.fullDescription);
+    if (fields.categoryId) setCategoryId(fields.categoryId);
+    if (fields.listing) setListing(fields.listing);
+    if (fields.hostName) setHostName(fields.hostName);
+    if (fields.locationName) setLocationName(fields.locationName);
+    if (fields.locationMapUrl) setLocationMapUrl(fields.locationMapUrl);
+    if (fields.eventDate) setEventDate(fields.eventDate);
+    if (fields.endDate) setEndDate(fields.endDate);
+    if (fields.startTime) setStartTime(fields.startTime);
+    if (fields.endTime) setEndTime(fields.endTime);
+    if (fields.gradeFrom != null) setGradeFrom(String(fields.gradeFrom));
+    if (fields.gradeTo != null) setGradeTo(String(fields.gradeTo));
+    if (fields.feeAed != null) setFeeAed(String(fields.feeAed));
+    if (fields.capacity != null) setCapacity(String(fields.capacity));
+    if (fields.packingList) setPackingList(fields.packingList);
+    if (fields.purpose) setPurpose(fields.purpose);
+    if (fields.activities) setActivities(fields.activities);
+    if (fields.eventStatus) setEventStatus(fields.eventStatus);
+    if (Array.isArray(fields.schedule) && fields.schedule.length > 0) {
+      setSchedule(fields.schedule);
+    }
+    setOpenPanels((prev) => ({
+      ...prev,
+      event: true,
+      venue: true,
+      programme: true,
+    }));
+  };
+
   const ALL_PANEL_IDS = ["event", "venue", "cover", "gallery", "programme", "registration", "links", "notices"];
   // Collapsed by default (all false)
   const [openPanels, setOpenPanels] = useState<Record<string, boolean>>(() => ({}));
@@ -132,6 +187,14 @@ export function EventForm({
           This record is {event?.publicationStatus}. An administrator needs to change that before an editor can revise it.
         </p>
       ) : null}
+
+      {/* AI Event Copilot */}
+      <EventAiCopilot
+        event={event}
+        categories={categories}
+        onApply={handleAiApply}
+        onOpenPanel={(panelId) => togglePanel(panelId)}
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-3.5 shadow-xs">
         <div>
@@ -185,11 +248,25 @@ export function EventForm({
         </label>
         <label className="grid gap-1.5 text-sm">
           Short description
-          <textarea name="shortDescription" defaultValue={event?.shortDescription} required rows={3} className={fieldClass} />
+          <textarea
+            name="shortDescription"
+            value={shortDescription}
+            onChange={(e) => setShortDescription(e.target.value)}
+            required
+            rows={3}
+            className={fieldClass}
+          />
         </label>
         <label className="grid gap-1.5 text-sm">
           Full description
-          <textarea name="fullDescription" defaultValue={event?.fullDescription} required rows={8} className={fieldClass} />
+          <textarea
+            name="fullDescription"
+            value={fullDescription}
+            onChange={(e) => setFullDescription(e.target.value)}
+            required
+            rows={8}
+            className={fieldClass}
+          />
         </label>
         <label className="grid gap-1.5 text-sm">
           Listing
@@ -210,7 +287,8 @@ export function EventForm({
               <input
                 name="hostName"
                 required
-                defaultValue={event?.hostName ?? ""}
+                value={hostName}
+                onChange={(e) => setHostName(e.target.value)}
                 className={fieldClass}
                 placeholder="Name of the school hosting it"
               />
@@ -219,7 +297,8 @@ export function EventForm({
               Location
               <input
                 name="locationName"
-                defaultValue={event?.locationName ?? ""}
+                value={locationName}
+                onChange={(e) => setLocationName(e.target.value)}
                 className={fieldClass}
                 placeholder="Hall, ground, or city"
               />
@@ -228,7 +307,8 @@ export function EventForm({
               Map
               <input
                 name="locationMapUrl"
-                defaultValue={event?.locationMapUrl ?? ""}
+                value={locationMapUrl}
+                onChange={(e) => setLocationMapUrl(e.target.value)}
                 className={fieldClass}
                 placeholder="https://maps.google.com/..."
               />
@@ -242,7 +322,12 @@ export function EventForm({
         )}
         <label className="grid gap-1.5 text-sm">
           Primary category
-          <select name="categoryId" defaultValue={event?.categoryId ?? categories[0]?.id} className={fieldClass}>
+          <select
+            name="categoryId"
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className={fieldClass}
+          >
             {categories.map((category) => (
               <option key={category.id} value={category.id}>{category.name}</option>
             ))}
@@ -274,32 +359,68 @@ export function EventForm({
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-1.5 text-sm">
             Start date
-            <input type="date" name="eventDate" defaultValue={event?.eventDate ?? ""} className={fieldClass} />
+            <input
+              type="date"
+              name="eventDate"
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
+              className={fieldClass}
+            />
           </label>
           <label className="grid gap-1.5 text-sm">
             End date
-            <input type="date" name="endDate" defaultValue={event?.endDate ?? ""} className={fieldClass} />
+            <input
+              type="date"
+              name="endDate"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className={fieldClass}
+            />
           </label>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-1.5 text-sm">
             Start time
-            <input type="time" name="startTime" defaultValue={event?.startTime ?? ""} className={fieldClass} />
+            <input
+              type="time"
+              name="startTime"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className={fieldClass}
+            />
           </label>
           <label className="grid gap-1.5 text-sm">
             End time
-            <input type="time" name="endTime" defaultValue={event?.endTime ?? ""} className={fieldClass} />
+            <input
+              type="time"
+              name="endTime"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              className={fieldClass}
+            />
           </label>
         </div>
         {listing === "external" ? null : (
           <>
             <label className="grid gap-1.5 text-sm">
               Venue
-              <input name="locationName" defaultValue={event?.locationName ?? ""} className={fieldClass} placeholder="Auditorium" />
+              <input
+                name="locationName"
+                value={locationName}
+                onChange={(e) => setLocationName(e.target.value)}
+                className={fieldClass}
+                placeholder="Auditorium"
+              />
             </label>
             <label className="grid gap-1.5 text-sm">
               Map
-              <input name="locationMapUrl" defaultValue={event?.locationMapUrl ?? ""} className={fieldClass} placeholder="https://www.google.com/maps/place/..." />
+              <input
+                name="locationMapUrl"
+                value={locationMapUrl}
+                onChange={(e) => setLocationMapUrl(e.target.value)}
+                className={fieldClass}
+                placeholder="https://www.google.com/maps/place/..."
+              />
             </label>
             <p className="text-sm text-muted">
               Venue is only the room name, such as Auditorium. The map link pins the school. Paste the long Google Maps link from the address bar, or a maps.app.goo.gl share link.
@@ -309,31 +430,74 @@ export function EventForm({
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-1.5 text-sm">
             Grade from
-            <input type="number" min={1} max={12} name="gradeFrom" defaultValue={event?.gradeFrom ?? ""} className={fieldClass} />
+            <input
+              type="number"
+              min={1}
+              max={12}
+              name="gradeFrom"
+              value={gradeFrom}
+              onChange={(e) => setGradeFrom(e.target.value)}
+              className={fieldClass}
+            />
           </label>
           <label className="grid gap-1.5 text-sm">
             Grade to
-            <input type="number" min={1} max={12} name="gradeTo" defaultValue={event?.gradeTo ?? ""} className={fieldClass} />
+            <input
+              type="number"
+              min={1}
+              max={12}
+              name="gradeTo"
+              value={gradeTo}
+              onChange={(e) => setGradeTo(e.target.value)}
+              className={fieldClass}
+            />
           </label>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-1.5 text-sm">
             Fee (AED)
-            <input type="number" min={0} step="0.01" name="feeAed" defaultValue={event?.feeAed ?? ""} className={fieldClass} placeholder="Blank = not set" />
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              name="feeAed"
+              value={feeAed}
+              onChange={(e) => setFeeAed(e.target.value)}
+              className={fieldClass}
+              placeholder="Blank = not set"
+            />
           </label>
           <label className="grid gap-1.5 text-sm">
             Places at the venue
-            <input type="number" min={1} name="capacity" defaultValue={event?.capacity ?? ""} className={fieldClass} />
+            <input
+              type="number"
+              min={1}
+              name="capacity"
+              value={capacity}
+              onChange={(e) => setCapacity(e.target.value)}
+              className={fieldClass}
+            />
           </label>
         </div>
         <p className="text-sm text-muted">Venue places are separate from the registration limit further down.</p>
         <label className="grid gap-1.5 text-sm">
           What to bring
-          <textarea name="packingList" defaultValue={event?.packingList ?? ""} rows={4} className={fieldClass} />
+          <textarea
+            name="packingList"
+            value={packingList}
+            onChange={(e) => setPackingList(e.target.value)}
+            rows={4}
+            className={fieldClass}
+          />
         </label>
         <label className="grid gap-1.5 text-sm">
           Status
-          <select name="eventStatus" defaultValue={event?.eventStatus ?? ""} className={fieldClass}>
+          <select
+            name="eventStatus"
+            value={eventStatus}
+            onChange={(e) => setEventStatus(e.target.value as any)}
+            className={fieldClass}
+          >
             <option value="">Not set</option>
             <option value="upcoming">Upcoming</option>
             <option value="ongoing">Ongoing</option>
@@ -461,11 +625,23 @@ export function EventForm({
         >
         <label className="grid gap-1.5 text-sm">
           Purpose
-          <textarea name="purpose" defaultValue={event?.purpose ?? ""} rows={4} className={fieldClass} />
+          <textarea
+            name="purpose"
+            value={purpose}
+            onChange={(e) => setPurpose(e.target.value)}
+            rows={4}
+            className={fieldClass}
+          />
         </label>
         <label className="grid gap-1.5 text-sm">
           Activities
-          <textarea name="activities" defaultValue={event?.activities ?? ""} rows={4} className={fieldClass} />
+          <textarea
+            name="activities"
+            value={activities}
+            onChange={(e) => setActivities(e.target.value)}
+            rows={4}
+            className={fieldClass}
+          />
         </label>
 
         <Repeater

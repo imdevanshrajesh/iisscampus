@@ -19,6 +19,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { autoAddAiRecord } from "@/lib/manage/ai-actions";
+import { AiSettingsManager } from "@/components/manage/ai-settings-manager";
+import { PROVIDERS, type AiProvider } from "@/lib/ai/providers";
 import type { Category } from "@/lib/types";
 
 type ChecklistItem = {
@@ -58,21 +60,23 @@ const PRESET_EXAMPLES = [
 ];
 
 export function ManageAiAgent({
+  initialProvider = "xai",
   initialApiKey = "",
   initialModel = "grok-2-latest",
+  initialBaseUrl = "",
   categories = [],
 }: {
+  initialProvider?: AiProvider;
   initialApiKey?: string;
   initialModel?: string;
+  initialBaseUrl?: string;
   categories?: Category[];
 }) {
+  const [provider, setProvider] = useState<AiProvider>(initialProvider);
   const [apiKey, setApiKey] = useState(initialApiKey);
   const [model, setModel] = useState(initialModel);
-  const [showKeyConfig, setShowKeyConfig] = useState(false);
-  const [keyStatus, setKeyStatus] = useState<"ready" | "testing" | "invalid" | "unconfigured">(
-    initialApiKey ? "ready" : "unconfigured",
-  );
-  const [statusMessage, setStatusMessage] = useState("");
+  const [baseUrl, setBaseUrl] = useState(initialBaseUrl);
+  const [showConfig, setShowConfig] = useState(false);
 
   const [prompt, setPrompt] = useState("");
   const [targetSection, setTargetSection] = useState("auto");
@@ -92,70 +96,12 @@ export function ManageAiAgent({
   // Load API key from localStorage on mount if available
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const storedKey = localStorage.getItem("iiss_grok_api_key");
-      if (storedKey && storedKey.trim()) {
+      const storedKey = localStorage.getItem("iiss_ai_api_key") || localStorage.getItem("iiss_grok_api_key");
+      if (storedKey && storedKey.trim() && !apiKey) {
         setApiKey(storedKey);
-        setKeyStatus("ready");
       }
     }
-  }, []);
-
-  const handleTestKey = async () => {
-    if (!apiKey.trim()) {
-      setKeyStatus("unconfigured");
-      setStatusMessage("Please enter an API key.");
-      return;
-    }
-
-    setKeyStatus("testing");
-    setStatusMessage("Testing Grok API key...");
-
-    try {
-      const res = await fetch("/api/manage-ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "test-key", key: apiKey, model }),
-      });
-      const data = await res.json();
-      if (res.ok && data.ok) {
-        setKeyStatus("ready");
-        setStatusMessage("API key is valid and working!");
-        // Store in localStorage
-        localStorage.setItem("iiss_grok_api_key", apiKey.trim());
-      } else {
-        setKeyStatus("invalid");
-        setStatusMessage(data.message || data.error || "Invalid API key.");
-      }
-    } catch {
-      setKeyStatus("invalid");
-      setStatusMessage("Network error validating key.");
-    }
-  };
-
-  const handleSaveKeyToServer = async () => {
-    if (typeof window !== "undefined" && apiKey) {
-      localStorage.setItem("iiss_grok_api_key", apiKey.trim());
-    }
-
-    try {
-      const res = await fetch("/api/manage-ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "save-key", key: apiKey, model }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        setStatusMessage("Key saved to workspace settings.");
-        setKeyStatus("ready");
-        setShowKeyConfig(false);
-      } else {
-        setStatusMessage(data.error || "Failed to save.");
-      }
-    } catch {
-      setStatusMessage("Saved locally in your browser.");
-      setShowKeyConfig(false);
-    }
-  };
+  }, [apiKey]);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -168,20 +114,22 @@ export function ManageAiAgent({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(apiKey ? { "x-grok-api-key": apiKey } : {}),
+          ...(apiKey ? { "x-ai-api-key": apiKey } : {}),
         },
         body: JSON.stringify({
           action: "generate",
           prompt,
           targetSection,
+          provider,
           apiKey,
           model,
+          baseUrl,
         }),
       });
 
       const json = await res.json();
       if (!res.ok || !json.ok) {
-        setError(json.error || "Failed to generate content with Grok.");
+        setError(json.error || `Failed to generate content with ${PROVIDERS[provider]?.name || "AI"}.`);
       } else {
         setResult(json.data);
       }
@@ -219,121 +167,74 @@ export function ManageAiAgent({
 
   return (
     <div className="space-y-6">
-      {/* Grok API Key Banner / Config */}
-      <div className="rounded-xl border border-gray-200/90 bg-white p-5 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600 text-white shadow-xs">
-              <Key className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-gray-900 text-base">Grok xAI Intelligence</h3>
-                {keyStatus === "ready" ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 border border-emerald-200">
-                    <CheckCircle2 className="h-3 w-3" /> Ready
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
-                    <AlertCircle className="h-3 w-3" /> Key Required
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-muted">
-                {keyStatus === "ready"
-                  ? `Active API key configured · Model: ${model}`
-                  : "Enter your xAI Grok API key to auto-generate and manage campus content."}
-              </p>
-            </div>
+      {/* AI Provider & Settings Box */}
+      {showConfig ? (
+        <div className="space-y-2">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShowConfig(false)}
+              className="text-xs font-medium text-orange-600 hover:text-orange-700 underline cursor-pointer"
+            >
+              Done configuring · Hide Settings
+            </button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setShowKeyConfig((prev) => !prev)}
-            className="rounded-lg border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 shadow-xs transition-colors"
-          >
-            {showKeyConfig ? "Hide Settings" : keyStatus === "ready" ? "Update API Key" : "Enter API Key"}
-          </button>
+          <AiSettingsManager
+            initialProvider={provider}
+            initialApiKey={apiKey}
+            initialModel={model}
+            initialBaseUrl={baseUrl}
+            onSaved={(saved) => {
+              setProvider(saved.provider);
+              setApiKey(saved.apiKey);
+              setModel(saved.model);
+              setBaseUrl(saved.baseUrl);
+            }}
+          />
         </div>
-
-        {/* API Key Form Expandable */}
-        {showKeyConfig && (
-          <div className="mt-4 border-t border-gray-100 pt-4 space-y-3">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  xAI Grok API Key
-                </label>
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => {
-                    setApiKey(e.target.value);
-                    setKeyStatus("unconfigured");
-                  }}
-                  placeholder="xai-xxxxxxxxxxxxxxxxxxxxxxxx"
-                  className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm text-gray-900 focus:border-orange-600 focus:outline-hidden"
-                />
+      ) : (
+        <div className="rounded-xl border border-gray-200/90 bg-white p-4 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600 text-white shadow-xs">
+                <Key className="h-5 w-5" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Model</label>
-                <select
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-orange-600 focus:outline-hidden"
-                >
-                  <option value="grok-2-latest">grok-2-latest (Recommended)</option>
-                  <option value="grok-beta">grok-beta</option>
-                  <option value="grok-2-vision-1212">grok-2-vision-1212</option>
-                </select>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-gray-900 text-base">
+                    AI Backend: {PROVIDERS[provider]?.name || provider}
+                  </h3>
+                  <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-mono text-gray-700 border border-gray-200">
+                    {model}
+                  </span>
+                  {apiKey.trim() ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 border border-emerald-200">
+                      <CheckCircle2 className="h-3 w-3" /> Ready
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 border border-amber-200">
+                      <AlertCircle className="h-3 w-3" /> Key Needed
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted mt-0.5">
+                  {apiKey.trim()
+                    ? `Saved in database. Dynamic model querying active.`
+                    : "No API key configured. Click 'Configure AI' to enter your key and fetch live models."}
+                </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-              <p className="text-xs text-muted">
-                Get your key at{" "}
-                <a
-                  href="https://console.x.ai"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-orange-600 underline hover:text-orange-700"
-                >
-                  console.x.ai ↗
-                </a>
-                . Keys are saved locally and synced to workspace settings.
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleTestKey}
-                  disabled={keyStatus === "testing" || !apiKey.trim()}
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  {keyStatus === "testing" ? "Testing..." : "Test Connection"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveKeyToServer}
-                  disabled={!apiKey.trim()}
-                  className="rounded-lg bg-orange-600 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-orange-700 disabled:opacity-50 shadow-xs"
-                >
-                  Save Key
-                </button>
-              </div>
-            </div>
-
-            {statusMessage && (
-              <p
-                className={`text-xs font-medium ${
-                  keyStatus === "ready" ? "text-emerald-600" : "text-amber-600"
-                }`}
-              >
-                {statusMessage}
-              </p>
-            )}
+            <button
+              type="button"
+              onClick={() => setShowConfig(true)}
+              className="rounded-lg border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 shadow-xs transition-colors cursor-pointer"
+            >
+              Configure AI & Fetch Models
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Main Content Generator Card */}
       <div className="rounded-xl border border-gray-200/90 bg-white p-6 shadow-xs space-y-5">

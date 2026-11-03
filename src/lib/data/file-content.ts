@@ -1068,7 +1068,7 @@ export function readAiConfig(): StoredAiConfig {
         ? "gemini-2.0-flash"
         : "x-ai/grok-2-1212");
     const baseUrl = store.aiBaseUrl || null;
-    return { provider, apiKey, model, baseUrl };
+    return { provider, apiKey: apiKey ?? null, model, baseUrl };
   } catch {
     return {
       provider: "xai",
