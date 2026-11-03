@@ -886,6 +886,48 @@ export async function saveSettings(_state: ActionState, formData: FormData): Pro
   return { ok: "Image hosts saved." };
 }
 
+export async function saveAiSettings(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const provider = String(formData.get("provider") || "xai").trim() as "xai" | "openai" | "openrouter" | "gemini" | "custom";
+  const apiKeyRaw = formData.get("apiKey");
+  const apiKey = apiKeyRaw !== null ? String(apiKeyRaw).trim() || null : null;
+  const model = String(formData.get("model") || "").trim() || "grok-2-latest";
+  const baseUrl = String(formData.get("baseUrl") || "").trim() || null;
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { saveAiConfigToStore } = await import("@/lib/data/file-content");
+    const ok = saveAiConfigToStore({ provider, apiKey, model, baseUrl });
+    if (!ok) return { error: "Could not save AI settings." };
+    revalidatePath("/manage/settings");
+    revalidatePath("/manage/ai");
+    return { ok: "AI settings saved to database." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const saved = await context.supabase
+    .from("campus_settings")
+    .update({
+      ai_provider: provider,
+      ai_api_key: apiKey,
+      ai_model: model,
+      ai_base_url: baseUrl,
+    })
+    .eq("id", true);
+
+  if (saved.error) {
+    return { error: databaseError(saved.error, "Could not save AI settings to database.") };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, "update_ai_settings", "campus_settings", null);
+  revalidatePath("/manage/settings");
+  revalidatePath("/manage/ai");
+  return { ok: "AI settings saved to database." };
+}
+
 export async function grantRole(_state: ActionState, formData: FormData): Promise<ActionState> {
   const context = await staffContext();
   if ("error" in context) return { error: context.error };

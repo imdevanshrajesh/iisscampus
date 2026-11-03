@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { callGrokChat, type GrokChatMessage } from "@/lib/ai/grok";
+import { callAiChat, type AiChatMessage } from "@/lib/ai/providers";
 import { buildCampusAiSystemPrompt } from "@/lib/ai/campus-knowledge";
-import { readGrokConfig } from "@/lib/data/file-content";
+import { readAiConfig } from "@/lib/data/file-content";
 
 export const dynamic = "force-dynamic";
 
@@ -15,9 +15,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const clientMessages: GrokChatMessage[] = body.messages
+    const clientMessages: AiChatMessage[] = body.messages
       .slice(-8) // Keep last 8 turns for safety and context window
-      .filter((m: unknown): m is GrokChatMessage => {
+      .filter((m: unknown): m is AiChatMessage => {
         if (!m || typeof m !== "object") return false;
         const msg = m as Record<string, unknown>;
         return (
@@ -33,20 +33,22 @@ export async function POST(request: Request) {
     }
 
     const systemPrompt = await buildCampusAiSystemPrompt();
-    const fullMessages: GrokChatMessage[] = [
+    const fullMessages: AiChatMessage[] = [
       { role: "system", content: systemPrompt },
       ...clientMessages,
     ];
 
     // Optional client-provided API key from header or body, fallback to server store
-    const headerKey = request.headers.get("x-grok-api-key");
-    const grokConfig = readGrokConfig();
+    const headerKey = request.headers.get("x-grok-api-key") || request.headers.get("x-ai-api-key");
+    const aiConfig = readAiConfig();
     const providedKey =
-      (typeof body.apiKey === "string" ? body.apiKey : null) || headerKey || grokConfig.apiKey;
+      (typeof body.apiKey === "string" ? body.apiKey : null) || headerKey || aiConfig.apiKey;
 
-    const result = await callGrokChat(fullMessages, {
+    const result = await callAiChat(fullMessages, {
+      provider: aiConfig.provider,
       apiKey: providedKey,
-      model: grokConfig.model,
+      model: aiConfig.model,
+      baseUrl: aiConfig.baseUrl,
       temperature: 0.3,
       maxTokens: 1000,
     });

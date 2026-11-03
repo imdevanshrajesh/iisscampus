@@ -51,6 +51,10 @@ type Store = {
   socialPosts?: SocialPost[];
   grokApiKey?: string | null;
   grokModel?: string | null;
+  aiProvider?: "xai" | "openai" | "openrouter" | "gemini" | "custom";
+  aiApiKey?: string | null;
+  aiModel?: string | null;
+  aiBaseUrl?: string | null;
 };
 
 function contentFilePath() {
@@ -1002,8 +1006,8 @@ export function readGrokConfig(): { apiKey: string | null; model: string } {
   try {
     const store = readContentStore();
     return {
-      apiKey: store.grokApiKey || process.env.GROK_API_KEY || process.env.XAI_API_KEY || null,
-      model: store.grokModel || "grok-2-latest",
+      apiKey: store.aiApiKey || store.grokApiKey || process.env.GROK_API_KEY || process.env.XAI_API_KEY || null,
+      model: store.aiModel || store.grokModel || "grok-2-latest",
     };
   } catch {
     return {
@@ -1017,7 +1021,88 @@ export function saveGrokConfigToStore(apiKey: string | null, model?: string | nu
   try {
     const store = readContentStore();
     store.grokApiKey = apiKey ? apiKey.trim() : null;
-    if (model) store.grokModel = model.trim();
+    store.aiApiKey = store.grokApiKey;
+    if (model) {
+      store.grokModel = model.trim();
+      store.aiModel = store.grokModel;
+    }
+    return writeContentStore(store);
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
+export type StoredAiConfig = {
+  provider: "xai" | "openai" | "openrouter" | "gemini" | "custom";
+  apiKey: string | null;
+  model: string;
+  baseUrl: string | null;
+};
+
+export function readAiConfig(): StoredAiConfig {
+  try {
+    const store = readContentStore();
+    const provider = (store.aiProvider || "xai") as StoredAiConfig["provider"];
+    const apiKey =
+      store.aiApiKey ||
+      store.grokApiKey ||
+      process.env.AI_API_KEY ||
+      (provider === "xai"
+        ? process.env.GROK_API_KEY || process.env.XAI_API_KEY
+        : provider === "openai"
+        ? process.env.OPENAI_API_KEY
+        : provider === "openrouter"
+        ? process.env.OPENROUTER_API_KEY
+        : provider === "gemini"
+        ? process.env.GEMINI_API_KEY
+        : null);
+    const model =
+      store.aiModel ||
+      store.grokModel ||
+      (provider === "xai"
+        ? "grok-2-latest"
+        : provider === "openai"
+        ? "gpt-4o"
+        : provider === "gemini"
+        ? "gemini-2.0-flash"
+        : "x-ai/grok-2-1212");
+    const baseUrl = store.aiBaseUrl || null;
+    return { provider, apiKey, model, baseUrl };
+  } catch {
+    return {
+      provider: "xai",
+      apiKey: process.env.GROK_API_KEY || process.env.XAI_API_KEY || null,
+      model: "grok-2-latest",
+      baseUrl: null,
+    };
+  }
+}
+
+export function saveAiConfigToStore(config: {
+  provider?: "xai" | "openai" | "openrouter" | "gemini" | "custom";
+  apiKey?: string | null;
+  model?: string | null;
+  baseUrl?: string | null;
+}): boolean {
+  try {
+    const store = readContentStore();
+    if (config.provider) store.aiProvider = config.provider;
+    if (config.apiKey !== undefined) {
+      store.aiApiKey = config.apiKey ? config.apiKey.trim() : null;
+      if (store.aiProvider === "xai" || !store.aiProvider) {
+        store.grokApiKey = store.aiApiKey;
+      }
+    }
+    if (config.model) {
+      store.aiModel = config.model.trim();
+      if (store.aiProvider === "xai" || !store.aiProvider) {
+        store.grokModel = store.aiModel;
+      }
+    }
+    if (config.baseUrl !== undefined) {
+      store.aiBaseUrl = config.baseUrl ? config.baseUrl.trim() : null;
+    }
     return writeContentStore(store);
   } catch (error) {
     console.error(error);

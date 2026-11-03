@@ -1,16 +1,24 @@
 import { NextResponse } from "next/server";
-import { callGrokChat, testGrokApiKey, type GrokChatMessage } from "@/lib/ai/grok";
-import { saveGrokConfigToStore, readContentStore } from "@/lib/data/file-content";
+import {
+  callAiChat,
+  fetchProviderModels,
+  PROVIDERS,
+  type AiChatMessage,
+  type AiProvider,
+} from "@/lib/ai/providers";
+import {
+  readAiConfig,
+  saveAiConfigToStore,
+} from "@/lib/data/file-content";
 import { getStaffWorkspace } from "@/lib/data/staff";
+import { createStaffClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 function extractJson(text: string) {
-  // Try direct parse
   try {
     return JSON.parse(text);
   } catch {
-    // Try finding ```json block
     const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
     if (jsonMatch && jsonMatch[1]) {
       try {
@@ -19,7 +27,6 @@ function extractJson(text: string) {
         // Continue
       }
     }
-    // Try finding outermost { ... }
     const firstBrace = text.indexOf("{");
     const lastBrace = text.lastIndexOf("}");
     if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
@@ -40,39 +47,99 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid request payload." }, { status: 400 });
     }
 
-    const { action = "generate", apiKey, model } = body;
+    const { action = "generate" } = body;
+    const storedConfig = readAiConfig();
 
-    // Action 1: Test API Key
-    if (action === "test-key") {
-      const keyToTest = apiKey || body.key;
-      if (!keyToTest) {
-        return NextResponse.json({ error: "Please enter an API key to test." }, { status: 400 });
+    const provider: AiProvider = (body.provider || storedConfig.provider || "xai") as AiProvider;
+    const apiKey =
+      (typeof body.apiKey === "string" ? body.apiKey : null) ||
+      (typeof body.key === "string" ? body.key : null) ||
+      request.headers.get("x-ai-api-key") ||
+      request.headers.get("x-grok-api-key") ||
+      storedConfig.apiKey;
+    const model =
+      (typeof body.model === "string" ? body.model : null) || storedConfig.model;
+    const baseUrl =
+      (typeof body.baseUrl === "string" ? body.baseUrl : null) || storedConfig.baseUrl;
+
+    // Action 1: Dynamically Fetch Live Models from Provider
+    if (action === "fetch-models") {
+      if (!apiKey && provider !== "custom") {
+        return NextResponse.json(
+          { ok: false, error: "Please enter an API key to fetch available models." },
+          { status: 400 },
+        );
       }
-      const testResult = await testGrokApiKey(keyToTest, model);
-      return NextResponse.json(testResult);
+
+      const result = await fetchProviderModels({
+        provider,
+        apiKey: apiKey || "",
+        baseUrl,
+      });
+
+      return NextResponse.json(result);
     }
 
-    // Action 2: Save API Key
-    if (action === "save-key") {
-      const keyToSave = typeof body.key === "string" ? body.key : null;
-      const modelToSave = typeof body.model === "string" ? body.model : "grok-2-latest";
-      const saved = saveGrokConfigToStore(keyToSave, modelToSave);
-      if (!saved) {
-        return NextResponse.json({ error: "Could not persist Grok API settings." }, { status: 500 });
+    // Action 2: Save AI Configuration to Database & Store
+    if (action === "save-settings" || action === "save-key") {
+      const keyToSave = typeof body.apiKey === "string" ? body.apiKey : typeof body.key === "string" ? body.key : null;
+      const providerToSave: AiProvider = body.provider || provider;
+      const modelToSave = body.model || model;
+      const baseUrlToSave = body.baseUrl || baseUrl;
+
+      // 1. Save to local JSON store
+      const fileSaved = saveAiConfigToStore({
+        provider: providerToSave,
+        apiKey: keyToSave,
+        model: modelToSave,
+        baseUrl: baseUrlToSave,
+      });
+
+      // 2. Also save to Supabase campus_settings table if connected
+      try {
+        const supabase = await createStaffClient();
+        if (supabase) {
+          await supabase
+            .from("campus_settings")
+            .update({
+              ai_provider: providerToSave,
+              ai_api_key: keyToSave ? keyToSave.trim() : null,
+              ai_model: modelToSave ? modelToSave.trim() : null,
+              ai_base_url: baseUrlToSave ? baseUrlToSave.trim() : null,
+            })
+            .eq("id", true);
+        }
+      } catch (e) {
+        console.warn("Could not write AI settings to Supabase:", e);
       }
-      return NextResponse.json({ ok: true, message: "Grok API settings saved successfully." });
+
+      if (!fileSaved) {
+        return NextResponse.json(
+          { error: "Could not persist AI settings to store." },
+          { status: 500 },
+        );
+      }
+
+      return NextResponse.json({
+        ok: true,
+        message: "AI provider and settings saved successfully to database.",
+      });
     }
 
-    // Action 3: Generate structured content
-    if (action === "generate") {
+    // Action 3: Generate / Fill Event & Content Fields
+    if (action === "generate" || action === "fill-event") {
       const userPrompt = String(body.prompt ?? "").trim();
       if (!userPrompt) {
-        return NextResponse.json({ error: "Please enter event or content details." }, { status: 400 });
+        return NextResponse.json(
+          { error: "Please enter event notes or instructions." },
+          { status: 400 },
+        );
       }
 
-      const targetSection = body.targetSection || "auto";
+      const targetSection = action === "fill-event" ? "event" : body.targetSection || "auto";
+      const currentEvent = body.currentEvent || null;
 
-      // Fetch categories from workspace so Grok can select the right category ID
+      // Fetch categories from workspace so the AI picks the matching category
       const workspace = await getStaffWorkspace();
       const categories = (workspace?.categories || []).map((c) => ({
         id: c.id,
@@ -82,99 +149,92 @@ export async function POST(request: Request) {
 
       const today = new Date().toISOString().split("T")[0];
 
-      const systemPrompt = `You are the Content Operations AI Agent for India International School Campus management desk.
+      const systemPrompt = `You are the Content Copilot for the India International School Campus management desk.
 Today's date: ${today}.
-Available categories for events & activities:
+Available categories for activities:
 ${JSON.stringify(categories, null, 2)}
+${currentEvent ? `Existing event details being edited:\n${JSON.stringify(currentEvent, null, 2)}` : ""}
 
-Your task is to take rough input (notes, messages, emails, or bullet points) from a school administrator or editor, and convert it into a structured, publication-ready record.
+TASK:
+Convert the user's input (rough notes, email, WhatsApp message, or instructions) into a complete, structured record.
 
-RULES & INSTRUCTIONS:
+REQUIREMENTS & RULES:
 1. Target Section: ${
         targetSection !== "auto"
-          ? `The user specifically wants a record for "${targetSection}".`
-          : "Auto-detect the most appropriate section: 'event', 'announcement', 'achievement', 'faq', 'marquee', or 'wellness'."
+          ? `The user specifically wants an "${targetSection}".`
+          : "Auto-detect: 'event', 'announcement', 'achievement', 'faq', 'marquee', or 'wellness'."
       }
-2. DESCRIPTION GENERATION:
-   - If the user did not provide a description or only gave brief points, YOU MUST AUTO-GENERATE high-quality, professional, inspiring descriptions!
-   - Generate both a concise 'shortDescription' (1-2 sentences for cards, 30-200 characters) AND a comprehensive 'fullDescription' (2-4 rich paragraphs with objectives, activities, rules, and expectations).
-3. UPLOADS & REQUIREMENTS CHECKLIST:
-   - Identify what digital media or links the administrator still needs to upload or configure.
-   - For example:
-     * Cover Image: "Upload 16:9 landscape photo (min 1200x675px) hosted on approved host like Cloudinary."
-     * Registration Link: "Provide Google Form or Arigo link if student signup is required."
-     * PDF Document / Rulebook: "Upload rules PDF if competition rules document is available."
-4. CATEGORY ASSIGNMENT:
-   - Match the content to the best category ID from the list above. Default to the first available category if unsure.
-5. SLUG GENERATION:
-   - Create a clean kebab-case slug (e.g. "inter-house-basketball-tournament-2026").
-6. SCHEDULE:
-   - If schedule items can be derived or logically suggested (e.g., Opening, Competition, Finals, Awards), provide 2-4 schedule entries with time (HH:MM), title, and detail.
+2. DESCRIPTIONS (VERY IMPORTANT):
+   - If the user did not provide a description or only provided brief bullet points, YOU MUST AUTO-GENERATE high-quality, inspiring, informative descriptions!
+   - 'shortDescription': A clear, punchy 1-2 sentence overview for event cards (max 200 characters).
+   - 'fullDescription': 2 to 4 detailed paragraphs covering event objectives, rules, eligibility, house participation, and atmosphere. Formatted cleanly with paragraphs.
+3. SCHEDULE & ACTIVITIES:
+   - For events, suggest 2 to 5 logical schedule entries with time (HH:MM), title, and brief detail.
+   - Outline key activities and purpose.
+4. WHAT NEEDS TO BE UPLOADED (CHECKLIST):
+   - Clearly state what digital assets or URLs the manager still needs to upload:
+     * Cover image: "Upload a 16:9 landscape banner (min 1200x675px) hosted on Cloudinary or approved host."
+     * Registration: "If registrations are needed, provide Google Form or registration page URL."
+     * Document: "Attach rulebook or permission slip PDF if available."
+5. MATCH CATEGORY & SLUG:
+   - Assign the best matching category ID from the list.
+   - Generate a clean kebab-case slug (e.g. 'inter-house-badminton-2026').
 
 OUTPUT FORMAT:
-Respond ONLY with a valid JSON object (no surrounding conversational text) matching this exact structure:
+Respond ONLY with a valid JSON object matching this exact schema:
 {
   "section": "event" | "announcement" | "achievement" | "faq" | "marquee" | "wellness",
-  "summary": "One sentence summary of what was generated",
+  "summary": "One sentence summary of the generated content",
   "checklist": [
-    { "item": "Name of upload / task", "required": boolean, "detail": "Specific instructions for what to upload or configure" }
+    { "item": "Name of upload/item", "required": boolean, "detail": "Specific instructions on what to add" }
   ],
   "fields": {
-    "title": "Clear catchy title",
+    "title": "Event or Item Title",
     "slug": "kebab-case-slug",
-    "shortDescription": "Concise summary",
-    "fullDescription": "Rich descriptive writeup...",
-    "categoryId": "UUID from category list above",
+    "shortDescription": "Concise summary...",
+    "fullDescription": "Rich multi-paragraph description...",
+    "categoryId": "UUID from categories list",
+    "listing": "event" | "competition" | "external",
     "eventDate": "YYYY-MM-DD or null",
     "endDate": "YYYY-MM-DD or null",
     "startTime": "HH:MM or null",
     "endTime": "HH:MM or null",
-    "locationName": "Location venue name or null",
-    "gradeFrom": number | null (e.g. 6),
-    "gradeTo": number | null (e.g. 12),
-    "feeAed": number | null (0 if free),
-    "purpose": "Event purpose statement",
-    "activities": "Highlights of activities",
+    "locationName": "Venue name or null",
+    "gradeFrom": number | null,
+    "gradeTo": number | null,
+    "feeAed": number | null,
+    "purpose": "Purpose statement...",
+    "activities": "Activities list...",
     "packingList": "What to bring or null",
     "schedule": [
-      { "time": "09:00", "title": "Assembly & Briefing", "detail": "Details..." }
-    ],
-    // If announcement:
-    "body": "Announcement text...",
-    // If achievement:
-    "competitionName": "Name of competition",
-    "winnerName": "Student or team name",
-    "award": "First Prize / Gold Medal / etc.",
-    "academicYear": "2026–27",
-    // If FAQ:
-    "question": "Question text",
-    "answer": "Answer text",
-    // If Marquee:
-    "message": "Punchy ticker announcement message"
+      { "time": "09:00", "title": "Assembly & Registration", "detail": "Report to venue" }
+    ]
   }
 }`;
 
-      const messages: GrokChatMessage[] = [
+      const messages: AiChatMessage[] = [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ];
 
-      const grokResponse = await callGrokChat(messages, {
-        apiKey: apiKey || request.headers.get("x-grok-api-key"),
-        model: model || "grok-2-latest",
+      const aiResponse = await callAiChat(messages, {
+        provider,
+        apiKey,
+        model,
+        baseUrl,
         temperature: 0.2,
       });
 
-      if (!grokResponse.ok) {
-        return NextResponse.json({ error: grokResponse.error }, { status: 502 });
+      if (!aiResponse.ok) {
+        return NextResponse.json({ error: aiResponse.error }, { status: 502 });
       }
 
-      const parsedJson = extractJson(grokResponse.content);
+      const parsedJson = extractJson(aiResponse.content);
       if (!parsedJson) {
         return NextResponse.json(
           {
-            error: "Grok responded, but the output could not be parsed as structured JSON.",
-            raw: grokResponse.content,
+            error: "The AI responded, but the output could not be parsed as structured JSON.",
+            raw: aiResponse.content,
           },
           { status: 502 },
         );
