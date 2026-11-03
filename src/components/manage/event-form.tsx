@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, ArrowUpRight, Bell, ChevronDown, ChevronRight, Chev
 import { saveEvent, type ActionState } from "@/lib/manage/actions";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
 import { ResourceRepeater } from "@/components/manage/resource-repeater";
+import { EventAiCopilot } from "@/components/manage/event-ai-copilot";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import { classifyMediaUrl } from "@/lib/media/url";
 import type {
