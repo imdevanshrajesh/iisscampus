@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { saveAchievement, type ActionState } from "@/lib/manage/actions";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
+import { ImageUploader } from "@/components/manage/image-uploader";
 import { ResourceRepeater } from "@/components/manage/resource-repeater";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import { classifyMediaUrl } from "@/lib/media/url";
@@ -56,22 +57,16 @@ export function AchievementForm({
             {events.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}
           </select>
         </label>
-        <label className="grid gap-1.5 text-sm">
-          Image URL
-          <input
-            name="imageUrl"
-            value={imageUrl}
-            onChange={(event) => setImageUrl(event.target.value)}
-            className={fieldClass}
-            placeholder={IMAGE_URL_EXAMPLE}
-          />
-        </label>
-        <ImageUrlHint />
+        <ImageUploader
+          name="imageUrl"
+          value={imageUrl}
+          onChange={(url) => setImageUrl(url)}
+          folder="Activities"
+          label="Achievement Photograph"
+          hint="Upload directly to RustFS or frame the image."
+          aspectRatio="4:3"
+        />
         {imageUrl && !image.ok ? <p className="text-sm text-muted">{image.message}</p> : null}
-        {image.ok ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={image.url} alt="" className="aspect-[4/3] max-w-xs rounded-xl object-cover" />
-        ) : null}
         <label className="grid gap-1.5 text-sm">Alternative text<input name="imageAlt" defaultValue={achievement?.imageAlt ?? ""} className={fieldClass} /></label>
         <ResourceRepeater resources={resources} onChange={setResources} />
       </fieldset>

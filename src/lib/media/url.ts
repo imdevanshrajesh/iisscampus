@@ -7,6 +7,11 @@ const BLOCKED_IMAGE_HOSTS = new Set([
   "docs.usercontent.google.com",
 ]);
 
+/** Self-hosted RustFS CDN hosts trusted by default */
+const BUILTIN_TRUSTED_IMAGE_HOSTS = new Set([
+  "cdn.iissboys.com",
+]);
+
 export type UrlFailureCode =
   | "empty"
   | "invalid"
@@ -112,7 +117,7 @@ export function classifyMediaUrl(
   }
 
   const allowed = new Set(allowedHosts.map((host) => host.toLowerCase()));
-  if (!allowed.has(parsed.host)) {
+  if (!allowed.has(parsed.host) && !BUILTIN_TRUSTED_IMAGE_HOSTS.has(parsed.host)) {
     return fail(
       "allowlist",
       "This host is not on the approved image list. An administrator can add it in content settings.",

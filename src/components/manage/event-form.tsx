@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpRight, Bell, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
 import { saveEvent, type ActionState } from "@/lib/manage/actions";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
+import { ImageUploader } from "@/components/manage/image-uploader";
 import { ResourceRepeater } from "@/components/manage/resource-repeater";
 import { EventAiCopilot } from "@/components/manage/event-ai-copilot";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
@@ -519,27 +520,19 @@ export function EventForm({
           isOpen={Boolean(openPanels.cover)}
           onToggle={() => togglePanel("cover")}
         >
-          <label className="grid gap-1.5 text-sm">
-            Image URL
-            <input name="coverImageUrl" value={coverUrl} onChange={(event) => {
-              setCoverUrl(event.target.value);
+          <ImageUploader
+            name="coverImageUrl"
+            value={coverUrl}
+            onChange={(url) => {
+              setCoverUrl(url);
               setCoverFailed(false);
-            }} className={fieldClass} placeholder={IMAGE_URL_EXAMPLE} />
-          </label>
-          <ImageUrlHint />
+            }}
+            folder="Events"
+            label="Cover Photograph"
+            hint="Uploads directly to your RustFS iissimages bucket. Use the visual framing tool to pick what shows on cards."
+            aspectRatio="16:10"
+          />
           {coverUrl && !cover.ok ? <p className="text-sm text-muted">{cover.message}</p> : null}
-          {cover.ok ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={cover.url}
-              alt=""
-              className="aspect-[4/3] max-w-sm rounded-xl border border-line object-cover"
-              onError={() => setCoverFailed(true)}
-            />
-          ) : null}
-          {coverFailed ? (
-            <p className="text-sm text-muted">This URL did not load as an image. It may be private, expired, or not a direct image address.</p>
-          ) : null}
           <label className="grid gap-1.5 text-sm">
             Alternative text
             <input name="coverAlt" defaultValue={event?.coverAlt ?? ""} className={fieldClass} />
@@ -571,22 +564,17 @@ export function EventForm({
           {images.map((image, index) => {
             const classified = classifyMediaUrl(image.url, mediaHosts);
             return (
-              <div key={index} className="grid gap-3 rounded-xl border border-line p-4">
-                <label className="grid gap-1.5 text-sm">
-                  Image URL
-                  <input
-                    value={image.url}
-                    onChange={(event) => updateImage(index, { url: event.target.value })}
-                    className={fieldClass}
-                    placeholder={IMAGE_URL_EXAMPLE}
-                  />
-                </label>
-                <ImageUrlHint />
+              <div key={index} className="grid gap-3 rounded-xl border border-line p-4 bg-wash/20">
+                <ImageUploader
+                  name={`gallery_${index}`}
+                  value={image.url}
+                  onChange={(url) => updateImage(index, { url })}
+                  folder="Gallery"
+                  label={`Gallery Photograph #${index + 1}`}
+                  hint="Upload directly to RustFS or frame the image."
+                  aspectRatio="4:3"
+                />
                 {image.url && !classified.ok ? <p className="text-sm text-muted">{classified.message}</p> : null}
-                {classified.ok ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={classified.url} alt="" className="aspect-[4/3] max-w-xs rounded-lg object-cover" />
-                ) : null}
                 <label className="grid gap-1.5 text-sm">
                   Alternative text
                   <input value={image.alt} onChange={(event) => updateImage(index, { alt: event.target.value })} className={fieldClass} />

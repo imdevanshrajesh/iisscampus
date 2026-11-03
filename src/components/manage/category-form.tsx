@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { saveCategory, type ActionState } from "@/lib/manage/actions";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
+import { ImageUploader } from "@/components/manage/image-uploader";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import { classifyMediaUrl } from "@/lib/media/url";
 import type { Category } from "@/lib/types";
@@ -62,22 +63,16 @@ export function CategoryForm({
         Sort order
         <input type="number" name="sortOrder" defaultValue={category?.sortOrder ?? 0} min={0} className={fieldClass} />
       </label>
-      <label className="grid gap-1.5 text-sm">
-        Image URL
-        <input
-          name="imageUrl"
-          value={imageUrl}
-          onChange={(event) => setImageUrl(event.target.value)}
-          placeholder={IMAGE_URL_EXAMPLE}
-          className={fieldClass}
-        />
-      </label>
-      <ImageUrlHint />
+      <ImageUploader
+        name="imageUrl"
+        value={imageUrl}
+        onChange={(url) => setImageUrl(url)}
+        folder="General"
+        label="Category Photograph"
+        hint="Upload directly to RustFS or frame the image."
+        aspectRatio="16:10"
+      />
       {imageUrl && !image.ok ? <p className="text-sm text-muted">{image.message}</p> : null}
-      {image.ok ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={image.url} alt="" className="aspect-[4/3] max-w-xs rounded-xl object-cover" />
-      ) : null}
       <label className="grid gap-1.5 text-sm">
         PDF URL
         <input name="pdfUrl" defaultValue={category?.pdfUrl ?? ""} placeholder="https://" className={fieldClass} />
