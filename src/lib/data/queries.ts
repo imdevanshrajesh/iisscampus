@@ -4,11 +4,13 @@ import { unstable_cache } from "next/cache";
 import { selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "@/lib/data/catalog";
 import {
   listSuggestionsFromStore,
+  readAiConfig,
   readContentStore,
   readNewsletter,
   readSocial,
   readSocialPostsFromStore,
   readWellnessPageSettings,
+  type StoredAiConfig,
 } from "@/lib/data/file-content";
 import { normalizeSocialLinks } from "@/lib/social";
 import {
@@ -324,6 +326,52 @@ function brandFromRow(row: {
     navLogoHref: row?.nav_logo_href ? String(row.nav_logo_href) : null,
     navLabel: row?.nav_label?.trim() || "IISS Boys",
   };
+}
+
+export async function getAiConfig(): Promise<StoredAiConfig> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = createPublicClient();
+      if (supabase) {
+        const row = await supabase
+          .from("campus_settings")
+          .select("ai_provider, ai_api_key, ai_model, ai_base_url")
+          .eq("id", true)
+          .maybeSingle();
+
+        if (!row.error && row.data) {
+          const provider = (row.data.ai_provider || "xai") as StoredAiConfig["provider"];
+          const apiKey =
+            row.data.ai_api_key ||
+            process.env.AI_API_KEY ||
+            (provider === "xai"
+              ? process.env.GROK_API_KEY || process.env.XAI_API_KEY
+              : provider === "openai"
+              ? process.env.OPENAI_API_KEY
+              : provider === "openrouter"
+              ? process.env.OPENROUTER_API_KEY
+              : provider === "gemini"
+              ? process.env.GEMINI_API_KEY
+              : null);
+          const model =
+            row.data.ai_model ||
+            (provider === "xai"
+              ? "grok-2-latest"
+              : provider === "openai"
+              ? "gpt-4o"
+              : provider === "gemini"
+              ? "gemini-2.0-flash"
+              : "x-ai/grok-2-1212");
+          const baseUrl = row.data.ai_base_url || null;
+
+          return { provider, apiKey: apiKey ?? null, model, baseUrl };
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error reading AI config from database:", error);
+  }
+  return readAiConfig();
 }
 
 export async function getPublicAnnouncements(): Promise<Announcement[]> {

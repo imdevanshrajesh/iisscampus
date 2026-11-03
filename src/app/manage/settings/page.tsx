@@ -8,8 +8,7 @@ import {
 } from "@/components/manage/settings-forms";
 import { AiSettingsManager } from "@/components/manage/ai-settings-manager";
 import { ManageUnavailable } from "@/components/manage/unavailable";
-import { getPublicSocial, getSiteBrand } from "@/lib/data/queries";
-import { readAiConfig } from "@/lib/data/file-content";
+import { getAiConfig, getPublicSocial, getSiteBrand } from "@/lib/data/queries";
 import { requireAdministrator } from "@/lib/manage/access";
 import { IMAGE_HOSTS_GUIDE } from "@/lib/media/guide";
 import { createStaffClient } from "@/lib/supabase/server";
@@ -17,8 +16,7 @@ import { createStaffClient } from "@/lib/supabase/server";
 export default async function SettingsPage() {
   const access = await requireAdministrator();
   if (!access.ready) return <ManageUnavailable />;
-  const [social, brand] = await Promise.all([getPublicSocial(), getSiteBrand()]);
-  const aiConfig = readAiConfig();
+  const [social, brand, aiConfig] = await Promise.all([getPublicSocial(), getSiteBrand(), getAiConfig()]);
 
   const supabase = await createStaffClient();
   const audit = supabase

@@ -7,9 +7,10 @@ import {
   type AiProvider,
 } from "@/lib/ai/providers";
 import {
-  readAiConfig,
   saveAiConfigToStore,
 } from "@/lib/data/file-content";
+import { getAiConfig } from "@/lib/data/queries";
+import { contentMode } from "@/lib/data/content-mode";
 import { getStaffWorkspace } from "@/lib/data/staff";
 import { createStaffClient } from "@/lib/supabase/server";
 
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
     }
 
     const { action = "generate" } = body;
-    const storedConfig = readAiConfig();
+    const storedConfig = await getAiConfig();
 
     const provider: AiProvider = (body.provider || storedConfig.provider || "xai") as AiProvider;
     const apiKey =
@@ -87,43 +88,71 @@ export async function POST(request: Request) {
       const modelToSave = body.model || model;
       const baseUrlToSave = body.baseUrl || baseUrl;
 
-      // 1. Save to local JSON store
-      const fileSaved = saveAiConfigToStore({
-        provider: providerToSave,
-        apiKey: keyToSave,
-        model: modelToSave,
-        baseUrl: baseUrlToSave,
-      });
+      const mode = await contentMode();
 
-      // 2. Also save to Supabase campus_settings table if connected
-      try {
+      if (mode === "supabase") {
         const supabase = await createStaffClient();
-        if (supabase) {
-          await supabase
-            .from("campus_settings")
-            .update({
-              ai_provider: providerToSave,
-              ai_api_key: keyToSave ? keyToSave.trim() : null,
-              ai_model: modelToSave ? modelToSave.trim() : null,
-              ai_base_url: baseUrlToSave ? baseUrlToSave.trim() : null,
-            })
-            .eq("id", true);
+        if (!supabase) {
+          return NextResponse.json(
+            { ok: false, error: "Staff session required to update database settings." },
+            { status: 401 },
+          );
         }
-      } catch (e) {
-        console.warn("Could not write AI settings to Supabase:", e);
-      }
 
-      if (!fileSaved) {
-        return NextResponse.json(
-          { error: "Could not persist AI settings to store." },
-          { status: 500 },
-        );
-      }
+        const updateRes = await supabase
+          .from("campus_settings")
+          .update({
+            ai_provider: providerToSave,
+            ai_api_key: keyToSave ? keyToSave.trim() : null,
+            ai_model: modelToSave ? modelToSave.trim() : null,
+            ai_base_url: baseUrlToSave ? baseUrlToSave.trim() : null,
+          })
+          .eq("id", true);
 
-      return NextResponse.json({
-        ok: true,
-        message: "AI provider and settings saved successfully to database.",
-      });
+        if (updateRes.error) {
+          console.error("Supabase settings update error:", updateRes.error);
+          return NextResponse.json(
+            { ok: false, error: `Database error: ${updateRes.error.message}` },
+            { status: 500 },
+          );
+        }
+
+        // Also sync local file as non-blocking backup if writable
+        try {
+          saveAiConfigToStore({
+            provider: providerToSave,
+            apiKey: keyToSave,
+            model: modelToSave,
+            baseUrl: baseUrlToSave,
+          });
+        } catch {
+          // Ignore file errors in database mode
+        }
+
+        return NextResponse.json({
+          ok: true,
+          message: "AI configuration saved successfully to Supabase database (campus_settings).",
+        });
+      } else {
+        const fileSaved = saveAiConfigToStore({
+          provider: providerToSave,
+          apiKey: keyToSave,
+          model: modelToSave,
+          baseUrl: baseUrlToSave,
+        });
+
+        if (!fileSaved) {
+          return NextResponse.json(
+            { ok: false, error: "Could not persist AI settings to local store." },
+            { status: 500 },
+          );
+        }
+
+        return NextResponse.json({
+          ok: true,
+          message: "AI configuration saved successfully to local campus store.",
+        });
+      }
     }
 
     // Action 3: Generate / Fill Event & Content Fields

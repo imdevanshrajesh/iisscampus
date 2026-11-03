@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ManageAiAgent } from "@/components/manage/manage-ai-agent";
 import { ManageUnavailable } from "@/components/manage/unavailable";
-import { readAiConfig } from "@/lib/data/file-content";
+import { getAiConfig } from "@/lib/data/queries";
 import { requireWorkspace } from "@/lib/manage/access";
 
 export const metadata: Metadata = {
@@ -12,7 +12,7 @@ export default async function ManageAiPage() {
   const access = await requireWorkspace();
   if (!access.ready) return <ManageUnavailable />;
 
-  const aiConfig = readAiConfig();
+  const aiConfig = await getAiConfig();
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-8 md:px-8 space-y-6">

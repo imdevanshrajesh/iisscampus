@@ -224,6 +224,12 @@ export function readContentStore(): Store {
             ];
           })
         : [],
+      grokApiKey: parsed.grokApiKey ?? null,
+      grokModel: parsed.grokModel ?? null,
+      aiProvider: parsed.aiProvider ?? undefined,
+      aiApiKey: parsed.aiApiKey ?? null,
+      aiModel: parsed.aiModel ?? null,
+      aiBaseUrl: parsed.aiBaseUrl ?? null,
     };
   } catch {
     return initialStore();

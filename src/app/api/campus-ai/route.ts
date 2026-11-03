@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { callAiChat, type AiChatMessage } from "@/lib/ai/providers";
 import { buildCampusAiSystemPrompt } from "@/lib/ai/campus-knowledge";
-import { readAiConfig } from "@/lib/data/file-content";
+import { getAiConfig } from "@/lib/data/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
     // Optional client-provided API key from header or body, fallback to server store
     const headerKey = request.headers.get("x-grok-api-key") || request.headers.get("x-ai-api-key");
-    const aiConfig = readAiConfig();
+    const aiConfig = await getAiConfig();
     const providedKey =
       (typeof body.apiKey === "string" ? body.apiKey : null) || headerKey || aiConfig.apiKey;
 
