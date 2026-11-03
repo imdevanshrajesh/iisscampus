@@ -284,14 +284,14 @@ export function ImageUploader({
                   setSelectedFolder(e.target.value);
                 }
               }}
-              className="h-6 rounded-md border border-line bg-surface px-1.5 text-xs text-ink font-medium"
+              className="h-7 rounded-md border border-line bg-white dark:bg-black px-2 text-xs text-ink dark:text-white font-medium"
             >
               {DEFAULT_UPLOAD_FOLDERS.map((f) => (
-                <option key={f} value={f}>
+                <option key={f} value={f} className="bg-white dark:bg-black text-ink dark:text-white">
                   {f}/
                 </option>
               ))}
-              <option value="__custom__">+ Custom folder...</option>
+              <option value="__custom__" className="bg-white dark:bg-black text-ink dark:text-white">+ Custom folder...</option>
             </select>
           )}
         </div>

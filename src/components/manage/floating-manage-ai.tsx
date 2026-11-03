@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles, X } from "lucide-react";
+import { Sparkles, X, Maximize2 } from "lucide-react";
 import { ManageAiAgent } from "@/components/manage/manage-ai-agent";
 import type { AiProvider } from "@/lib/ai/providers";
 import type { Category } from "@/lib/types";
@@ -91,25 +92,39 @@ export function FloatingManageAi({
         aria-hidden={!open}
       >
         {/* Drawer Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-line bg-[#fcfbf9]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-[#fcfbf9] dark:bg-[#141926] dark:border-[#273347]">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-navy text-white shadow-xs">
-              <Sparkles size={16} className="text-amber-300" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-600 text-white shadow-xs">
+              <Sparkles size={16} />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-ink">AI Copilot &bull; Quick Data Fill</h2>
-              <p className="text-[11px] text-muted">Generate &amp; auto-save events, notices, houses, wellness, or FAQs</p>
+              <h2 className="text-sm font-bold text-gray-950 dark:text-gray-100">
+                AI Copilot &bull; Chat &amp; Add Events
+              </h2>
+              <p className="text-[11px] text-muted">
+                Create events, notices, houses, wellness, or FAQs with 1-click
+              </p>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:text-ink hover:bg-zinc-100 transition cursor-pointer"
-            aria-label="Close drawer"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/manage/ai"
+              onClick={() => setOpen(false)}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:text-ink hover:bg-gray-100 dark:hover:bg-zinc-900 transition cursor-pointer"
+              title="Open full page"
+            >
+              <Maximize2 size={15} />
+            </Link>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:text-ink hover:bg-gray-100 dark:hover:bg-zinc-900 transition cursor-pointer"
+              aria-label="Close drawer"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Drawer Body (Scrollable Agent) */}

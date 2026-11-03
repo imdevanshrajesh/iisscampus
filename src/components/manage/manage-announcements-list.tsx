@@ -83,7 +83,7 @@ export function ManageAnnouncementsList({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search announcements..."
               aria-label="Search announcements"
-              className="w-full rounded-lg border border-line bg-[#fbfaf4] pl-9 pr-3 py-2 text-sm outline-none transition focus:border-navy focus:bg-white"
+              className="w-full rounded-lg border border-line bg-white dark:bg-black text-ink dark:text-white pl-9 pr-3 py-2 text-sm outline-none transition focus:border-navy"
             />
           </div>
 
@@ -93,11 +93,11 @@ export function ManageAnnouncementsList({
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
               aria-label="Filter status"
-              className="rounded-lg border border-line bg-[#fbfaf4] px-3 py-2 text-sm outline-none transition focus:border-navy focus:bg-white"
+              className="rounded-lg border border-line bg-white dark:bg-black text-ink dark:text-white px-3 py-2 text-sm outline-none transition focus:border-navy"
             >
-              <option value="all">All Bulletins</option>
-              <option value="active">Active Only</option>
-              <option value="hidden">Hidden Only</option>
+              <option value="all" className="bg-white dark:bg-black text-ink dark:text-white">All Bulletins</option>
+              <option value="active" className="bg-white dark:bg-black text-ink dark:text-white">Active Only</option>
+              <option value="hidden" className="bg-white dark:bg-black text-ink dark:text-white">Hidden Only</option>
             </select>
           </div>
         </div>
@@ -107,7 +107,7 @@ export function ManageAnnouncementsList({
             <button
               type="button"
               onClick={expandAll}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-[#fbfaf4] px-3 py-2 text-xs font-medium text-ink transition hover:border-navy hover:bg-white"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white dark:bg-black px-3 py-2 text-xs font-medium text-ink dark:text-white transition hover:border-navy"
             >
               <ChevronsUpDown className="h-3.5 w-3.5 text-accent" />
               <span>Expand All</span>
@@ -116,7 +116,7 @@ export function ManageAnnouncementsList({
             <button
               type="button"
               onClick={collapseAll}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-[#fbfaf4] px-3 py-2 text-xs font-medium text-ink transition hover:border-navy hover:bg-white"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white dark:bg-black px-3 py-2 text-xs font-medium text-ink dark:text-white transition hover:border-navy"
             >
               <ChevronsDownUp className="h-3.5 w-3.5 text-accent" />
               <span>Collapse All</span>

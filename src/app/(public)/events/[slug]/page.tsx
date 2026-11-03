@@ -14,13 +14,38 @@ export async function generateMetadata({
   const { slug } = await params;
   const { event } = await getPublicEvent(slug);
   if (!event) return { title: "Event" };
+  const ogImages = event.coverImageUrl
+    ? [
+        {
+          url: event.coverImageUrl,
+          width: 1200,
+          height: 630,
+          alt: event.title,
+        },
+      ]
+    : [
+        {
+          url: "/opengraph-image",
+          width: 1200,
+          height: 630,
+          alt: event.title,
+        },
+      ];
   return {
     title: event.title,
     description: event.shortDescription,
     alternates: { canonical: `/events/${event.slug}` },
     openGraph: {
+      type: "website",
       title: event.title,
       description: event.shortDescription,
+      images: ogImages,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: event.title,
+      description: event.shortDescription,
+      images: event.coverImageUrl ? [event.coverImageUrl] : ["/opengraph-image"],
     },
   };
 }

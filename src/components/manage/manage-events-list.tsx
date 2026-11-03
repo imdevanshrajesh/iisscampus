@@ -129,7 +129,7 @@ export function ManageEventsList({
   return (
     <div className="space-y-6">
       {/* Search, Filter, and Expand/Collapse Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-3.5 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white dark:bg-black p-3.5 shadow-xs">
         <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
@@ -139,7 +139,7 @@ export function ManageEventsList({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Quick search events..."
               aria-label="Search events"
-              className="w-full rounded-lg border border-line bg-[#fbfaf4] pl-9 pr-3 py-2 text-sm outline-none transition focus:border-navy focus:bg-white"
+              className="w-full rounded-lg border border-line bg-white dark:bg-black text-ink dark:text-white pl-9 pr-3 py-2 text-sm outline-none transition focus:border-navy"
             />
           </div>
 
@@ -155,13 +155,13 @@ export function ManageEventsList({
                 }
               }}
               aria-label="Filter status"
-              className="rounded-lg border border-line bg-[#fbfaf4] px-3 py-2 text-sm outline-none transition focus:border-navy focus:bg-white"
+              className="rounded-lg border border-line bg-white dark:bg-black text-ink dark:text-white px-3 py-2 text-sm outline-none transition focus:border-navy"
             >
-              <option value="">All Statuses</option>
-              <option value="published">Published</option>
-              <option value="in_review">In Review</option>
-              <option value="draft">Drafts</option>
-              <option value="archived">Archived</option>
+              <option value="" className="bg-white dark:bg-black text-ink dark:text-white">All Statuses</option>
+              <option value="published" className="bg-white dark:bg-black text-ink dark:text-white">Published</option>
+              <option value="in_review" className="bg-white dark:bg-black text-ink dark:text-white">In Review</option>
+              <option value="draft" className="bg-white dark:bg-black text-ink dark:text-white">Drafts</option>
+              <option value="archived" className="bg-white dark:bg-black text-ink dark:text-white">Archived</option>
             </select>
           </div>
         </div>
@@ -172,7 +172,7 @@ export function ManageEventsList({
             <button
               type="button"
               onClick={expandAll}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-[#fbfaf4] px-3 py-2 text-xs font-medium text-ink transition hover:border-navy hover:bg-white"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white dark:bg-black px-3 py-2 text-xs font-medium text-ink dark:text-white transition hover:border-navy"
             >
               <ChevronsUpDown className="h-3.5 w-3.5 text-accent" />
               <span>Expand All</span>
@@ -181,7 +181,7 @@ export function ManageEventsList({
             <button
               type="button"
               onClick={collapseAll}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-[#fbfaf4] px-3 py-2 text-xs font-medium text-ink transition hover:border-navy hover:bg-white"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white dark:bg-black px-3 py-2 text-xs font-medium text-ink dark:text-white transition hover:border-navy"
             >
               <ChevronsDownUp className="h-3.5 w-3.5 text-accent" />
               <span>Collapse All</span>

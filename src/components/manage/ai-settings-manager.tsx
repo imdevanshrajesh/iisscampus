@@ -194,10 +194,10 @@ export function AiSettingsManager({
           <select
             value={provider}
             onChange={(e) => handleProviderChange(e.target.value as AiProvider)}
-            className="w-full rounded-xl border border-gray-300 bg-gray-50/60 px-3.5 py-2.5 text-sm text-gray-900 focus:border-orange-600 focus:bg-white focus:outline-hidden"
+            className="w-full rounded-xl border border-gray-300 dark:border-zinc-800 bg-white dark:bg-black px-3.5 py-2.5 text-sm text-gray-900 dark:text-white focus:border-orange-600 focus:outline-hidden"
           >
             {Object.values(PROVIDERS).map((p) => (
-              <option key={p.id} value={p.id}>
+              <option key={p.id} value={p.id} className="bg-white dark:bg-black text-gray-900 dark:text-white">
                 {p.name}
               </option>
             ))}
@@ -215,7 +215,7 @@ export function AiSettingsManager({
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
               placeholder="https://api..."
-              className="w-full rounded-xl border border-gray-300 bg-gray-50/60 px-3.5 py-2.5 text-sm font-mono text-gray-900 focus:border-orange-600 focus:bg-white focus:outline-hidden"
+              className="w-full rounded-xl border border-gray-300 dark:border-zinc-800 bg-white dark:bg-black px-3.5 py-2.5 text-sm font-mono text-gray-900 dark:text-white focus:border-orange-600 focus:outline-hidden"
             />
             <Globe className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-gray-400" />
           </div>
@@ -235,20 +235,20 @@ export function AiSettingsManager({
                 setModelsFetched(false);
               }}
               placeholder={`Enter your ${PROVIDERS[provider]?.name} key (saved to database)`}
-              className="w-full rounded-xl border border-gray-300 bg-gray-50/60 px-3.5 py-2.5 pr-20 text-sm font-mono text-gray-900 focus:border-orange-600 focus:bg-white focus:outline-hidden"
+              className="w-full rounded-xl border border-gray-300 dark:border-zinc-800 bg-white dark:bg-black px-3.5 py-2.5 pr-20 text-sm font-mono text-gray-900 dark:text-white focus:border-orange-600 focus:outline-hidden"
               autoComplete="off"
             />
             <button
               type="button"
               onClick={() => setShowKey((prev) => !prev)}
-              className="absolute right-2.5 rounded-lg p-1.5 text-gray-400 hover:text-gray-700"
+              className="absolute right-2.5 rounded-lg p-1.5 text-gray-400 hover:text-gray-200"
               title={showKey ? "Hide key" : "Show key"}
             >
               {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
           <p className="mt-1 text-[11px] text-muted">
-            Stored securely in database table <code className="font-mono text-gray-700">campus_settings</code>.
+            Stored securely in database table <code className="font-mono text-gray-700 dark:text-zinc-300">campus_settings</code>.
           </p>
         </div>
 
@@ -262,7 +262,7 @@ export function AiSettingsManager({
               type="button"
               onClick={handleFetchModels}
               disabled={fetchingModels || (!apiKey.trim() && provider !== "custom")}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 dark:border-zinc-800 bg-white dark:bg-black px-3 py-1 text-xs font-medium text-gray-700 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-900 disabled:opacity-50 transition-colors shadow-xs"
             >
               <RefreshCw className={`h-3 w-3 ${fetchingModels ? "animate-spin text-orange-600" : ""}`} />
               <span>{fetchingModels ? "Fetching live models..." : "Fetch Live Models from Provider"}</span>
@@ -274,15 +274,15 @@ export function AiSettingsManager({
               <select
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                className="w-full rounded-xl border border-emerald-300 bg-emerald-50/30 px-3.5 py-2.5 text-sm font-mono text-gray-900 focus:border-orange-600 focus:outline-hidden"
+                className="w-full rounded-xl border border-emerald-500/60 dark:border-emerald-500/60 bg-white dark:bg-black px-3.5 py-2.5 text-sm font-mono text-gray-900 dark:text-white focus:border-orange-600 focus:outline-hidden"
               >
                 {availableModels.map((m) => (
-                  <option key={m} value={m}>
+                  <option key={m} value={m} className="bg-white dark:bg-black text-gray-900 dark:text-white">
                     {m}
                   </option>
                 ))}
               </select>
-              <p className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                 <Check className="h-3 w-3" /> Showing {availableModels.length} models fetched directly from {PROVIDERS[provider]?.name}.
               </p>
             </div>
@@ -293,10 +293,10 @@ export function AiSettingsManager({
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 placeholder={PROVIDERS[provider]?.defaultModel || "Enter model name"}
-                className="w-full rounded-xl border border-gray-300 bg-gray-50/60 px-3.5 py-2.5 text-sm font-mono text-gray-900 focus:border-orange-600 focus:bg-white focus:outline-hidden"
+                className="w-full rounded-xl border border-gray-300 dark:border-zinc-800 bg-white dark:bg-black px-3.5 py-2.5 text-sm font-mono text-gray-900 dark:text-white focus:border-orange-600 focus:outline-hidden"
               />
               <p className="mt-1 text-[11px] text-muted">
-                Default: <span className="font-mono text-gray-700">{PROVIDERS[provider]?.defaultModel}</span>. Click &ldquo;Fetch Live Models from Provider&rdquo; above to query the provider API dynamically.
+                Default: <span className="font-mono text-gray-700 dark:text-zinc-300">{PROVIDERS[provider]?.defaultModel}</span>. Click &ldquo;Fetch Live Models from Provider&rdquo; above to query the provider API dynamically.
               </p>
             </div>
           )}

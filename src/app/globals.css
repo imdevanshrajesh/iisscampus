@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #fcfbf3;
@@ -77,6 +78,21 @@ body.dark-canvas::before {
 
 body.dark-canvas::after {
   opacity: 0.25;
+}
+
+body.manage-dark-body {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+body.manage-dark-body::before {
+  background-color: #000000 !important;
+  background-image: none !important;
+}
+
+body.manage-dark-body::after {
+  opacity: 0 !important;
+  display: none !important;
 }
 
 body::after {
@@ -1354,3 +1370,365 @@ html[data-intro="play"] .hero-scribble path {
     transform: translate3d(var(--marquee-shift, -50%), 0, 0);
   }
 }
+
+/* ==========================================================================
+   Admin Manage Workspace - Scoped Dark Mode Rules
+   Ensures 100% readability: high contrast, zero dark-on-dark or light-on-light.
+   Dropdowns, inputs, and elements that were grey are pure black (#000000)
+   to match the dark canvas, with bright visible white text.
+   Does NOT affect any public campus routes or pages.
+   ========================================================================== */
+
+.manage-dark,
+body.manage-dark-body,
+html.manage-dark-mode {
+  color-scheme: dark !important;
+  --background: #000000;
+  --surface: #000000;
+  --ink: #ffffff;
+  --muted: #e4e4e7;
+  --line: #27272a;
+  --wash: #000000;
+  --navy: #ffffff;
+  --council: #ffffff;
+  --bg-manage-root: #000000;
+  --bg-manage-card: #000000;
+  --bg-manage-subcard: #000000;
+  --border-manage: #27272a;
+  --text-manage-head: #ffffff;
+  --text-manage-body: #ffffff;
+  --text-manage-muted: #e4e4e7;
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* Page, Containers & Cards - Pure Solid Black to Match Canvas */
+.manage-dark [class*="bg-gray-"],
+.manage-dark [class*="bg-zinc-"],
+.manage-dark [class*="bg-slate-"],
+.manage-dark [class*="bg-neutral-"],
+.manage-dark [class*="bg-stone-"],
+.manage-dark [class*="bg-[#fbfaf4]"],
+.manage-dark [class*="bg-[#fcfbf9]"],
+.manage-dark [class*="bg-[#faf9f5]"],
+.manage-dark [class*="bg-[#eef1f4]"],
+.manage-dark [class*="bg-[#fdfdfc]"],
+.manage-dark .bg-white,
+.manage-dark [class*="bg-white/"],
+.manage-dark .bg-surface,
+.manage-dark [class*="bg-surface/"],
+.manage-dark .bg-wash,
+.manage-dark [class*="bg-wash/"],
+.manage-dark .bg-background,
+.manage-dark [class*="bg-background/"] {
+  background-color: #000000 !important;
+}
+
+/* Remove Light Gradients in Dark Mode */
+.manage-dark [class*="bg-gradient-"],
+.manage-dark [class*="from-orange-"],
+.manage-dark [class*="to-white"] {
+  background-image: none !important;
+  background-color: #000000 !important;
+}
+
+/* Borders */
+.manage-dark [class*="border-gray-"],
+.manage-dark [class*="border-zinc-"],
+.manage-dark [class*="border-slate-"],
+.manage-dark [class*="border-line"] {
+  border-color: #27272a !important;
+}
+
+.manage-dark .border-t,
+.manage-dark .border-b,
+.manage-dark .border-l,
+.manage-dark .border-r {
+  border-color: #27272a;
+}
+
+/* High Contrast Text Hierarchy - Clean, Visible, Pure Legibility */
+.manage-dark .text-ink,
+.manage-dark [class*="text-ink"],
+.manage-dark [class*="text-gray-9"],
+.manage-dark [class*="text-gray-8"],
+.manage-dark [class*="text-gray-7"],
+.manage-dark [class*="text-zinc-9"],
+.manage-dark [class*="text-zinc-8"],
+.manage-dark [class*="text-zinc-7"],
+.manage-dark [class*="text-slate-9"],
+.manage-dark [class*="text-slate-8"],
+.manage-dark [class*="text-slate-7"],
+.manage-dark [class*="text-neutral-9"],
+.manage-dark [class*="text-neutral-8"],
+.manage-dark [class*="text-neutral-7"],
+.manage-dark .text-navy,
+.manage-dark [class*="text-navy"] {
+  color: #ffffff !important;
+}
+
+.manage-dark .text-muted,
+.manage-dark [class*="text-muted"],
+.manage-dark [class*="text-gray-6"],
+.manage-dark [class*="text-gray-5"],
+.manage-dark [class*="text-gray-4"],
+.manage-dark [class*="text-zinc-6"],
+.manage-dark [class*="text-zinc-5"],
+.manage-dark [class*="text-zinc-4"],
+.manage-dark [class*="text-slate-6"],
+.manage-dark [class*="text-slate-5"],
+.manage-dark [class*="text-slate-4"] {
+  color: #e4e4e7 !important;
+}
+
+/* Dropdowns & Selects - Pitch Black with Crisp White Text & Clean Chevron */
+.manage-dark select,
+body.manage-dark-body select,
+html.manage-dark-mode select {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #333333 !important;
+  color-scheme: dark !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23ffffff' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") !important;
+  background-position: right 0.75rem center !important;
+  background-repeat: no-repeat !important;
+  background-size: 1rem 1rem !important;
+  padding-right: 2.25rem !important;
+}
+
+.manage-dark select[multiple],
+body.manage-dark-body select[multiple],
+html.manage-dark-mode select[multiple] {
+  background-image: none !important;
+  padding-right: 0.75rem !important;
+}
+
+.manage-dark select option,
+.manage-dark select optgroup,
+body.manage-dark-body select option,
+body.manage-dark-body select optgroup,
+html.manage-dark-mode select option,
+html.manage-dark-mode select optgroup {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.manage-dark select:focus,
+body.manage-dark-body select:focus,
+html.manage-dark-mode select:focus {
+  border-color: #ea580c !important;
+  outline: none !important;
+  box-shadow: 0 0 0 1px #ea580c !important;
+}
+
+.manage-dark select:disabled,
+body.manage-dark-body select:disabled {
+  opacity: 0.6 !important;
+  background-color: #0a0a0a !important;
+  color: #a1a1aa !important;
+}
+
+/* Form Controls & Inputs - Pure Black */
+.manage-dark input:not([type="checkbox"]):not([type="radio"]),
+.manage-dark textarea,
+body.manage-dark-body input:not([type="checkbox"]):not([type="radio"]),
+body.manage-dark-body textarea,
+html.manage-dark-mode input:not([type="checkbox"]):not([type="radio"]),
+html.manage-dark-mode textarea {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #333333 !important;
+  color-scheme: dark !important;
+}
+
+.manage-dark input::placeholder,
+.manage-dark textarea::placeholder {
+  color: #71717a !important;
+}
+
+.manage-dark input:focus,
+.manage-dark textarea:focus {
+  border-color: #ea580c !important;
+  outline: none !important;
+  box-shadow: 0 0 0 1px #ea580c !important;
+}
+
+/* Custom Menus, Popovers, and Dropdown Flyouts */
+.manage-dark [role="menu"],
+.manage-dark [class*="origin-top-right"] {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #333333 !important;
+}
+
+/* Buttons & Elements that were grey - Pure Black to Match Canvas */
+.manage-dark button:not(.bg-orange-600):not(.bg-emerald-600):not(.bg-rose-600):not(.bg-accent),
+.manage-dark a[class*="border-gray-"]:not(.bg-orange-600),
+.manage-dark a[class*="border-line"]:not(.bg-orange-600),
+.manage-dark a[class*="bg-white"]:not(.bg-orange-600) {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #333333 !important;
+}
+
+.manage-dark button:not(.bg-orange-600):not(.bg-emerald-600):not(.bg-rose-600):hover,
+.manage-dark a[class*="border-gray-"]:hover,
+.manage-dark a[class*="border-line"]:hover,
+.manage-dark a[class*="bg-white"]:hover,
+.manage-dark [class*="hover:bg-"]:hover {
+  background-color: #141414 !important;
+  border-color: #ea580c !important;
+  color: #ffffff !important;
+}
+
+/* Scoped Exclusions for Sidebar & Distinct Panels */
+.manage-dark .bg-\[\#12141c\]:not(aside):not(aside *) {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #333333 !important;
+}
+
+.manage-dark .bg-gray-900:not(aside):not(aside *) {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #333333 !important;
+}
+
+.manage-dark .bg-ink:not(aside):not(aside *) {
+  background-color: #ea580c !important;
+  color: #ffffff !important;
+}
+
+.manage-dark .bg-ink:not(aside):not(aside *):hover {
+  background-color: #c2410c !important;
+}
+
+.manage-dark .bg-navy:not(aside):not(aside *) {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #333333 !important;
+}
+
+/* Status Badges & Colored Notification Tags (Tinted Dark + High Contrast Text) */
+.manage-dark .bg-amber-50,
+.manage-dark [class*="bg-amber-50"] {
+  background-color: rgba(120, 53, 15, 0.4) !important;
+  border-color: rgba(245, 158, 11, 0.6) !important;
+}
+.manage-dark .text-amber-950,
+.manage-dark .text-amber-900,
+.manage-dark .text-amber-800,
+.manage-dark .text-amber-700 {
+  color: #fde047 !important;
+}
+
+.manage-dark .bg-emerald-50,
+.manage-dark [class*="bg-emerald-50"] {
+  background-color: rgba(6, 78, 59, 0.4) !important;
+  border-color: rgba(16, 185, 129, 0.6) !important;
+}
+.manage-dark .text-emerald-950,
+.manage-dark .text-emerald-900,
+.manage-dark .text-emerald-800,
+.manage-dark .text-emerald-700 {
+  color: #6ee7b7 !important;
+}
+
+.manage-dark .bg-rose-50,
+.manage-dark [class*="bg-rose-50"],
+.manage-dark .bg-red-50,
+.manage-dark [class*="bg-red-50"],
+.manage-dark .bg-pink-50 {
+  background-color: rgba(136, 19, 55, 0.4) !important;
+  border-color: rgba(244, 63, 94, 0.6) !important;
+}
+.manage-dark .text-rose-950,
+.manage-dark .text-rose-900,
+.manage-dark .text-rose-800,
+.manage-dark .text-rose-700,
+.manage-dark .text-red-800,
+.manage-dark .text-red-700,
+.manage-dark .text-red-600 {
+  color: #fda4af !important;
+}
+
+.manage-dark .bg-teal-50,
+.manage-dark [class*="bg-teal-50"],
+.manage-dark .bg-teal-100\/70 {
+  background-color: rgba(17, 94, 89, 0.4) !important;
+  border-color: rgba(20, 184, 166, 0.6) !important;
+}
+.manage-dark .text-teal-700,
+.manage-dark .text-teal-800 {
+  color: #99f6e4 !important;
+}
+
+.manage-dark .bg-indigo-50,
+.manage-dark [class*="bg-indigo-50"] {
+  background-color: rgba(49, 46, 129, 0.4) !important;
+  border-color: rgba(99, 102, 241, 0.6) !important;
+}
+.manage-dark .text-indigo-700 {
+  color: #c7d2fe !important;
+}
+
+.manage-dark .bg-orange-50,
+.manage-dark [class*="bg-orange-50"] {
+  background-color: rgba(154, 52, 18, 0.4) !important;
+  border-color: rgba(249, 115, 22, 0.6) !important;
+}
+.manage-dark .text-orange-950,
+.manage-dark .text-orange-900,
+.manage-dark .text-orange-800,
+.manage-dark .text-orange-700 {
+  color: #fdba74 !important;
+}
+
+.manage-dark .bg-sky-50,
+.manage-dark [class*="bg-sky-50"],
+.manage-dark .bg-blue-50,
+.manage-dark [class*="bg-blue-50"] {
+  background-color: rgba(14, 116, 144, 0.4) !important;
+  border-color: rgba(6, 182, 212, 0.6) !important;
+}
+.manage-dark .text-sky-950,
+.manage-dark .text-sky-900,
+.manage-dark .text-sky-800,
+.manage-dark .text-sky-700 {
+  color: #7dd3fc !important;
+}
+
+/* Tables */
+.manage-dark table thead tr {
+  background-color: #000000 !important;
+  color: #e4e4e7 !important;
+  border-bottom: 1px solid #27272a !important;
+}
+
+.manage-dark table tbody tr {
+  border-bottom: 1px solid #1c1c20 !important;
+}
+
+.manage-dark table tbody tr:hover {
+  background-color: #141414 !important;
+}
+
+/* Modals & Drawers */
+.manage-dark aside.bg-white,
+.manage-dark dialog {
+  background-color: #000000 !important;
+  border-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+/* SVG Chart Elements */
+.manage-dark svg line[stroke="#e5e7eb"] {
+  stroke: #27272a !important;
+}
+.manage-dark svg text[fill="#9ca3af"] {
+  fill: #a1a1aa !important;
+}
+

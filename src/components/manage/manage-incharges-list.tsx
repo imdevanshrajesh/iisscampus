@@ -84,43 +84,43 @@ export function ManageHeadsList({ incharges }: { incharges: SchoolHead[] }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search heads by name or role..."
-            className="w-full pl-9 pr-3 py-1.5 text-sm bg-background/50 border border-line rounded-lg focus:outline-none focus:ring-1 focus:ring-ink"
+            className="w-full pl-9 pr-3 py-1.5 text-sm bg-white dark:bg-black text-ink dark:text-white border border-line rounded-lg focus:outline-none focus:ring-1 focus:ring-ink"
           />
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           {/* Tier Filter */}
-          <div className="flex items-center gap-1.5 text-xs text-muted bg-background/50 border border-line px-2.5 py-1.5 rounded-lg">
+          <div className="flex items-center gap-1.5 text-xs text-ink bg-white dark:bg-black border border-line px-2.5 py-1.5 rounded-lg">
             <select
               value={tierFilter}
               onChange={(e) => setTierFilter(e.target.value as any)}
-              className="bg-transparent focus:outline-none cursor-pointer text-xs"
+              className="bg-transparent text-ink dark:text-white focus:outline-none cursor-pointer text-xs font-medium"
             >
-              <option value="all">All Tiers</option>
-              <option value="executive">Executive</option>
-              <option value="section">Section Heads</option>
-              <option value="department">Department Heads</option>
+              <option value="all" className="bg-white dark:bg-black text-ink dark:text-white">All Tiers</option>
+              <option value="executive" className="bg-white dark:bg-black text-ink dark:text-white">Executive</option>
+              <option value="section" className="bg-white dark:bg-black text-ink dark:text-white">Section Heads</option>
+              <option value="department" className="bg-white dark:bg-black text-ink dark:text-white">Department Heads</option>
             </select>
           </div>
 
           {/* Status Filter */}
-          <div className="flex items-center gap-1.5 text-xs text-muted bg-background/50 border border-line px-2.5 py-1.5 rounded-lg">
-            <Filter className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-1.5 text-xs text-ink bg-white dark:bg-black border border-line px-2.5 py-1.5 rounded-lg">
+            <Filter className="h-3.5 w-3.5 text-muted shrink-0" />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as "all" | "published" | "draft")}
-              className="bg-transparent focus:outline-none cursor-pointer"
+              className="bg-transparent text-ink dark:text-white focus:outline-none cursor-pointer font-medium"
             >
-              <option value="all">All statuses</option>
-              <option value="published">Published only</option>
-              <option value="draft">Drafts only</option>
+              <option value="all" className="bg-white dark:bg-black text-ink dark:text-white">All statuses</option>
+              <option value="published" className="bg-white dark:bg-black text-ink dark:text-white">Published only</option>
+              <option value="draft" className="bg-white dark:bg-black text-ink dark:text-white">Drafts only</option>
             </select>
           </div>
 
           <button
             type="button"
             onClick={allCollapsed ? expandAll : collapseAll}
-            className="flex items-center gap-1.5 text-xs text-ink hover:text-navy border border-line px-2.5 py-1.5 rounded-lg bg-white hover:bg-zinc-50 transition cursor-pointer"
+            className="flex items-center gap-1.5 text-xs text-ink hover:text-navy border border-line px-2.5 py-1.5 rounded-lg bg-white dark:bg-black hover:bg-zinc-50 dark:hover:bg-zinc-900 transition cursor-pointer"
           >
             {allCollapsed ? (
               <>

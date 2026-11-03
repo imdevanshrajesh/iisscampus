@@ -55,7 +55,7 @@ export function AddToCalendarButton({
 
       {open && (
         <div
-          className="absolute right-0 z-50 mt-1.5 w-48 origin-top-right rounded-xl border border-line bg-white p-1.5 shadow-xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-150"
+          className="absolute right-0 z-50 mt-1.5 w-48 origin-top-right rounded-xl border border-line bg-white dark:bg-black p-1.5 shadow-xl ring-1 ring-black/10 dark:ring-white/10 animate-in fade-in zoom-in-95 duration-150"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted">
@@ -67,7 +67,7 @@ export function AddToCalendarButton({
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => setOpen(false)}
-            className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-ink hover:bg-wash/70 hover:text-navy transition"
+            className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-ink dark:text-white hover:bg-wash/70 dark:hover:bg-zinc-900 hover:text-navy dark:hover:text-white transition"
           >
             <span className="font-medium">Google Calendar</span>
             <ExternalLink size={12} className="text-muted" />
@@ -83,7 +83,7 @@ export function AddToCalendarButton({
                 setOpen(false);
               }, 1200);
             }}
-            className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-ink hover:bg-wash/70 hover:text-navy transition"
+            className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-ink dark:text-white hover:bg-wash/70 dark:hover:bg-zinc-900 hover:text-navy dark:hover:text-white transition"
           >
             <span className="font-medium">Apple / iCal (.ics)</span>
             {copied ? <Check size={12} className="text-emerald-600" /> : <Download size={12} className="text-muted" />}
@@ -93,7 +93,7 @@ export function AddToCalendarButton({
             href={icsUri}
             download={`${event.slug || "campus-event"}.ics`}
             onClick={() => setOpen(false)}
-            className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-ink hover:bg-wash/70 hover:text-navy transition"
+            className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-ink dark:text-white hover:bg-wash/70 dark:hover:bg-zinc-900 hover:text-navy dark:hover:text-white transition"
           >
             <span className="font-medium">Outlook (.ics)</span>
             <Download size={12} className="text-muted" />

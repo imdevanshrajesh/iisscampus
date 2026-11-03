@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { resolveGrokApiKey } from "../src/lib/ai/grok.ts";
 import { PROVIDERS, fetchProviderModels } from "../src/lib/ai/providers.ts";
+import { extractEventFromNaturalText } from "../src/lib/ai/smart-extractor.ts";
 
 describe("ai provider architecture & model fetching", () => {
   it("resolves grok api key from parameter and env variables", () => {
@@ -74,5 +75,30 @@ describe("ai provider architecture & model fetching", () => {
     assert.ok(isTableSeparator("|--|--|"));
     assert.equal(isTableSeparator("| normal | text |"), false);
     assert.equal(isTableSeparator("Just regular text"), false);
+  });
+
+  it("extracts and structures events from natural chat messages accurately", () => {
+    const categories = [
+      { id: "cat-sports", name: "Sports & Athletics", slug: "sports" },
+      { id: "cat-academic", name: "Academic & STEM", slug: "academic" },
+    ];
+
+    const input =
+      "Add an event called Inter-House Swimming Gala on Nov 28, 2026 at the Main Pool from 3:00 PM to 6:30 PM for grades 7 to 12. Free entry.";
+
+    const extracted = extractEventFromNaturalText(input, categories);
+
+    assert.ok(extracted.title.includes("Inter-House Swimming Gala"));
+    assert.equal(extracted.eventDate, "2026-11-28");
+    assert.equal(extracted.startTime, "15:00");
+    assert.equal(extracted.endTime, "18:30");
+    assert.equal(extracted.locationName, "Main Pool");
+    assert.equal(extracted.gradeFrom, 7);
+    assert.equal(extracted.gradeTo, 12);
+    assert.equal(extracted.categoryId, "cat-sports");
+    assert.ok(extracted.shortDescription.length > 10);
+    assert.ok(extracted.fullDescription.length > 50);
+    assert.ok(extracted.schedule.length >= 2);
+    assert.ok(extracted.checklist.length >= 1);
   });
 });

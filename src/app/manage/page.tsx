@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { councilKindLabel } from "@/components/council/council-year";
 import { ManageUnavailable } from "@/components/manage/unavailable";
+import { ManageThemeToggle } from "@/components/manage/manage-theme";
 import { eventStatusLabel } from "@/lib/data/catalog";
 import { countStaffSuggestions } from "@/lib/data/queries";
 import { requireWorkspace } from "@/lib/manage/access";
@@ -218,10 +219,10 @@ export default async function ManageHomePage() {
   const totalRecent = months.reduce((acc, m) => acc + m.count, 0);
 
   const statusRows = [
-    { label: "Published", value: counts.published, color: "bg-emerald-500", text: "text-emerald-700" },
-    { label: "In Review", value: counts.in_review, color: "bg-amber-500", text: "text-amber-700" },
-    { label: "Drafts", value: counts.draft, color: "bg-slate-400", text: "text-slate-600" },
-    { label: "Archived", value: counts.archived, color: "bg-gray-300", text: "text-gray-500" },
+    { label: "Published", value: counts.published, color: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-400" },
+    { label: "In Review", value: counts.in_review, color: "bg-amber-500", text: "text-amber-700 dark:text-amber-400" },
+    { label: "Drafts", value: counts.draft, color: "bg-slate-400", text: "text-slate-600 dark:text-slate-300" },
+    { label: "Archived", value: counts.archived, color: "bg-gray-400", text: "text-gray-500 dark:text-gray-300" },
   ];
 
   return (
@@ -241,6 +242,7 @@ export default async function ManageHomePage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          <ManageThemeToggle variant="default" />
           <Link
             href="/manage/ai"
             className="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-orange-700 transition-colors shadow-xs"
@@ -250,7 +252,7 @@ export default async function ManageHomePage() {
           </Link>
           <Link
             href="/manage/events/new"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-xs"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-gray-300 dark:border-zinc-800 bg-white dark:bg-black px-3.5 py-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-900 transition-colors shadow-xs"
           >
             <Plus className="h-4 w-4" />
             <span>New Event</span>
@@ -259,43 +261,11 @@ export default async function ManageHomePage() {
             href="/"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-muted hover:text-ink transition-colors shadow-xs"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-black px-3 py-2 text-xs sm:text-sm font-medium text-muted hover:text-ink dark:hover:text-white transition-colors shadow-xs"
             title="Preview Live Site"
           >
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
-        </div>
-      </div>
-
-      {/* AI Copilot Quick Callout Banner */}
-      <div className="relative overflow-hidden rounded-2xl border border-orange-200/90 bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50/60 p-5 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5 max-w-2xl">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-600 text-white shadow-xs">
-              <Sparkles className="h-6 w-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-gray-950 text-sm sm:text-base">
-                  Grok Content Assistant is Ready
-                </h3>
-                <span className="rounded-full bg-orange-200/80 px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase text-orange-800">
-                  xAI Agent
-                </span>
-              </div>
-              <p className="text-xs text-gray-700 mt-0.5">
-                Send raw bullet points, WhatsApp messages, or emails. Grok auto-generates full descriptions, dates, categories, and identifies missing photo uploads for 1-click publishing.
-              </p>
-            </div>
-          </div>
-
-          <Link
-            href="/manage/ai"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-gray-900 px-4 py-2 text-xs font-semibold text-white hover:bg-black transition-colors shadow-xs shrink-0"
-          >
-            <span>Launch AI Agent</span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
         </div>
       </div>
 
@@ -578,35 +548,35 @@ export default async function ManageHomePage() {
         <div className="flex flex-wrap gap-2 text-xs">
           <Link
             href="/manage/announcements"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 font-medium text-gray-700 hover:border-orange-500 hover:text-orange-600"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-black px-3 py-1.5 font-medium text-gray-700 dark:text-zinc-200 hover:border-orange-500 hover:text-orange-500"
           >
             <Megaphone className="h-3.5 w-3.5" />
             <span>Announcements ({access.workspace.announcements?.length ?? 0})</span>
           </Link>
           <Link
             href="/manage/achievements"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 font-medium text-gray-700 hover:border-orange-500 hover:text-orange-600"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-black px-3 py-1.5 font-medium text-gray-700 dark:text-zinc-200 hover:border-orange-500 hover:text-orange-500"
           >
             <Trophy className="h-3.5 w-3.5" />
             <span>Achievements ({access.workspace.achievements.length})</span>
           </Link>
           <Link
             href="/manage/marquee"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 font-medium text-gray-700 hover:border-orange-500 hover:text-orange-600"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-black px-3 py-1.5 font-medium text-gray-700 dark:text-zinc-200 hover:border-orange-500 hover:text-orange-500"
           >
             <Radio className="h-3.5 w-3.5" />
             <span>Marquee Ticker</span>
           </Link>
           <Link
             href="/manage/wellness"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 font-medium text-gray-700 hover:border-orange-500 hover:text-orange-600"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-black px-3 py-1.5 font-medium text-gray-700 dark:text-zinc-200 hover:border-orange-500 hover:text-orange-500"
           >
             <HeartHandshake className="h-3.5 w-3.5" />
             <span>Wellness Hub</span>
           </Link>
           <Link
             href="/manage/faq"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 font-medium text-gray-700 hover:border-orange-500 hover:text-orange-600"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-black px-3 py-1.5 font-medium text-gray-700 dark:text-zinc-200 hover:border-orange-500 hover:text-orange-500"
           >
             <HelpCircle className="h-3.5 w-3.5" />
             <span>FAQ ({access.workspace.faqs?.length ?? 0})</span>
@@ -614,7 +584,7 @@ export default async function ManageHomePage() {
           {suggestionCount !== null && (
             <Link
               href="/manage/suggestions"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 font-medium text-gray-700 hover:border-orange-500 hover:text-orange-600"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-black px-3 py-1.5 font-medium text-gray-700 dark:text-zinc-200 hover:border-orange-500 hover:text-orange-500"
             >
               <MessageSquare className="h-3.5 w-3.5" />
               <span>Suggestions ({suggestionCount})</span>

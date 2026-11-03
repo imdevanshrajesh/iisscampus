@@ -66,7 +66,7 @@ export function ManageProgramsList({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search custom programs..."
               aria-label="Search custom programs"
-              className="w-full rounded-lg border border-line bg-[#fbfaf4] pl-9 pr-3 py-2 text-sm outline-none transition focus:border-navy focus:bg-white"
+              className="w-full rounded-lg border border-line bg-white dark:bg-black text-ink dark:text-white pl-9 pr-3 py-2 text-sm outline-none transition focus:border-navy"
             />
           </div>
 
@@ -76,11 +76,11 @@ export function ManageProgramsList({
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
               aria-label="Filter status"
-              className="rounded-lg border border-line bg-[#fbfaf4] px-3 py-2 text-sm outline-none transition focus:border-navy focus:bg-white"
+              className="rounded-lg border border-line bg-white dark:bg-black text-ink dark:text-white px-3 py-2 text-sm outline-none transition focus:border-navy"
             >
-              <option value="all">All Programs</option>
-              <option value="published">Published</option>
-              <option value="draft">Drafts</option>
+              <option value="all" className="bg-white dark:bg-black text-ink dark:text-white">All Programs</option>
+              <option value="published" className="bg-white dark:bg-black text-ink dark:text-white">Published</option>
+              <option value="draft" className="bg-white dark:bg-black text-ink dark:text-white">Drafts</option>
             </select>
           </div>
         </div>
@@ -90,7 +90,7 @@ export function ManageProgramsList({
             <button
               type="button"
               onClick={expandAll}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-[#fbfaf4] px-3 py-2 text-xs font-medium text-ink transition hover:border-navy hover:bg-white"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white dark:bg-black px-3 py-2 text-xs font-medium text-ink dark:text-white transition hover:border-navy"
             >
               <ChevronsUpDown className="h-3.5 w-3.5 text-accent" />
               <span>Expand All</span>
@@ -99,7 +99,7 @@ export function ManageProgramsList({
             <button
               type="button"
               onClick={collapseAll}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-[#fbfaf4] px-3 py-2 text-xs font-medium text-ink transition hover:border-navy hover:bg-white"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white dark:bg-black px-3 py-2 text-xs font-medium text-ink dark:text-white transition hover:border-navy"
             >
               <ChevronsDownUp className="h-3.5 w-3.5 text-accent" />
               <span>Collapse All</span>

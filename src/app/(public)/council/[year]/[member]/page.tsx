@@ -21,8 +21,16 @@ export async function generateMetadata({
     description,
     alternates: { canonical: `/council/${found.year.slug}/${found.member.slug}` },
     openGraph: {
+      type: "profile",
       title: `${found.member.name} · ${found.member.role}`,
       description,
+      images: found.member.imageUrl ? [found.member.imageUrl] : ["/opengraph-image"],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${found.member.name} · ${found.member.role}`,
+      description,
+      images: found.member.imageUrl ? [found.member.imageUrl] : ["/opengraph-image"],
     },
   };
 }

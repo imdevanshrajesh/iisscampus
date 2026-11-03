@@ -13,6 +13,8 @@ import { getAiConfig } from "@/lib/data/queries";
 import { contentMode } from "@/lib/data/content-mode";
 import { getStaffWorkspace } from "@/lib/data/staff";
 import { createStaffClient } from "@/lib/supabase/server";
+import { extractEventFromNaturalText } from "@/lib/ai/smart-extractor";
+import { autoAddAiRecord } from "@/lib/manage/ai-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -155,7 +157,151 @@ export async function POST(request: Request) {
       }
     }
 
-    // Action 3: Generate / Fill Event & Content Fields
+    // Action 3: Conversational Chat Assistant (Can create & add events interactively)
+    if (action === "chat") {
+      const userMessage = String(body.message ?? body.prompt ?? "").trim();
+      if (!userMessage) {
+        return NextResponse.json({ error: "Please enter a message to chat." }, { status: 400 });
+      }
+
+      const autoAdd = Boolean(body.autoAdd);
+      const workspace = await getStaffWorkspace();
+      const categories = (workspace?.categories || []).map((c) => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+      }));
+
+      const isEventIntent =
+        /(add|create|new|schedule|organize|host|post|setup)\s+(an?\s+)?(event|match|tournament|competition|gala|quiz|meet|exhibition|carnival|session|assembly)/i.test(
+          userMessage,
+        ) ||
+        /(tournament|championship|gala|sports day|science exhibition|debate|quiz|swimming|football|volleyball|basketball)/i.test(
+          userMessage,
+        ) ||
+        body.targetSection === "event";
+
+      let generatedEvent = null;
+      let conversationalReply = "";
+
+      // Try LLM call if API key exists
+      if (apiKey) {
+        const today = new Date().toISOString().split("T")[0];
+        const systemPrompt = `You are the AI Operations Copilot for the India International School Campus management desk.
+Today is ${today}.
+Available campus categories:
+${JSON.stringify(categories, null, 2)}
+
+The user is interacting in an administrative chat interface.
+If the user asks to add, create, or schedule an event or competition, extract all relevant details and output valid JSON.
+If the user is asking a general question or greeting, reply helpfully.
+
+NO EMOJIS OR UNICODE SYMBOLS in generated titles, summaries, descriptions, or schedules.
+Keep language clean, professional, and suitable for a senior secondary school.
+
+When an event is detected, format your entire output as JSON:
+{
+  "reply": "Conversational reply acknowledging what was created or answered...",
+  "isEvent": true,
+  "event": {
+    "title": "Title",
+    "slug": "kebab-case-slug",
+    "shortDescription": "Concise 1-2 sentence overview...",
+    "fullDescription": "Multi-paragraph rich description...",
+    "categoryId": "UUID matching category",
+    "listing": "event",
+    "eventDate": "YYYY-MM-DD",
+    "startTime": "HH:MM",
+    "endTime": "HH:MM",
+    "locationName": "Venue",
+    "gradeFrom": 5,
+    "gradeTo": 12,
+    "feeAed": 0,
+    "schedule": [
+      { "time": "09:00", "title": "Assembly", "detail": "Details..." }
+    ],
+    "checklist": [
+      { "item": "Cover Image", "required": true, "detail": "Upload 16:9 banner" }
+    ]
+  }
+}
+If NOT an event, reply with:
+{
+  "reply": "Your helpful response...",
+  "isEvent": false
+}`;
+
+        const chatMessages: AiChatMessage[] = [
+          { role: "system", content: systemPrompt },
+          ...(Array.isArray(body.history)
+            ? body.history.slice(-6).map((m: any) => ({
+                role: (m.role === "assistant" ? "assistant" : "user") as "user" | "assistant",
+                content: String(m.content || ""),
+              }))
+            : []),
+          { role: "user", content: userMessage },
+        ];
+
+        const aiRes = await callAiChat(chatMessages, {
+          provider,
+          apiKey,
+          model,
+          baseUrl,
+          temperature: 0.2,
+        });
+
+        if (aiRes.ok) {
+          const parsed = extractJson(aiRes.content);
+          if (parsed && typeof parsed === "object") {
+            conversationalReply = parsed.reply || "";
+            if (parsed.isEvent && parsed.event) {
+              generatedEvent = parsed.event;
+            }
+          } else {
+            conversationalReply = aiRes.content;
+          }
+        }
+      }
+
+      // If no API key or LLM failed or didn't return an event when intent is clear:
+      if (!generatedEvent && isEventIntent) {
+        generatedEvent = extractEventFromNaturalText(userMessage, categories);
+        if (!conversationalReply) {
+          conversationalReply = `I've prepared the event details for **${generatedEvent.title}** on ${
+            generatedEvent.eventDate || "the upcoming date"
+          }. I generated the complete schedule, school descriptions, category, and asset checklist for you.`;
+        }
+      } else if (!conversationalReply) {
+        conversationalReply = `Hello! I am your Campus Operations Assistant. You can chat with me to instantly add events, generate student announcements, or draft house updates. Try typing: "Add an Inter-House Swimming Gala next Tuesday at 3 PM at the main pool".`;
+      }
+
+      // If auto-add is requested or toggled on, immediately save the event
+      let savedResult = null;
+      if (generatedEvent && (autoAdd || /add (it|this) now|save (it|this) now|auto-add/i.test(userMessage))) {
+        try {
+          const addRes = await autoAddAiRecord({
+            section: "event",
+            fields: generatedEvent,
+          });
+          if (addRes.ok) {
+            savedResult = addRes;
+            conversationalReply += `\n\n✓ **Event Added Successfully:** "${generatedEvent.title}" is now published to your campus workspace.`;
+          }
+        } catch {
+          // If autoAdd fails, keep draft for manual confirmation
+        }
+      }
+
+      return NextResponse.json({
+        ok: true,
+        reply: conversationalReply,
+        event: generatedEvent,
+        savedEvent: savedResult,
+        engine: apiKey ? "live-ai" : "builtin",
+      });
+    }
+
+    // Action 4: Generate / Fill Event & Content Fields (Studio Mode)
     if (action === "generate" || action === "fill-event") {
       const userPrompt = String(body.prompt ?? "").trim();
       if (!userPrompt) {
@@ -168,7 +314,6 @@ export async function POST(request: Request) {
       const targetSection = action === "fill-event" ? "event" : body.targetSection || "auto";
       const currentEvent = body.currentEvent || null;
 
-      // Fetch categories from workspace so the AI picks the matching category
       const workspace = await getStaffWorkspace();
       const categories = (workspace?.categories || []).map((c) => ({
         id: c.id,
@@ -176,9 +321,11 @@ export async function POST(request: Request) {
         slug: c.slug,
       }));
 
-      const today = new Date().toISOString().split("T")[0];
+      // Try LLM call if key is present
+      if (apiKey) {
+        const today = new Date().toISOString().split("T")[0];
 
-      const systemPrompt = `You are the Content Copilot for the India International School Campus management desk.
+        const systemPrompt = `You are the Content Copilot for the India International School Campus management desk.
 Today's date: ${today}.
 Available categories for activities:
 ${JSON.stringify(categories, null, 2)}
@@ -189,10 +336,10 @@ Convert the user's input (rough notes, email, WhatsApp message, or instructions)
 
 REQUIREMENTS & RULES:
 1. Target Section: ${
-        targetSection !== "auto"
-          ? `The user specifically wants an "${targetSection}".`
-          : "Auto-detect: 'event', 'announcement', 'achievement', 'faq', 'marquee', 'wellness', 'incharge', or 'program'."
-      }
+          targetSection !== "auto"
+            ? `The user specifically wants an "${targetSection}".`
+            : "Auto-detect: 'event', 'announcement', 'achievement', 'faq', 'marquee', 'wellness', 'incharge', or 'program'."
+        }
 2. DESCRIPTIONS (VERY IMPORTANT):
    - If the user did not provide a description or only provided brief bullet points, YOU MUST AUTO-GENERATE high-quality, inspiring, informative descriptions!
    - 'shortDescription': A clear, punchy 1-2 sentence overview for event cards (max 200 characters).
@@ -243,37 +390,42 @@ Respond ONLY with a valid JSON object matching this exact schema:
   }
 }`;
 
-      const messages: AiChatMessage[] = [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ];
+        const messages: AiChatMessage[] = [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ];
 
-      const aiResponse = await callAiChat(messages, {
-        provider,
-        apiKey,
-        model,
-        baseUrl,
-        temperature: 0.2,
-      });
+        const aiResponse = await callAiChat(messages, {
+          provider,
+          apiKey,
+          model,
+          baseUrl,
+          temperature: 0.2,
+        });
 
-      if (!aiResponse.ok) {
-        return NextResponse.json({ error: aiResponse.error }, { status: 502 });
+        if (aiResponse.ok) {
+          const parsedJson = extractJson(aiResponse.content);
+          if (parsedJson) {
+            return NextResponse.json({
+              ok: true,
+              data: parsedJson,
+              engine: "live-ai",
+            });
+          }
+        }
       }
 
-      const parsedJson = extractJson(aiResponse.content);
-      if (!parsedJson) {
-        return NextResponse.json(
-          {
-            error: "The AI responded, but the output could not be parsed as structured JSON.",
-            raw: aiResponse.content,
-          },
-          { status: 502 },
-        );
-      }
-
+      // Built-in intelligent fallback for events (guaranteed zero failure)
+      const fallbackEvent = extractEventFromNaturalText(userPrompt, categories);
       return NextResponse.json({
         ok: true,
-        data: parsedJson,
+        data: {
+          section: targetSection === "auto" ? "event" : targetSection,
+          summary: `Extracted & generated ${fallbackEvent.title} with dates, timing, descriptions, and schedule.`,
+          checklist: fallbackEvent.checklist,
+          fields: fallbackEvent,
+        },
+        engine: "builtin",
       });
     }
 
