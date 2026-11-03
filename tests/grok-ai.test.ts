@@ -63,4 +63,16 @@ describe("ai provider architecture & model fetching", () => {
     });
     assert.equal(invalidResult.ok, false);
   });
+
+  it("validates markdown table separator detection for AI table responses", () => {
+    const isTableSeparator = (line: string) =>
+      /^\|?(\s*:?-{2,}:?\s*\|)+\s*:?-{2,}:?\s*\|?$/.test(line.trim());
+
+    assert.ok(isTableSeparator("|---|---|"));
+    assert.ok(isTableSeparator("| :--- | :---: | ---: |"));
+    assert.ok(isTableSeparator("---|---|---"));
+    assert.ok(isTableSeparator("|--|--|"));
+    assert.equal(isTableSeparator("| normal | text |"), false);
+    assert.equal(isTableSeparator("Just regular text"), false);
+  });
 });

@@ -251,7 +251,7 @@ function socialFromRow(row: {
   });
 }
 
-export async function getPublicSocial(): Promise<SocialLinks> {
+export const getPublicSocial = cache(async function getPublicSocial(): Promise<SocialLinks> {
   try {
     if ((await contentMode()) === "supabase") {
       const supabase = createPublicClient();
@@ -274,9 +274,9 @@ export async function getPublicSocial(): Promise<SocialLinks> {
     console.error(error);
   }
   return normalizeSocialLinks(readSocial());
-}
+});
 
-export async function getSiteBrand(): Promise<SiteBrand> {
+export const getSiteBrand = cache(async function getSiteBrand(): Promise<SiteBrand> {
   try {
     if ((await contentMode()) === "supabase") {
       const supabase = createPublicClient();
@@ -310,7 +310,7 @@ export async function getSiteBrand(): Promise<SiteBrand> {
     navLogoHref: store.navLogoHref ?? null,
     navLabel: store.navLabel?.trim() || "IISS Boys",
   };
-}
+});
 
 function brandFromRow(row: {
   council_logo_url?: string | null;
@@ -328,7 +328,7 @@ function brandFromRow(row: {
   };
 }
 
-export async function getAiConfig(): Promise<StoredAiConfig> {
+export const getAiConfig = cache(async function getAiConfig(): Promise<StoredAiConfig> {
   try {
     if ((await contentMode()) === "supabase") {
       const supabase = createPublicClient();
@@ -372,9 +372,9 @@ export async function getAiConfig(): Promise<StoredAiConfig> {
     console.error("Error reading AI config from database:", error);
   }
   return readAiConfig();
-}
+});
 
-export async function getPublicAnnouncements(): Promise<Announcement[]> {
+export const getPublicAnnouncements = cache(async function getPublicAnnouncements(): Promise<Announcement[]> {
   try {
     if ((await contentMode()) === "supabase") {
       const supabase = createPublicClient();
@@ -396,7 +396,7 @@ export async function getPublicAnnouncements(): Promise<Announcement[]> {
     .filter((item) => item.enabled)
     .slice()
     .sort(compareAnnouncements);
-}
+});
 
 export async function getEditableAnnouncements(): Promise<Announcement[]> {
   try {
@@ -804,7 +804,7 @@ export async function getStaffSuggestions(): Promise<{ items: Suggestion[]; miss
   }
 }
 
-export async function countStaffSuggestions() {
+export const countStaffSuggestions = cache(async function countStaffSuggestions() {
   try {
     if ((await contentMode()) === "file") return listSuggestionsFromStore().length;
     const supabase = await createStaffClient();
@@ -819,7 +819,7 @@ export async function countStaffSuggestions() {
     console.error(error);
     return 0;
   }
-}
+});
 
 export async function getPublicSocialPosts(): Promise<SocialPost[]> {
   try {

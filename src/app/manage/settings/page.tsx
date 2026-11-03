@@ -14,11 +14,15 @@ import { IMAGE_HOSTS_GUIDE } from "@/lib/media/guide";
 import { createStaffClient } from "@/lib/supabase/server";
 
 export default async function SettingsPage() {
-  const access = await requireAdministrator();
+  const [access, social, brand, aiConfig, supabase] = await Promise.all([
+    requireAdministrator(),
+    getPublicSocial(),
+    getSiteBrand(),
+    getAiConfig(),
+    createStaffClient(),
+  ]);
   if (!access.ready) return <ManageUnavailable />;
-  const [social, brand, aiConfig] = await Promise.all([getPublicSocial(), getSiteBrand(), getAiConfig()]);
 
-  const supabase = await createStaffClient();
   const audit = supabase
     ? await supabase
         .from("campus_audit_log")

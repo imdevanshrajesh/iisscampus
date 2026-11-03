@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Sparkles, X, Send, RotateCcw, MessageSquare, Bot } from "lucide-react";
+import { Sparkles, X, Send, RotateCcw, Bot, Calendar, Users, Award, Megaphone, AlertCircle, Info } from "lucide-react";
 import { ChatMarkdown } from "./chat-markdown";
 
 type Message = {
@@ -11,10 +11,10 @@ type Message = {
 };
 
 const STARTER_PROMPTS = [
-  "📅 What events are coming up?",
-  "👑 Who is on the Student Council?",
-  "🏆 What are the latest achievements?",
-  "📢 What are the current announcements?",
+  { label: "What events are coming up?", icon: Calendar },
+  { label: "Who is on the Student Council?", icon: Users },
+  { label: "What are the latest achievements?", icon: Award },
+  { label: "What are the current announcements?", icon: Megaphone },
 ];
 
 export function FloatingAiChat() {
@@ -26,7 +26,7 @@ export function FloatingAiChat() {
       id: "initial",
       role: "assistant",
       content:
-        "Hello! 👋 I'm your **Campus AI Assistant**. Ask me anything about upcoming campus events, competitions, student council members, or school achievements!",
+        "Hello! I am your **Campus AI Assistant**. Ask me anything about upcoming campus events, competitions, student council members, or school achievements!",
     },
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -57,14 +57,17 @@ export function FloatingAiChat() {
     setLoading(true);
 
     try {
-      // Check if user has a custom client key stored in localStorage
-      const clientKey = typeof window !== "undefined" ? localStorage.getItem("iiss_grok_api_key") : null;
+      // Check if user has an override API key stored in localStorage
+      const clientKey =
+        typeof window !== "undefined"
+          ? localStorage.getItem("iiss_ai_api_key") || localStorage.getItem("iiss_grok_api_key")
+          : null;
 
       const res = await fetch("/api/campus-ai", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(clientKey ? { "x-grok-api-key": clientKey } : {}),
+          ...(clientKey ? { "x-ai-api-key": clientKey } : {}),
         },
         body: JSON.stringify({
           messages: newMessages.map((m) => ({
@@ -84,7 +87,7 @@ export function FloatingAiChat() {
           {
             id: `err-${Date.now()}`,
             role: "assistant",
-            content: `⚠️ **Notice**: ${errorText}`,
+            content: `**Notice**: ${errorText}`,
           },
         ]);
       } else {
@@ -103,7 +106,7 @@ export function FloatingAiChat() {
         {
           id: `err-${Date.now()}`,
           role: "assistant",
-          content: "⚠️ **Connection Error**: Unable to reach the Campus AI service. Please check your network connection.",
+          content: "**Connection Notice**: Unable to reach the Campus AI service. Please check your network connection.",
         },
       ]);
     } finally {
@@ -136,7 +139,7 @@ export function FloatingAiChat() {
         <div
           role="dialog"
           aria-label="Campus AI Assistant"
-          className="mb-3 flex h-[520px] max-h-[85vh] w-[calc(100vw-2.5rem)] sm:w-[410px] flex-col overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-200"
+          className="mb-3 flex h-[520px] max-h-[85vh] w-[calc(100vw-2.5rem)] sm:w-[420px] flex-col overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-200"
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-100 bg-[#12141c] px-4 py-3 text-white">
@@ -149,7 +152,7 @@ export function FloatingAiChat() {
                   <h3 className="text-sm font-semibold tracking-tight text-white">Campus Assistant</h3>
                   <span className="flex h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30" />
                 </div>
-                <p className="text-[11px] text-white/60">Grok AI · Events & Council Guide</p>
+                <p className="text-[11px] text-white/70">Events & Council Guide</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -157,7 +160,7 @@ export function FloatingAiChat() {
                 type="button"
                 onClick={clearChat}
                 title="Restart chat"
-                className="rounded-lg p-1.5 text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+                className="rounded-lg p-1.5 text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
                 aria-label="Reset chat conversation"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
@@ -166,7 +169,7 @@ export function FloatingAiChat() {
                 type="button"
                 onClick={() => setIsOpen(false)}
                 title="Close chat"
-                className="rounded-lg p-1.5 text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+                className="rounded-lg p-1.5 text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
                 aria-label="Close assistant"
               >
                 <X className="h-4 w-4" />
@@ -215,7 +218,7 @@ export function FloatingAiChat() {
                     <span className="h-2 w-2 rounded-full bg-orange-600 animate-bounce" />
                     <span className="h-2 w-2 rounded-full bg-orange-600 animate-bounce [animation-delay:0.2s]" />
                     <span className="h-2 w-2 rounded-full bg-orange-600 animate-bounce [animation-delay:0.4s]" />
-                    <span className="ml-2 text-xs text-muted font-medium">Grok is replying...</span>
+                    <span className="ml-2 text-xs text-muted font-medium">Assistant is thinking...</span>
                   </div>
                 </div>
               </div>
@@ -227,16 +230,20 @@ export function FloatingAiChat() {
           {/* Starter Chips (shown when few messages) */}
           {messages.length <= 2 && (
             <div className="border-t border-gray-100 bg-white px-3 py-2 flex gap-1.5 overflow-x-auto text-xs scrollbar-none">
-              {STARTER_PROMPTS.map((prompt) => (
-                <button
-                  key={prompt}
-                  type="button"
-                  onClick={() => handleSend(prompt)}
-                  className="shrink-0 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-gray-600 hover:border-orange-500 hover:bg-orange-50 hover:text-orange-700 transition-colors"
-                >
-                  {prompt}
-                </button>
-              ))}
+              {STARTER_PROMPTS.map((prompt) => {
+                const IconComponent = prompt.icon;
+                return (
+                  <button
+                    key={prompt.label}
+                    type="button"
+                    onClick={() => handleSend(prompt.label)}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-gray-600 hover:border-orange-500 hover:bg-orange-50 hover:text-orange-700 transition-colors cursor-pointer"
+                  >
+                    <IconComponent className="h-3 w-3 text-orange-600 shrink-0" />
+                    <span>{prompt.label}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -279,7 +286,7 @@ export function FloatingAiChat() {
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="group flex items-center gap-2.5 rounded-full bg-[#12141c] px-4 py-2.5 text-white shadow-xl hover:bg-[#1c2438] hover:shadow-2xl transition-all duration-200 active:scale-95 border border-white/10"
+        className="group flex items-center gap-2.5 rounded-full bg-[#12141c] px-4 py-2.5 text-white shadow-xl hover:bg-[#1c2438] hover:shadow-2xl transition-all duration-200 active:scale-95 border border-white/10 cursor-pointer"
         aria-label="Open Campus AI Assistant"
       >
         <span className="relative flex h-6 w-6 items-center justify-center rounded-full bg-orange-600 text-white">

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown, Calendar, FileText, ArrowRight } from "lucide-react";
+import { ChevronDown, Calendar, FileText, ArrowRight, Paperclip } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { ResourceCards } from "@/components/content/resource-cards";
 import {
@@ -174,7 +174,10 @@ export function AnnouncementList({
 
               {item.resources.length > 0 && !open ? (
                 <span className="text-[11px] text-muted flex items-center gap-1">
-                  📎 {item.resources.length} {item.resources.length === 1 ? "Attachment" : "Attachments"}
+                  <Paperclip className="h-3 w-3 shrink-0" />
+                  <span>
+                    {item.resources.length} {item.resources.length === 1 ? "Attachment" : "Attachments"}
+                  </span>
                 </span>
               ) : null}
             </div>

@@ -11,6 +11,10 @@ import {
   ChevronDown,
   ChevronUp,
   Wand2,
+  Activity,
+  Cpu,
+  Palette,
+  Award,
 } from "lucide-react";
 import type { CampusEvent, Category } from "@/lib/types";
 
@@ -206,24 +210,28 @@ export function EventAiCopilot({
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[11px] font-medium text-muted">Quick ideas:</span>
             {[
-              "⚽ Football Knockout Meet",
-              "🔬 Robotics & Innovation Expo",
-              "🎭 Annual Arts & Cultural Fest",
-              "🏆 Debating Championship",
-            ].map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                onClick={() =>
-                  setPrompt(
-                    `Organizing ${preset} on next month's 15th at school campus auditorium from 9:00 AM to 1:00 PM for Grades 8-12. Generate full descriptions, schedule, and tell me what uploads are needed.`,
-                  )
-                }
-                className="rounded-md border border-gray-200 bg-white/80 px-2.5 py-1 text-[11px] text-gray-700 hover:border-orange-500 hover:text-orange-700 transition-colors"
-              >
-                {preset}
-              </button>
-            ))}
+              { label: "Football Knockout Meet", icon: Activity },
+              { label: "Robotics & Innovation Expo", icon: Cpu },
+              { label: "Annual Arts & Cultural Fest", icon: Palette },
+              { label: "Debating Championship", icon: Award },
+            ].map((preset) => {
+              const Icon = preset.icon;
+              return (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() =>
+                    setPrompt(
+                      `Organizing ${preset.label} on next month's 15th at school campus auditorium from 9:00 AM to 1:00 PM for Grades 8-12. Generate full descriptions, schedule, and tell me what uploads are needed.`,
+                    )
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white/80 px-2.5 py-1 text-[11px] text-gray-700 hover:border-orange-500 hover:text-orange-700 transition-colors cursor-pointer"
+                >
+                  <Icon className="h-3 w-3 text-orange-600 shrink-0" />
+                  <span>{preset.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Action Row */}

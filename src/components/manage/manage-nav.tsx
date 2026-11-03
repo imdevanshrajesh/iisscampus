@@ -39,7 +39,7 @@ const navigationCategories: NavSection[] = [
     category: "Workspace",
     links: [
       { href: "/manage", label: "Overview", icon: LayoutDashboard },
-      { href: "/manage/ai", label: "AI Assistant", icon: Sparkles, badge: "Grok" },
+      { href: "/manage/ai", label: "AI Assistant", icon: Sparkles, badge: "Copilot" },
     ],
   },
   {
@@ -111,6 +111,7 @@ export function ManageNav({ showSettings }: { showSettings: boolean }) {
                 <Link
                   key={link.href}
                   href={link.href}
+                  prefetch={true}
                   className={`group relative flex shrink-0 items-center justify-between gap-2.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                     active
                       ? "bg-white/15 text-white font-semibold"

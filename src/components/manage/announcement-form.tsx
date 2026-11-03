@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Bell, ChevronDown, ChevronRight, Paperclip, Plus } from "lucide-react";
+import { Bell, ChevronDown, ChevronRight, MapPin, Paperclip, Plus } from "lucide-react";
 import { ResourceRepeater } from "@/components/manage/resource-repeater";
 import { deleteAnnouncement, saveAnnouncement, type ActionState } from "@/lib/manage/actions";
 import type { Announcement, CampusEvent, ContentResource } from "@/lib/types";
@@ -68,8 +68,9 @@ export function AnnouncementForm({
                   {announcement.enabled ? "Active" : "Hidden"}
                 </span>
                 {linkedEvent ? (
-                  <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent truncate max-w-[200px]">
-                    📍 {linkedEvent.title}
+                  <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent truncate max-w-[200px]">
+                    <MapPin className="h-2.5 w-2.5 shrink-0" />
+                    <span className="truncate">{linkedEvent.title}</span>
                   </span>
                 ) : null}
                 {resources.length > 0 ? (

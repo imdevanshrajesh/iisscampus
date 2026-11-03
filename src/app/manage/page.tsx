@@ -193,7 +193,10 @@ function EnhancedMonthChart({
 }
 
 export default async function ManageHomePage() {
-  const access = await requireWorkspace();
+  const [access, suggestions] = await Promise.all([
+    requireWorkspace(),
+    countStaffSuggestions(),
+  ]);
   if (!access.ready) return <ManageUnavailable />;
 
   const counts = access.workspace.events.reduce(
@@ -210,7 +213,7 @@ export default async function ManageHomePage() {
   );
   const waiting = access.workspace.events.filter((event) => event.publicationStatus === "in_review");
   const months = monthSeries(access.workspace.events);
-  const suggestionCount = access.role === "administrator" ? await countStaffSuggestions() : null;
+  const suggestionCount = access.role === "administrator" ? suggestions : null;
 
   const totalRecent = months.reduce((acc, m) => acc + m.count, 0);
 

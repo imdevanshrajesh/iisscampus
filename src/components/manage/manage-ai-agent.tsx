@@ -17,6 +17,10 @@ import {
   FileCheck,
   UploadCloud,
   ChevronRight,
+  Trophy,
+  Megaphone,
+  Award,
+  HelpCircle,
 } from "lucide-react";
 import { autoAddAiRecord } from "@/lib/manage/ai-actions";
 import { AiSettingsManager } from "@/components/manage/ai-settings-manager";
@@ -38,22 +42,26 @@ type GeneratedData = {
 
 const PRESET_EXAMPLES = [
   {
-    label: "⚽ Football Tournament",
+    label: "Football Tournament",
+    icon: Trophy,
     section: "event",
     text: "Organizing an Inter-House Football Championship on November 28, 2026 at the Main Turf Ground from 3:00 PM to 6:30 PM. For grades 7 to 12. Free entry. Boys need to wear official house jerseys and bring water bottles. Knockout matches, penalty shootouts, and house trophy presentation. Refreshments provided.",
   },
   {
-    label: "📢 Early Dismissal Notice",
+    label: "Early Dismissal Notice",
+    icon: Megaphone,
     section: "announcement",
     text: "Announcement for upcoming Thursday: School will dismiss at 12:30 PM due to scheduled staff professional development workshops. School transport buses will depart at 12:45 PM sharp. After-school clubs will be rescheduled.",
   },
   {
-    label: "🏆 Inter-School Debate Award",
+    label: "Inter-School Debate Award",
+    icon: Award,
     section: "achievement",
     text: "Our debate team won 1st Place in the UAE Inter-School Youth Parliamentary Debating League 2026. Lead speaker Ryan Mathew was awarded Best Speaker in the senior division. Academic year 2026-27.",
   },
   {
-    label: "❓ Club Registrations FAQ",
+    label: "Club Registrations FAQ",
+    icon: HelpCircle,
     section: "faq",
     text: "Question about how students join after-school activities and CCA clubs: Students can register for up to two after-school clubs at the start of each term via the student portal or by visiting the CCA coordinator room during break.",
   },
@@ -298,19 +306,23 @@ export function ManageAiAgent({
         {/* Quick Presets */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted font-medium">Quick examples:</span>
-          {PRESET_EXAMPLES.map((ex) => (
-            <button
-              key={ex.label}
-              type="button"
-              onClick={() => {
-                setPrompt(ex.text);
-                setTargetSection(ex.section);
-              }}
-              className="rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-700 hover:border-orange-500 hover:text-orange-700 transition-colors"
-            >
-              {ex.label}
-            </button>
-          ))}
+          {PRESET_EXAMPLES.map((ex) => {
+            const Icon = ex.icon;
+            return (
+              <button
+                key={ex.label}
+                type="button"
+                onClick={() => {
+                  setPrompt(ex.text);
+                  setTargetSection(ex.section);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-700 hover:border-orange-500 hover:text-orange-700 hover:bg-orange-50/50 transition-colors cursor-pointer"
+              >
+                <Icon className="h-3 w-3 text-orange-600 shrink-0" />
+                <span>{ex.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Action Button */}

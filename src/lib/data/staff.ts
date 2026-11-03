@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { contentMode } from "@/lib/data/content-mode";
 import { readContentStore } from "@/lib/data/file-content";
 import {
@@ -41,14 +42,14 @@ function seedWorkspace() {
   };
 }
 
-export async function getStaffWorkspace() {
+export const getStaffWorkspace = cache(async function getStaffWorkspace() {
   try {
     return await loadStaffWorkspace();
   } catch (error) {
     console.error(error);
     return seedWorkspace();
   }
-}
+});
 
 async function loadStaffWorkspace() {
   if ((await contentMode()) === "file") {

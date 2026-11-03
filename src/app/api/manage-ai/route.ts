@@ -208,6 +208,8 @@ REQUIREMENTS & RULES:
 5. MATCH CATEGORY & SLUG:
    - Assign the best matching category ID from the list.
    - Generate a clean kebab-case slug (e.g. 'inter-house-badminton-2026').
+6. STRICT BAN ON EMOJIS & UNICODE SYMBOLS:
+   - NEVER output emojis or decorative unicode symbols (NO ⚽, 🏆, 📅, ✨, 🤖, 📢, etc.) in any generated titles, summaries, descriptions, activities, or checklist items. Use clean, professional school language only.
 
 OUTPUT FORMAT:
 Respond ONLY with a valid JSON object matching this exact schema:

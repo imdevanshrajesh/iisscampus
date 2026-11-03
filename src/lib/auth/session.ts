@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createStaffClient } from "@/lib/supabase/server";
 import type { Actor } from "@/lib/auth/permissions";
 import type { CampusRole } from "@/lib/types";
@@ -33,7 +34,7 @@ function authFailureMessage(error: { message?: string; code?: string } | null | 
   return "Sign in is required.";
 }
 
-export async function getCampusSession(): Promise<CampusSession> {
+export const getCampusSession = cache(async function getCampusSession(): Promise<CampusSession> {
   try {
     const supabase = await createStaffClient();
     if (!supabase) return { status: "anonymous" };
@@ -92,12 +93,12 @@ export async function getCampusSession(): Promise<CampusSession> {
     console.error(error);
     return { status: "anonymous" };
   }
-}
+});
 
-export async function getCampusActor(): Promise<Actor> {
+export const getCampusActor = cache(async function getCampusActor(): Promise<Actor> {
   const session = await getCampusSession();
   return session.status === "ok" ? session.actor : null;
-}
+});
 
 export function sessionActionError(session: CampusSession) {
   if (session.status === "ok") return null;
