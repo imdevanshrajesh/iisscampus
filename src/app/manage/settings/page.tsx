@@ -1,6 +1,7 @@
 import {
   ContactEmailForm,
   CouncilLogoForm,
+  GrokAiSettingsForm,
   HostForm,
   NavBrandForm,
   RoleForm,
@@ -8,6 +9,7 @@ import {
 } from "@/components/manage/settings-forms";
 import { ManageUnavailable } from "@/components/manage/unavailable";
 import { getPublicSocial, getSiteBrand } from "@/lib/data/queries";
+import { readGrokConfig } from "@/lib/data/file-content";
 import { requireAdministrator } from "@/lib/manage/access";
 import { IMAGE_HOSTS_GUIDE } from "@/lib/media/guide";
 import { createStaffClient } from "@/lib/supabase/server";
@@ -16,6 +18,7 @@ export default async function SettingsPage() {
   const access = await requireAdministrator();
   if (!access.ready) return <ManageUnavailable />;
   const [social, brand] = await Promise.all([getPublicSocial(), getSiteBrand()]);
+  const grokConfig = readGrokConfig();
 
   const supabase = await createStaffClient();
   const audit = supabase
@@ -91,6 +94,18 @@ export default async function SettingsPage() {
         </p>
         <div className="mt-4">
           <SocialForm social={social} />
+        </div>
+      </section>
+      <section className="mt-12" id="ai">
+        <h2 className="text-xl font-medium">xAI Grok Intelligence</h2>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
+          Configure the Grok API key used by the content assistant and the public campus chat. You can also enter or update this key directly inside the AI Content page.
+        </p>
+        <div className="mt-4">
+          <GrokAiSettingsForm
+            initialApiKey={grokConfig.apiKey}
+            initialModel={grokConfig.model}
+          />
         </div>
       </section>
       <section className="mt-12">

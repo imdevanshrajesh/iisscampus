@@ -4,6 +4,7 @@ import { IntroSplash } from "@/components/home/intro-splash";
 import { HomeLink, SiteChrome } from "@/components/layout/dynamic-island";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { PreviewProvider } from "@/components/preview/preview-provider";
+import { FloatingAiChat } from "@/components/ai/floating-chat";
 import { defaultSocialLinks } from "@/lib/config";
 import {
   getPublicMarquee,
@@ -66,6 +67,7 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
         </PreviewProvider>
       </PublicMain>
       <SiteFooter showSampleNote={showSampleNote} social={social} contactEmail={contactEmail} nav={nav} />
+      <FloatingAiChat />
     </>
   );
 }

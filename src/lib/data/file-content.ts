@@ -49,6 +49,8 @@ type Store = {
   wellnessPage?: WellnessPageSettings | null;
   suggestions?: StoredSuggestion[];
   socialPosts?: SocialPost[];
+  grokApiKey?: string | null;
+  grokModel?: string | null;
 };
 
 function contentFilePath() {
@@ -994,4 +996,31 @@ export function deleteSocialPostFromStore(id: string) {
   const store = readContentStore();
   store.socialPosts = (store.socialPosts ?? []).filter((item) => item.id !== id);
   return writeContentStore(store);
+}
+
+export function readGrokConfig(): { apiKey: string | null; model: string } {
+  try {
+    const store = readContentStore();
+    return {
+      apiKey: store.grokApiKey || process.env.GROK_API_KEY || process.env.XAI_API_KEY || null,
+      model: store.grokModel || "grok-2-latest",
+    };
+  } catch {
+    return {
+      apiKey: process.env.GROK_API_KEY || process.env.XAI_API_KEY || null,
+      model: "grok-2-latest",
+    };
+  }
+}
+
+export function saveGrokConfigToStore(apiKey: string | null, model?: string | null): boolean {
+  try {
+    const store = readContentStore();
+    store.grokApiKey = apiKey ? apiKey.trim() : null;
+    if (model) store.grokModel = model.trim();
+    return writeContentStore(store);
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
 }
