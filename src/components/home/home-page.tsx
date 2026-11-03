@@ -12,7 +12,7 @@ import { RingLink } from "@/components/home/ring-link";
 import { SxswMarquee } from "@/components/home/sxsw-marquee";
 import { Today } from "@/components/home/today";
 import { siteConfig } from "@/lib/config";
-import { compareCampusEvents } from "@/lib/data/catalog";
+import { compareCampusEvents, getCampusTodayDate, isPastEvent, isUpcomingEvent } from "@/lib/data/catalog";
 import type { Achievement, Announcement, CampusEvent, Category } from "@/lib/types";
 
 function delay(ms: number) {
@@ -34,15 +34,17 @@ export function HomePage({
   logoUrl?: string | null;
   announcements: Announcement[];
 }) {
+  const today = getCampusTodayDate();
   const campusEvents = events.filter((event) => event.listing !== "external");
   const featured = campusEvents.filter((event) => event.featured);
   const lead = (featured.length ? featured : campusEvents).slice(0, 8);
-  const ongoing = campusEvents.filter((event) => event.eventStatus === "ongoing");
-  const upcomingRaw = campusEvents
-    .filter((event) => event.eventStatus === "upcoming")
+  const ongoing = campusEvents.filter(
+    (event) => event.eventStatus === "ongoing" && !isPastEvent(event, today),
+  );
+  const upcoming = campusEvents
+    .filter((event) => isUpcomingEvent(event, today))
     .slice()
     .sort(compareCampusEvents);
-  const upcoming = upcomingRaw.length ? upcomingRaw : campusEvents.slice(0, 6);
   const competitions = events
     .filter((event) => event.listing === "competition" || event.listing === "external")
     .slice()

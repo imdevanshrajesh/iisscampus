@@ -156,6 +156,52 @@ export function compareCampusEvents(a: CampusEvent, b: CampusEvent) {
   return (a.eventDate ?? "9999").localeCompare(b.eventDate ?? "9999") || a.title.localeCompare(b.title);
 }
 
+export function getCampusTodayDate(): string {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Dubai",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
+export function isPastEvent(event: CampusEvent, today: string = getCampusTodayDate()): boolean {
+  if (event.eventStatus === "completed") return true;
+  const lastDate = event.endDate || event.eventDate;
+  if (lastDate && lastDate < today) return true;
+  return false;
+}
+
+export function isUpcomingEvent(event: CampusEvent, today: string = getCampusTodayDate()): boolean {
+  if (isPastEvent(event, today)) return false;
+  if (event.eventStatus === "ongoing") return false;
+  if (event.eventStatus === "upcoming") {
+    return true;
+  }
+  const targetDate = event.eventDate || event.endDate;
+  return Boolean(targetDate && targetDate >= today);
+}
+
+export function getEffectiveEventStatus(
+  event: CampusEvent,
+  today: string = getCampusTodayDate(),
+): EventStatus | null {
+  if (isPastEvent(event, today)) {
+    return "completed";
+  }
+  if (event.eventStatus === "ongoing") {
+    return "ongoing";
+  }
+  if (isUpcomingEvent(event, today)) {
+    return "upcoming";
+  }
+  return event.eventStatus;
+}
+
 export function eventStatusLabel(status: EventStatus | null) {
   if (status === "ongoing") return "On now";
   if (status === "upcoming") return "Coming up";
@@ -172,7 +218,8 @@ export type CampusPulse = {
 
 export function campusPulse(events: CampusEvent[]): CampusPulse {
   const published = selectPublicEvents(events).filter((event) => !event.isSample);
-  const live = published.filter((event) => event.eventStatus === "ongoing");
+  const today = getCampusTodayDate();
+  const live = published.filter((event) => event.eventStatus === "ongoing" && !isPastEvent(event, today));
   if (live.length === 1) {
     return {
       tone: "live",
@@ -191,7 +238,7 @@ export function campusPulse(events: CampusEvent[]): CampusPulse {
   }
 
   const next = published
-    .filter((event) => event.eventStatus === "upcoming" && event.eventDate)
+    .filter((event) => isUpcomingEvent(event, today) && event.eventDate)
     .sort((a, b) => (a.eventDate ?? "").localeCompare(b.eventDate ?? ""));
   if (next[0]) {
     return {

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { AddToCalendarButton } from "@/components/events/add-to-calendar-button";
 import { PreviewTrigger } from "@/components/preview/preview-provider";
-import { categoryById } from "@/lib/data/catalog";
+import { categoryById, getEffectiveEventStatus } from "@/lib/data/catalog";
 import { categoryStyle } from "@/lib/home/category-style";
 import type { CampusEvent, Category } from "@/lib/types";
 
@@ -47,7 +47,7 @@ export function EventRowTimeline({
   const primary = categoryById(categories, event.categoryId);
   const theme = categoryStyle(primary?.slug);
   const dateParts = parseDateSegments(event.eventDate);
-  const isLive = event.eventStatus === "ongoing" && !event.isSample;
+  const isLive = getEffectiveEventStatus(event) === "ongoing" && !event.isSample;
 
   const isRegistrationOpen = event.registrationEnabled && (!event.registrationDeadline || new Date(event.registrationDeadline) > new Date());
   const hasPdfResource = event.resources?.find((r) => r.kind === "pdf" || r.href?.endsWith(".pdf"));

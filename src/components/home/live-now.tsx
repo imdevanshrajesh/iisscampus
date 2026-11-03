@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, Calendar, MapPin } from "lucide-react";
 import { AmbientField } from "@/components/home/ambient-field";
 import { PreviewTrigger } from "@/components/preview/preview-provider";
-import { formatEventDate } from "@/lib/data/catalog";
+import { formatEventDate, getCampusTodayDate, isPastEvent, isUpcomingEvent } from "@/lib/data/catalog";
 import type { CampusEvent } from "@/lib/types";
 
 export function LiveNow({
@@ -12,8 +12,11 @@ export function LiveNow({
   ongoing: CampusEvent[];
   upcoming: CampusEvent[];
 }) {
-  const live = ongoing.length > 0;
-  const next = upcoming[0] ?? null;
+  const today = getCampusTodayDate();
+  const validLive = ongoing.filter((event) => !isPastEvent(event, today));
+  const validUpcoming = upcoming.filter((event) => isUpcomingEvent(event, today));
+  const live = validLive.length > 0;
+  const next = validUpcoming[0] ?? null;
 
   return (
     <aside
@@ -42,12 +45,12 @@ export function LiveNow({
             <span className="relative flex h-2 w-2">
               <span
                 className={`inline-flex h-2 w-2 rounded-full ${
-                  live ? "bg-accent animate-ping" : "bg-gold"
+                  live ? "bg-accent animate-ping" : next ? "bg-gold" : "bg-white/40"
                 }`}
               />
             </span>
             <span className="tracking-wider uppercase text-[11px] text-white/90">
-              {live ? "Live Now" : "Next on Stage"}
+              {live ? "Live Now" : next ? "Next on Stage" : "Campus Stage"}
             </span>
           </div>
 
@@ -58,7 +61,7 @@ export function LiveNow({
             </span>
           ) : (
             <span className="text-[11px] font-medium uppercase tracking-widest text-white/40">
-              {live ? `${ongoing.length} Active` : "Upcoming"}
+              {live ? `${validLive.length} Active` : next ? "Upcoming" : "Standby"}
             </span>
           )}
         </div>
@@ -67,7 +70,7 @@ export function LiveNow({
         {live ? (
           <div className="space-y-4 my-auto">
             <ul className="space-y-4">
-              {ongoing.slice(0, 2).map((event) => (
+              {validLive.slice(0, 2).map((event) => (
                 <li key={event.id}>
                   <PreviewTrigger event={event} className="group block w-full text-left">
                     <h3 className="font-display text-[clamp(2rem,3.8vw,3.2rem)] font-normal leading-[0.94] text-white transition-colors duration-300 group-hover:text-gold">

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { AddToCalendarButton } from "@/components/events/add-to-calendar-button";
 import { PreviewTrigger } from "@/components/preview/preview-provider";
-import { categoryById, eventStatusLabel, formatEventDate } from "@/lib/data/catalog";
+import { categoryById, eventStatusLabel, formatEventDate, getEffectiveEventStatus } from "@/lib/data/catalog";
 import { categoryStyle } from "@/lib/home/category-style";
 import { classifyMediaUrl } from "@/lib/media/url";
 import type { CampusEvent, Category } from "@/lib/types";
@@ -40,8 +40,9 @@ export function EventCard({
   const date = formatEventDate(event.eventDate);
   const end = formatEventDate(event.endDate);
   const when = date && end && end !== date ? `${date} – ${end}` : date;
-  const status = event.isSample ? null : eventStatusLabel(event.eventStatus);
-  const isLive = event.eventStatus === "ongoing" && !event.isSample;
+  const effectiveStatus = getEffectiveEventStatus(event);
+  const status = event.isSample ? null : eventStatusLabel(effectiveStatus);
+  const isLive = effectiveStatus === "ongoing" && !event.isSample;
 
   const validCover = event.coverImageUrl ? classifyMediaUrl(event.coverImageUrl, hosts) : null;
   const hasCover = Boolean(validCover?.ok);

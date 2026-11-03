@@ -4,7 +4,7 @@ import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
 import { AddToCalendarButton } from "@/components/events/add-to-calendar-button";
 import { PreviewTrigger } from "@/components/preview/preview-provider";
 import { formatAnnouncementDate } from "@/lib/announcements";
-import { formatEventDate } from "@/lib/data/catalog";
+import { formatEventDate, getCampusTodayDate, isUpcomingEvent } from "@/lib/data/catalog";
 import type { Announcement, CampusEvent } from "@/lib/types";
 
 function noticeTag(title: string): string {
@@ -18,13 +18,15 @@ function noticeTag(title: string): string {
 }
 
 export function EmsHighlights({
-  upcomingEvents,
+  upcomingEvents = [],
   announcements = [],
 }: {
   upcomingEvents: CampusEvent[];
   announcements?: Announcement[];
 }) {
-  const topEvents = upcomingEvents.slice(0, 3);
+  const today = getCampusTodayDate();
+  const validUpcoming = upcomingEvents.filter((event) => isUpcomingEvent(event, today));
+  const topEvents = validUpcoming.slice(0, 3);
   const topNotices = announcements.slice(0, 3);
 
   return (
@@ -128,7 +130,11 @@ export function EmsHighlights({
               href="/events"
               className="group flex w-full items-center justify-center gap-2 rounded-2xl border border-line/80 bg-white/80 py-3 text-xs font-semibold text-ink shadow-xs transition hover:border-navy hover:bg-white hover:shadow-sm"
             >
-              <span>VIEW ALL UPCOMING EVENTS ({upcomingEvents.length || "ALL"})</span>
+              <span>
+                {validUpcoming.length
+                  ? `VIEW ALL UPCOMING EVENTS (${validUpcoming.length})`
+                  : "EXPLORE ALL CAMPUS EVENTS"}
+              </span>
               <ArrowUpRight size={13} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </Link>
           </div>

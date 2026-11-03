@@ -1,6 +1,22 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { campusPulse, compareCampusEvents, councilMemberSlugs, councilMembersOnBoard, filterPublishedEvents, findPublicCouncilMember, isCouncilStaffRole, pairCouncilMembers, selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "../src/lib/data/catalog.ts";
+import {
+  campusPulse,
+  compareCampusEvents,
+  councilMemberSlugs,
+  councilMembersOnBoard,
+  filterPublishedEvents,
+  findPublicCouncilMember,
+  getCampusTodayDate,
+  getEffectiveEventStatus,
+  isCouncilStaffRole,
+  isPastEvent,
+  isUpcomingEvent,
+  pairCouncilMembers,
+  selectPublicAchievements,
+  selectPublicCouncil,
+  selectPublicEvents,
+} from "../src/lib/data/catalog.ts";
 import type { CouncilYear } from "../src/lib/types.ts";
 import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "../src/lib/data/seed.ts";
 import type { CampusEvent } from "../src/lib/types.ts";
@@ -152,5 +168,69 @@ describe("public catalog", () => {
       ordered.map((event) => event.slug),
       ["still-ahead", "newer-finish", "older-finish"],
     );
+  });
+
+  it("identifies past events and excludes them from upcoming events", () => {
+    const referenceToday = "2026-11-03";
+    const pastSeptEvent: CampusEvent = {
+      ...seedEvents[0],
+      id: "20000000-0000-4000-8000-000000000094",
+      slug: "faculty-fiesta",
+      title: "Faculty Fiesta",
+      eventDate: "2026-09-03",
+      endDate: "2026-09-03",
+      eventStatus: "completed",
+      isSample: false,
+    };
+
+    const staleUpcomingSeptEvent: CampusEvent = {
+      ...seedEvents[0],
+      id: "20000000-0000-4000-8000-000000000095",
+      slug: "old-fixture",
+      title: "Old Fixture",
+      eventDate: "2026-09-03",
+      endDate: null,
+      eventStatus: "upcoming",
+      isSample: false,
+    };
+
+    const futureNovEvent: CampusEvent = {
+      ...seedEvents[0],
+      id: "20000000-0000-4000-8000-000000000096",
+      slug: "future-tournament",
+      title: "Future Tournament",
+      eventDate: "2026-11-14",
+      endDate: null,
+      eventStatus: "upcoming",
+      isSample: false,
+    };
+
+    const todayEvent: CampusEvent = {
+      ...seedEvents[0],
+      id: "20000000-0000-4000-8000-000000000097",
+      slug: "today-match",
+      title: "Today Match",
+      eventDate: "2026-11-03",
+      endDate: null,
+      eventStatus: "upcoming",
+      isSample: false,
+    };
+
+    // Past events must be detected as past
+    assert.equal(isPastEvent(pastSeptEvent, referenceToday), true);
+    assert.equal(isPastEvent(staleUpcomingSeptEvent, referenceToday), true);
+    assert.equal(isPastEvent(futureNovEvent, referenceToday), false);
+    assert.equal(isPastEvent(todayEvent, referenceToday), false);
+
+    // Upcoming checks must reject past events (even if their DB status was "upcoming")
+    assert.equal(isUpcomingEvent(pastSeptEvent, referenceToday), false);
+    assert.equal(isUpcomingEvent(staleUpcomingSeptEvent, referenceToday), false);
+    assert.equal(isUpcomingEvent(futureNovEvent, referenceToday), true);
+    assert.equal(isUpcomingEvent(todayEvent, referenceToday), true);
+
+    // Effective status must reflect completed for past events
+    assert.equal(getEffectiveEventStatus(pastSeptEvent, referenceToday), "completed");
+    assert.equal(getEffectiveEventStatus(staleUpcomingSeptEvent, referenceToday), "completed");
+    assert.equal(getEffectiveEventStatus(futureNovEvent, referenceToday), "upcoming");
   });
 });

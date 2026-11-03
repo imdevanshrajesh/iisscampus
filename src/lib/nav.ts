@@ -1,4 +1,11 @@
-import { compareCampusEvents, formatEventDate, selectPublicEvents } from "@/lib/data/catalog";
+import {
+  compareCampusEvents,
+  formatEventDate,
+  getCampusTodayDate,
+  isPastEvent,
+  isUpcomingEvent,
+  selectPublicEvents,
+} from "@/lib/data/catalog";
 import type { CampusEvent, NavGroup, NavIncludeListing, NavItem, PublicNavGroup } from "@/lib/types";
 
 export type NavLink = { href: string; label: string };
@@ -162,9 +169,14 @@ export function resolvePublicNav(
         if (!links.some((link) => link.href === listingIndex.href)) links.unshift(listingIndex);
         const seen = new Set(links.map((link) => link.href));
         const picked = new Set(group.items.map((entry) => entry.eventId).filter((id): id is string => Boolean(id)));
+        const today = getCampusTodayDate();
         const extras = published
           .filter((event) => event.listing === group.includeListing)
-          .filter((event) => event.eventStatus === "upcoming" || event.eventStatus === "ongoing")
+          .filter(
+            (event) =>
+              isUpcomingEvent(event, today) ||
+              (event.eventStatus === "ongoing" && !isPastEvent(event, today)),
+          )
           .filter((event) => !picked.has(event.id) && !seen.has(eventHref(event)))
           .sort(compareCampusEvents)
           .slice(0, 4);

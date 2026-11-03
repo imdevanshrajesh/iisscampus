@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import { ArrowUpRight, Calendar, Clock, MapPin } from "lucide-react";
 import { PreviewTrigger } from "@/components/preview/preview-provider";
 import { TiltSurface } from "@/components/home/tilt-surface";
-import { categoryById, eventStatusLabel, formatEventDate } from "@/lib/data/catalog";
+import { categoryById, eventStatusLabel, formatEventDate, getEffectiveEventStatus } from "@/lib/data/catalog";
 import { categoryStyle } from "@/lib/home/category-style";
 import { classifyMediaUrl } from "@/lib/media/url";
 import type { CampusEvent, Category } from "@/lib/types";
@@ -22,8 +22,9 @@ export function BoardCard({
   const category = categoryById(categories, event.categoryId);
   const style = categoryStyle(category?.slug);
   const dateStr = formatEventDate(event.eventDate);
-  const status = event.isSample ? null : eventStatusLabel(event.eventStatus);
-  const isLive = event.eventStatus === "ongoing" && !event.isSample;
+  const effectiveStatus = getEffectiveEventStatus(event);
+  const status = event.isSample ? null : eventStatusLabel(effectiveStatus);
+  const isLive = effectiveStatus === "ongoing" && !event.isSample;
 
   const validCover = event.coverImageUrl ? classifyMediaUrl(event.coverImageUrl, hosts) : null;
   const hasCover = Boolean(validCover?.ok);

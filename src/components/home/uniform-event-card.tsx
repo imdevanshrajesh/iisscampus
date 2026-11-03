@@ -5,7 +5,7 @@ import Image from "next/image";
 import { ArrowUpRight, Calendar, Clock, MapPin } from "lucide-react";
 import { PreviewTrigger } from "@/components/preview/preview-provider";
 import { TiltSurface } from "@/components/home/tilt-surface";
-import { categoryById, eventStatusLabel, formatEventDate } from "@/lib/data/catalog";
+import { categoryById, eventStatusLabel, formatEventDate, getEffectiveEventStatus } from "@/lib/data/catalog";
 import { categoryStyle } from "@/lib/home/category-style";
 import { classifyMediaUrl } from "@/lib/media/url";
 import type { CampusEvent, Category } from "@/lib/types";
@@ -26,8 +26,9 @@ export function UniformEventCard({
   const dateStr = formatEventDate(event.eventDate);
   const endDateStr = formatEventDate(event.endDate);
   const when = dateStr && endDateStr && endDateStr !== dateStr ? `${dateStr} – ${endDateStr}` : dateStr;
-  const status = event.isSample ? null : eventStatusLabel(event.eventStatus);
-  const isLive = event.eventStatus === "ongoing" && !event.isSample;
+  const effectiveStatus = getEffectiveEventStatus(event);
+  const status = event.isSample ? null : eventStatusLabel(effectiveStatus);
+  const isLive = effectiveStatus === "ongoing" && !event.isSample;
 
   const validCover = event.coverImageUrl
     ? classifyMediaUrl(event.coverImageUrl, hosts)

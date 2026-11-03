@@ -9,7 +9,7 @@ import { RegistrationOffer } from "@/components/events/registration-offer";
 import { VenueBlock } from "@/components/events/venue-block";
 import { EventCard } from "@/components/events/event-card";
 import { formatAnnouncementDate, renderAnnouncementMessage } from "@/lib/announcements";
-import { categoryById, eventCategoryIds, paragraphs, relatedPublishedEvents } from "@/lib/data/catalog";
+import { categoryById, eventCategoryIds, getEffectiveEventStatus, paragraphs, relatedPublishedEvents } from "@/lib/data/catalog";
 import { classifyMediaUrl, classifyNavigationUrl } from "@/lib/media/url";
 import { presentVideo } from "@/lib/media/video";
 import type { Achievement, Announcement, CampusEvent, Category } from "@/lib/types";
@@ -82,7 +82,7 @@ export function EventDetail({
             {[
               listingLabel,
               categoryNames.join(", ") || null,
-              event.eventStatus || null,
+              getEffectiveEventStatus(event) || null,
             ]
               .filter(Boolean)
               .join(" · ")}

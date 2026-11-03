@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Calendar, Clock, Pause, Play } from "lucide-react";
 import { PreviewTrigger } from "@/components/preview/preview-provider";
-import { categoryById, formatEventDate } from "@/lib/data/catalog";
+import { categoryById, formatEventDate, getEffectiveEventStatus } from "@/lib/data/catalog";
 import { categoryStyle } from "@/lib/home/category-style";
 import { classifyMediaUrl } from "@/lib/media/url";
 import type { CampusEvent, Category } from "@/lib/types";
@@ -82,7 +82,7 @@ export function SxswMarquee({
             const category = categoryById(categories, event.categoryId);
             const style = categoryStyle(category?.slug);
             const dateStr = formatEventDate(event.eventDate);
-            const isLive = event.eventStatus === "ongoing" && !event.isSample;
+            const isLive = getEffectiveEventStatus(event) === "ongoing" && !event.isSample;
             const validCover = event.coverImageUrl ? classifyMediaUrl(event.coverImageUrl, hosts) : null;
             const hasCover = Boolean(validCover?.ok);
 
