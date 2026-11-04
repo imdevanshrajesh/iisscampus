@@ -23,7 +23,7 @@ function AnnouncementItems({
         const linked = item.eventId ? eventById.get(item.eventId) : null;
         const content = (
           <span className="announcement-bar__item text-sm whitespace-nowrap">
-            {renderAnnouncementMessage(item.message)}
+            {renderAnnouncementMessage(item.message, { inline: true })}
             {linked ? <span className="ml-2 text-white/60">· {linked.title}</span> : null}
           </span>
         );

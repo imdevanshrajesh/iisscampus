@@ -501,7 +501,7 @@ export function councilInputFromForm(formData: FormData) {
 
 export const announcementInputSchema = z.object({
   title: z.string().trim().min(2, "Notice title must be at least 2 characters.").max(200, "Notice title cannot exceed 200 characters."),
-  body: z.string().trim().max(8000).default(""),
+  body: z.string().trim().max(30000).default(""),
   resources: z.array(resourceSchema).max(40).default([]),
   eventId: z.string().uuid().nullable().default(null),
   programId: z.string().uuid().nullable().optional().default(null),

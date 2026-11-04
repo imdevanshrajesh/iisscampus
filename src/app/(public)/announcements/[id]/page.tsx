@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { ResourceCards } from "@/components/content/resource-cards";
 import { NoticeShareButton } from "@/components/announcements/notice-share-button";
-import { formatAnnouncementDate, renderAnnouncementMessage } from "@/lib/announcements";
+import { formatAnnouncementDate, renderAnnouncementMessage, stripMarkdown } from "@/lib/announcements";
 import {
   getPublicAnnouncements,
   getPublicCatalog,
@@ -37,7 +37,7 @@ export async function generateMetadata({
   }
 
   const description = notice.body.trim()
-    ? notice.body.slice(0, 160).replace(/\s+/g, " ")
+    ? stripMarkdown(notice.body).slice(0, 160)
     : "Official circular & directive from the IISS Student Council.";
 
   return {
@@ -144,9 +144,9 @@ export default async function NoticeDetailPage({
       ) : null}
 
       {/* Article Body Content */}
-      <div className="my-8 space-y-5 text-base sm:text-lg leading-relaxed text-ink/90">
+      <div className="my-8 text-base sm:text-lg leading-relaxed text-ink/90">
         {notice.body ? (
-          <div className="space-y-4 leading-relaxed">
+          <div className="space-y-4">
             {renderAnnouncementMessage(notice.body)}
           </div>
         ) : (

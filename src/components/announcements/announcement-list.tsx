@@ -18,6 +18,7 @@ import { ResourceCards } from "@/components/content/resource-cards";
 import {
   formatAnnouncementDate,
   renderAnnouncementMessage,
+  stripMarkdown,
 } from "@/lib/announcements";
 import type { Announcement, CampusEvent, CustomProgram, WellnessItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -189,7 +190,7 @@ export function AnnouncementList({
                     {renderAnnouncementMessage(item.body)}
                   </div>
                 ) : (
-                  <p>{item.body}</p>
+                  <p>{stripMarkdown(item.body)}</p>
                 )}
               </div>
             ) : null}

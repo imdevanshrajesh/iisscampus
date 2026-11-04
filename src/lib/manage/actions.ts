@@ -1878,6 +1878,9 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
     revalidatePath("/");
     revalidatePath("/announcements");
     revalidatePath("/manage/announcements");
+    if (id) {
+      revalidatePath(`/announcements/${id}`);
+    }
     return { ok: "Announcement saved." };
   }
 
@@ -1918,6 +1921,10 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
   revalidatePath("/");
   revalidatePath("/announcements");
   revalidatePath("/manage/announcements");
+  const targetId = id || saved.data?.id;
+  if (targetId) {
+    revalidatePath(`/announcements/${targetId}`);
+  }
   return { ok: "Announcement saved." };
 }
 

@@ -3,7 +3,7 @@ import { ArrowUpRight, Calendar, Newspaper, MapPin } from "lucide-react";
 import { RevealOnScroll } from "@/components/home/reveal-on-scroll";
 import { AddToCalendarButton } from "@/components/events/add-to-calendar-button";
 import { PreviewTrigger } from "@/components/preview/preview-provider";
-import { formatAnnouncementDate } from "@/lib/announcements";
+import { formatAnnouncementDate, stripMarkdown } from "@/lib/announcements";
 import { formatEventDate, getCampusTodayDate, isUpcomingEvent } from "@/lib/data/catalog";
 import type { Announcement, CampusEvent } from "@/lib/types";
 
@@ -176,7 +176,7 @@ export function EmsHighlights({
 
                         {notice.body ? (
                           <p className="mt-2 text-xs leading-5 text-muted line-clamp-2">
-                            {notice.body}
+                            {stripMarkdown(notice.body)}
                           </p>
                         ) : null}
 

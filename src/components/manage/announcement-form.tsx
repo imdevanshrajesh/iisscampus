@@ -1,10 +1,35 @@
 "use client";
 
 import { useActionState, useState, useRef } from "react";
-import { Bell, ChevronDown, ChevronRight, MapPin, Paperclip, Plus, Sparkles, HeartHandshake, UploadCloud, RefreshCw } from "lucide-react";
+import {
+  Bell,
+  ChevronDown,
+  ChevronRight,
+  MapPin,
+  Paperclip,
+  Plus,
+  Sparkles,
+  HeartHandshake,
+  UploadCloud,
+  RefreshCw,
+  Bold,
+  Italic,
+  Underline as UnderlineIcon,
+  Heading2,
+  Heading3,
+  List,
+  ListOrdered,
+  Link2,
+  Quote,
+  Minus,
+  Eye,
+  PenLine,
+  CornerDownLeft,
+} from "lucide-react";
 import { ResourceRepeater } from "@/components/manage/resource-repeater";
 import { ImageUploader } from "@/components/manage/image-uploader";
 import { deleteAnnouncement, saveAnnouncement, type ActionState } from "@/lib/manage/actions";
+import { renderAnnouncementMessage, stripMarkdown } from "@/lib/announcements";
 import type { Announcement, CampusEvent, ContentResource, CustomProgram, WellnessItem } from "@/lib/types";
 
 const fieldClass = "w-full rounded-md border border-line bg-background px-3 py-2 text-sm";
@@ -44,6 +69,9 @@ export function AnnouncementForm({
   const [state, action, pending] = useActionState(saveAnnouncement, {} as ActionState);
   const [deleteState, deleteAction, deleting] = useActionState(deleteAnnouncement, {} as ActionState);
   const [title, setTitle] = useState(announcement?.title ?? "");
+  const [body, setBody] = useState(announcement?.body ?? "");
+  const [editorTab, setEditorTab] = useState<"write" | "preview">("write");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [resources, setResources] = useState<ContentResource[]>(announcement?.resources ?? []);
   const [coverImageUrl, setCoverImageUrl] = useState<string>(announcement?.coverImageUrl ?? "");
   const [uploadingPdf, setUploadingPdf] = useState(false);
@@ -51,6 +79,112 @@ export function AnnouncementForm({
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
   const isFormValid = title.trim().length >= 2;
+
+  const insertFormatting = (actionType: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = body;
+    const selected = text.slice(start, end);
+
+    let replacement = "";
+    let nextStart = start;
+    let nextEnd = end;
+
+    switch (actionType) {
+      case "bold": {
+        const val = selected || "bold text";
+        replacement = `**${val}**`;
+        nextStart = selected ? start : start + 2;
+        nextEnd = selected ? start + replacement.length : nextStart + val.length;
+        break;
+      }
+      case "italic": {
+        const val = selected || "italic text";
+        replacement = `*${val}*`;
+        nextStart = selected ? start : start + 1;
+        nextEnd = selected ? start + replacement.length : nextStart + val.length;
+        break;
+      }
+      case "underline": {
+        const val = selected || "underlined text";
+        replacement = `<u>${val}</u>`;
+        nextStart = selected ? start : start + 3;
+        nextEnd = selected ? start + replacement.length : nextStart + val.length;
+        break;
+      }
+      case "h2": {
+        const val = selected || "Section Heading";
+        const prefix = start === 0 || text[start - 1] === "\n" ? "" : "\n\n";
+        replacement = `${prefix}## ${val}\n`;
+        nextStart = start + prefix.length + 3;
+        nextEnd = nextStart + val.length;
+        break;
+      }
+      case "h3": {
+        const val = selected || "Subheading";
+        const prefix = start === 0 || text[start - 1] === "\n" ? "" : "\n\n";
+        replacement = `${prefix}### ${val}\n`;
+        nextStart = start + prefix.length + 4;
+        nextEnd = nextStart + val.length;
+        break;
+      }
+      case "bullet": {
+        const content = selected || "Bullet point";
+        const lines = content.split("\n");
+        replacement = lines.map((l) => (l.trim().startsWith("- ") ? l : `- ${l}`)).join("\n");
+        nextStart = start;
+        nextEnd = start + replacement.length;
+        break;
+      }
+      case "number": {
+        const content = selected || "Numbered step";
+        const lines = content.split("\n");
+        replacement = lines.map((l, i) => `${i + 1}. ${l.replace(/^\d+[.)]\s*/, "")}`).join("\n");
+        nextStart = start;
+        nextEnd = start + replacement.length;
+        break;
+      }
+      case "link": {
+        const label = selected || "Link description";
+        replacement = `[${label}](https://example.com)`;
+        nextStart = start + label.length + 3;
+        nextEnd = nextStart + 19;
+        break;
+      }
+      case "quote": {
+        const val = selected || "Important quote or memo";
+        const prefix = start === 0 || text[start - 1] === "\n" ? "" : "\n\n";
+        replacement = `${prefix}> ${val}\n`;
+        nextStart = start + prefix.length + 2;
+        nextEnd = nextStart + val.length;
+        break;
+      }
+      case "divider": {
+        const prefix = start === 0 || text[start - 1] === "\n" ? "" : "\n\n";
+        replacement = `${prefix}---\n\n`;
+        nextStart = start + replacement.length;
+        nextEnd = nextStart;
+        break;
+      }
+      case "newline": {
+        replacement = "\n";
+        nextStart = start + 1;
+        nextEnd = nextStart;
+        break;
+      }
+    }
+
+    const nextBody = text.slice(0, start) + replacement + text.slice(end);
+    setBody(nextBody);
+
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(nextStart, nextEnd);
+    });
+  };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     if (!isFormValid) {
@@ -171,7 +305,7 @@ export function AnnouncementForm({
                 ) : null}
               </div>
               <p className="mt-0.5 text-xs text-muted truncate max-w-xl">
-                {announcement.body || "No additional text."}
+                {stripMarkdown(announcement.body) || "No additional text."}
               </p>
             </div>
           </div>
@@ -233,18 +367,212 @@ export function AnnouncementForm({
               </label>
             </div>
 
-            <p className="text-xs text-muted">Formatting: **bold**, *italic*, and [label](https://link).</p>
-            <label className="grid gap-1.5 text-sm">
-              Article Content / Directive Details
-              <textarea
-                name="body"
-                defaultValue={announcement?.body ?? ""}
-                rows={7}
-                maxLength={8000}
-                className={fieldClass}
-                placeholder="Full article text shown on the blog post and when visitors expand the notice card..."
-              />
-            </label>
+            {/* Rich Markdown & Blog Content Editor */}
+            <div className="grid gap-2 text-sm pt-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-medium text-ink flex items-center gap-1.5">
+                  <PenLine size={15} className="text-accent" />
+                  <span>Article Content / Blog &amp; Directive Body</span>
+                </span>
+
+                {/* Write vs Preview Tabs */}
+                <div className="flex items-center rounded-lg border border-line bg-wash/60 p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setEditorTab("write")}
+                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-medium transition ${
+                      editorTab === "write"
+                        ? "bg-white text-ink shadow-2xs font-semibold"
+                        : "text-muted hover:text-ink"
+                    }`}
+                  >
+                    <PenLine size={13} />
+                    <span>Write</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditorTab("preview")}
+                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-medium transition ${
+                      editorTab === "preview"
+                        ? "bg-white text-ink shadow-2xs font-semibold"
+                        : "text-muted hover:text-ink"
+                    }`}
+                  >
+                    <Eye size={13} />
+                    <span>Live Preview</span>
+                  </button>
+                </div>
+              </div>
+
+              {editorTab === "write" ? (
+                <div className="space-y-2">
+                  {/* Formatting Toolbar */}
+                  <div className="flex flex-wrap items-center gap-1 rounded-t-lg border border-line bg-wash/50 p-1.5 text-xs text-ink/80">
+                    <button
+                      type="button"
+                      title="Bold (**text**)"
+                      onClick={() => insertFormatting("bold")}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-white hover:text-ink hover:shadow-2xs transition"
+                    >
+                      <Bold size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      title="Italic (*text*)"
+                      onClick={() => insertFormatting("italic")}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-white hover:text-ink hover:shadow-2xs transition"
+                    >
+                      <Italic size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      title="Underline (<u>text</u>)"
+                      onClick={() => insertFormatting("underline")}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-white hover:text-ink hover:shadow-2xs transition"
+                    >
+                      <UnderlineIcon size={14} />
+                    </button>
+
+                    <span className="h-4 w-px bg-line/80 mx-1" />
+
+                    <button
+                      type="button"
+                      title="Heading 2 (## Section)"
+                      onClick={() => insertFormatting("h2")}
+                      className="inline-flex h-7 px-2 items-center justify-center rounded hover:bg-white hover:text-ink hover:shadow-2xs transition font-semibold text-[11px]"
+                    >
+                      H2
+                    </button>
+                    <button
+                      type="button"
+                      title="Heading 3 (### Subsection)"
+                      onClick={() => insertFormatting("h3")}
+                      className="inline-flex h-7 px-2 items-center justify-center rounded hover:bg-white hover:text-ink hover:shadow-2xs transition font-semibold text-[11px]"
+                    >
+                      H3
+                    </button>
+
+                    <span className="h-4 w-px bg-line/80 mx-1" />
+
+                    <button
+                      type="button"
+                      title="Bullet List (- item)"
+                      onClick={() => insertFormatting("bullet")}
+                      className="inline-flex h-7 items-center gap-1 px-2 rounded hover:bg-white hover:text-ink hover:shadow-2xs transition text-[11px]"
+                    >
+                      <List size={14} />
+                      <span className="hidden sm:inline">Bullets</span>
+                    </button>
+                    <button
+                      type="button"
+                      title="Numbered List (1. item)"
+                      onClick={() => insertFormatting("number")}
+                      className="inline-flex h-7 items-center gap-1 px-2 rounded hover:bg-white hover:text-ink hover:shadow-2xs transition text-[11px]"
+                    >
+                      <ListOrdered size={14} />
+                      <span className="hidden sm:inline">Numbers</span>
+                    </button>
+
+                    <span className="h-4 w-px bg-line/80 mx-1" />
+
+                    <button
+                      type="button"
+                      title="Underlined Link ([Text](https://...))"
+                      onClick={() => insertFormatting("link")}
+                      className="inline-flex h-7 items-center gap-1 px-2 rounded hover:bg-white hover:text-accent hover:shadow-2xs transition text-[11px] font-medium"
+                    >
+                      <Link2 size={14} />
+                      <span>Link</span>
+                    </button>
+                    <button
+                      type="button"
+                      title="Blockquote (> quote)"
+                      onClick={() => insertFormatting("quote")}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-white hover:text-ink hover:shadow-2xs transition"
+                    >
+                      <Quote size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      title="Divider line (---)"
+                      onClick={() => insertFormatting("divider")}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded hover:bg-white hover:text-ink hover:shadow-2xs transition"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      title="New Line Break"
+                      onClick={() => insertFormatting("newline")}
+                      className="inline-flex h-7 items-center gap-1 px-2 rounded hover:bg-white hover:text-ink hover:shadow-2xs transition text-[11px]"
+                    >
+                      <CornerDownLeft size={13} />
+                      <span className="hidden sm:inline">Enter</span>
+                    </button>
+                  </div>
+
+                  {/* Textarea */}
+                  <textarea
+                    ref={textareaRef}
+                    name="body"
+                    value={body}
+                    onChange={(e) => setBody(e.target.value)}
+                    rows={10}
+                    maxLength={30000}
+                    className="w-full -mt-2 rounded-b-md border border-t-0 border-line bg-background p-3 text-sm leading-relaxed outline-none focus:border-navy transition font-mono"
+                    placeholder="Write your article or directive text here...&#10;&#10;Press Enter to make new lines, or double Enter for new paragraphs.&#10;Add bullet points:&#10;- First bullet point&#10;- Second bullet point&#10;&#10;Add links:&#10;[Read full guide](https://iissboys.com) or bare links https://example.com (will be underlined)."
+                  />
+
+                  {/* Helper Cheat Sheet */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-[11px] text-muted">
+                    <span className="flex items-center gap-1">
+                      <span className="font-semibold text-ink">↵ Enter:</span> line break (2× for new paragraph)
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="font-semibold text-ink">• Bullets:</span> start with <code className="bg-wash px-1 rounded">- </code> or <code className="bg-wash px-1 rounded">* </code>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="font-semibold text-ink">1. Numbers:</span> start with <code className="bg-wash px-1 rounded">1. </code>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="font-semibold text-ink">🔗 Links:</span> <code className="bg-wash px-1 rounded">[Title](https://...)</code> (auto-underlined)
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="font-semibold text-ink"><u>U</u> Underline:</span> <code className="bg-wash px-1 rounded">&lt;u&gt;text&lt;/u&gt;</code>
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {/* Keep hidden textarea so form submit always contains body */}
+                  <textarea
+                    name="body"
+                    value={body}
+                    readOnly
+                    tabIndex={-1}
+                    className="hidden"
+                  />
+                  <div className="rounded-xl border border-line/80 bg-white p-5 min-h-[220px] shadow-2xs">
+                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-line/60 text-xs text-muted">
+                      <span className="font-semibold text-ink uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                        <Eye size={13} className="text-accent" /> Live Blog Preview
+                      </span>
+                      <span>Rendered exactly as visitors see it</span>
+                    </div>
+
+                    {body.trim() ? (
+                      <div className="space-y-4 text-base leading-relaxed text-ink/90">
+                        {renderAnnouncementMessage(body)}
+                      </div>
+                    ) : (
+                      <div className="py-12 text-center text-xs italic text-muted">
+                        No text entered yet. Switch back to the <strong className="font-semibold text-ink">Write</strong> tab to draft your circular or blog post.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Optional Cover Banner */}
             <div className="pt-1">
