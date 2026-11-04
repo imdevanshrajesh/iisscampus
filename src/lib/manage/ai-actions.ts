@@ -71,7 +71,7 @@ export async function autoAddAiRecord(payload: AutoAddPayload): Promise<AutoAddR
         categoryIds: [categoryId],
         listing: "event",
         coverImageUrl: fields.coverImageUrl || null,
-        coverAlt: fields.coverAlt || null,
+        coverAlt: fields.coverAlt || fields.title || null,
         coverAttribution: null,
         eventDate: fields.eventDate || null,
         endDate: fields.endDate || null,

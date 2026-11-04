@@ -466,6 +466,15 @@ function readEventInput(formData: FormData) {
   const resources = readList(formData, "resources");
   if (!images || !schedule || !groups || !resources) return { error: "A list field could not be read." };
 
+  const rawTitle = String(formData.get("title") ?? "").trim();
+  const rawCoverAlt = String(formData.get("coverAlt") ?? "").trim();
+  const coverAlt = rawCoverAlt || rawTitle || null;
+
+  const imagesWithAlt = (images as any[]).map((img) => ({
+    ...img,
+    alt: String(img.alt ?? "").trim() || rawTitle || "Event photograph",
+  }));
+
   const parsed = eventInputSchema.safeParse({
     title: formData.get("title"),
     slug: formData.get("slug"),
@@ -475,7 +484,7 @@ function readEventInput(formData: FormData) {
     categoryIds: formData.getAll("categoryIds").map(String).filter(Boolean),
     listing: formData.get("listing") || "event",
     coverImageUrl: formData.get("coverImageUrl"),
-    coverAlt: formData.get("coverAlt"),
+    coverAlt,
     coverAttribution: formData.get("coverAttribution"),
     eventDate: formData.get("eventDate"),
     endDate: formData.get("endDate"),
@@ -509,7 +518,7 @@ function readEventInput(formData: FormData) {
     schedule,
     groups,
     resources,
-    images,
+    images: imagesWithAlt,
     relatedIds: formData.getAll("relatedIds").map(String).filter(Boolean),
   });
 

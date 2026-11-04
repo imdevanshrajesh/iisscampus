@@ -303,11 +303,6 @@ export function AwarenessProgramsPage({ programs }: { programs: CustomProgram[] 
                 className="max-h-[75vh] w-auto max-w-full rounded-xl object-contain shadow-2xl"
               />
             </div>
-            {lightbox.alt ? (
-              <p className="border-t border-line px-4 py-2.5 text-xs text-muted text-center">
-                {lightbox.alt}
-              </p>
-            ) : null}
           </div>
         ) : null}
       </dialog>

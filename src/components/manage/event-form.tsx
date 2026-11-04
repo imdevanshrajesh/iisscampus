@@ -50,7 +50,8 @@ export function EventForm({
   const [slug, setSlug] = useState(event?.slug ?? "");
   const [slugEdited, setSlugEdited] = useState(Boolean(event));
   const [coverUrl, setCoverUrl] = useState(event?.coverImageUrl ?? "");
-  const [coverAlt, setCoverAlt] = useState(event?.coverAlt ?? "");
+  const [coverAlt, setCoverAlt] = useState(event?.coverAlt ?? event?.title ?? "");
+  const [coverAltEdited, setCoverAltEdited] = useState(Boolean(event?.coverAlt));
   const [coverFailed, setCoverFailed] = useState(false);
   const [listing, setListing] = useState(event?.listing ?? "event");
   const [images, setImages] = useState<ImageDraft[]>(
@@ -115,7 +116,7 @@ export function EventForm({
   if (!shortDescription.trim() || shortDescription.trim().length < 10) missingRequiredFields.push("Short description (min 10 characters)");
   if (!fullDescription.trim() || fullDescription.trim().length < 20) missingRequiredFields.push("Full description (min 20 characters)");
   if (listing === "external" && !hostName.trim()) missingRequiredFields.push("Host school name");
-  if (coverUrl.trim() && !coverAlt.trim()) missingRequiredFields.push("Cover image alternative text");
+  if (coverUrl.trim() && !coverAlt.trim() && !title.trim()) missingRequiredFields.push("Event Title (used for cover image alternative text)");
   if (registrationEnabled) {
     if (registrationProvider === "arigo" && !pushToArigo) missingRequiredFields.push("Push to Arigo (required for Arigo)");
     if ((registrationProvider === "page" || registrationProvider === "google_form") && !registrationUrl.trim()) missingRequiredFields.push("Registration link or path");
@@ -128,6 +129,9 @@ export function EventForm({
       setTitle(fields.title);
       setSlug(fields.slug || slugify(fields.title));
       setSlugEdited(true);
+      if (!coverAltEdited || !coverAlt.trim()) {
+        setCoverAlt(fields.title);
+      }
     }
     if (fields.shortDescription) setShortDescription(fields.shortDescription);
     if (fields.fullDescription) setFullDescription(fields.fullDescription);
@@ -199,7 +203,7 @@ export function EventForm({
       e.preventDefault();
       if (!title.trim() || title.trim().length < 2 || !slug.trim() || !categoryId.trim() || shortDescription.trim().length < 10 || fullDescription.trim().length < 20 || (listing === "external" && !hostName.trim())) {
         setOpenPanels((prev) => ({ ...prev, event: true }));
-      } else if (coverUrl.trim() && !coverAlt.trim()) {
+      } else if (coverUrl.trim() && !coverAlt.trim() && !title.trim()) {
         setOpenPanels((prev) => ({ ...prev, cover: true }));
       } else if (registrationEnabled) {
         setOpenPanels((prev) => ({ ...prev, registration: true }));
@@ -207,13 +211,27 @@ export function EventForm({
       setClientError(`Please fill in all required fields marked with * before submitting: ${missingRequiredFields.join(", ")}`);
       return;
     }
+    if (coverUrl.trim() && !coverAlt.trim() && title.trim()) {
+      setCoverAlt(title.trim());
+    }
     setClientError(null);
   };
 
   return (
     <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-5">
       {event ? <input type="hidden" name="id" value={event.id} /> : null}
-      <input type="hidden" name="images" value={JSON.stringify(images.filter((image) => image.url.trim()))} />
+      <input
+        type="hidden"
+        name="images"
+        value={JSON.stringify(
+          images
+            .filter((image) => image.url.trim())
+            .map((image) => ({
+              ...image,
+              alt: image.alt.trim() || title.trim() || "Event photograph",
+            }))
+        )}
+      />
       <input type="hidden" name="schedule" value={JSON.stringify(schedule.filter((item) => item.time.trim() && item.title.trim()))} />
       <input type="hidden" name="groups" value={JSON.stringify(groups.filter((group) => group.name.trim()))} />
       <input type="hidden" name="resources" value={JSON.stringify(resources.filter((item) => item.title.trim()))} />
@@ -275,8 +293,12 @@ export function EventForm({
         <label className="grid gap-1.5 text-sm font-medium text-ink">
           <span>Title <span className="text-red-500 font-bold" title="Required">*</span></span>
           <input name="title" value={title} onChange={(event) => {
-            setTitle(event.target.value);
-            if (!slugEdited) setSlug(slugify(event.target.value));
+            const next = event.target.value;
+            setTitle(next);
+            if (!slugEdited) setSlug(slugify(next));
+            if (!coverAltEdited || !coverAlt.trim() || coverAlt === title) {
+              setCoverAlt(next);
+            }
           }} required className={fieldClass} placeholder="e.g. Annual Inter-School Science Fair 2026" />
         </label>
         <label className="grid gap-1.5 text-sm font-medium text-ink">
@@ -571,7 +593,7 @@ export function EventForm({
           badge={coverUrl ? <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700">Image set</span> : null}
           isOpen={Boolean(openPanels.cover)}
           onToggle={() => togglePanel("cover")}
-          hasError={Boolean(coverUrl.trim() && !coverAlt.trim())}
+          hasError={Boolean(coverUrl.trim() && !coverAlt.trim() && !title.trim())}
         >
           <ImageUploader
             name="coverImageUrl"
@@ -579,6 +601,9 @@ export function EventForm({
             onChange={(url) => {
               setCoverUrl(url);
               setCoverFailed(false);
+              if (url && (!coverAlt.trim() || !coverAltEdited)) {
+                setCoverAlt(title.trim());
+              }
             }}
             folder="Events"
             label="Cover Photograph"
@@ -587,14 +612,23 @@ export function EventForm({
           />
           {coverUrl && !cover.ok ? <p className="text-sm text-muted">{cover.message}</p> : null}
           <label className="grid gap-1.5 text-sm font-medium text-ink">
-            <span>Alternative Text {coverUrl ? <span className="text-red-500 font-bold" title="Required when cover photograph is set">*</span> : null}</span>
+            <span className="flex items-center justify-between">
+              <span>Alternative Text</span>
+              <span className="text-[11px] font-normal text-muted">Auto-fills with event name</span>
+            </span>
             <input
               name="coverAlt"
               value={coverAlt}
-              onChange={(e) => setCoverAlt(e.target.value)}
-              placeholder="Descriptive text for accessibility and screen readers..."
+              onChange={(e) => {
+                setCoverAltEdited(true);
+                setCoverAlt(e.target.value);
+              }}
+              placeholder={title || "Auto-fills with event name..."}
               className={fieldClass}
             />
+            <span className="text-[11px] text-muted font-normal">
+              Used for accessibility. Automatically matches the event name so you don't need to type random text.
+            </span>
           </label>
           <label className="grid gap-1.5 text-sm">
             Attribution
@@ -614,7 +648,10 @@ export function EventForm({
               type="button"
               className="inline-flex items-center gap-1 text-sm text-accent"
               onClick={() =>
-                setImages((current) => [...current, { url: "", alt: "", caption: "", attribution: "", pinned: false }])
+                setImages((current) => [
+                  ...current,
+                  { url: "", alt: title.trim() || "Event photograph", caption: "", attribution: "", pinned: false },
+                ])
               }
             >
               <Plus size={16} aria-hidden="true" /> Add image
@@ -627,7 +664,10 @@ export function EventForm({
                 <ImageUploader
                   name={`gallery_${index}`}
                   value={image.url}
-                  onChange={(url) => updateImage(index, { url })}
+                  onChange={(url) => {
+                    const nextAlt = image.alt.trim() || title.trim() || "Event photograph";
+                    updateImage(index, { url, alt: nextAlt });
+                  }}
                   folder="Gallery"
                   label={`Gallery Photograph #${index + 1}`}
                   hint="Upload directly to RustFS or frame the image."
@@ -635,8 +675,16 @@ export function EventForm({
                 />
                 {image.url && !classified.ok ? <p className="text-sm text-muted">{classified.message}</p> : null}
                 <label className="grid gap-1.5 text-sm">
-                  Alternative text
-                  <input value={image.alt} onChange={(event) => updateImage(index, { alt: event.target.value })} className={fieldClass} />
+                  <span className="flex items-center justify-between">
+                    <span>Alternative text</span>
+                    <span className="text-[11px] text-muted">Auto-fills with event name</span>
+                  </span>
+                  <input
+                    value={image.alt}
+                    onChange={(event) => updateImage(index, { alt: event.target.value })}
+                    placeholder={title || "Event name"}
+                    className={fieldClass}
+                  />
                 </label>
                 <label className="grid gap-1.5 text-sm">
                   Caption

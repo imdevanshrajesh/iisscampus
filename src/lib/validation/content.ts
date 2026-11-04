@@ -299,13 +299,18 @@ export function validateEventMedia(input: EventInput, allowedHosts: readonly str
     const cover = classifyMediaUrl(input.coverImageUrl, allowedHosts);
     if (!cover.ok) errors.coverImageUrl = cover.message;
     else input.coverImageUrl = cover.url;
-    if (!input.coverAlt) errors.coverAlt = "Add alternative text for the cover image.";
+    if (!input.coverAlt?.trim()) {
+      input.coverAlt = input.title?.trim() || "Event cover image";
+    }
   }
 
   input.images.forEach((image, index) => {
     const classified = classifyMediaUrl(image.url, allowedHosts);
     if (!classified.ok) errors[`images.${index}.url`] = classified.message;
     else image.url = classified.url;
+    if (!image.alt?.trim()) {
+      image.alt = input.title?.trim() || "Event photograph";
+    }
   });
 
   try {
@@ -640,19 +645,26 @@ export function validateCouncilMedia(input: CouncilInput, allowedHosts: readonly
     if (!member.imageUrl) continue;
     const classified = classifyMediaUrl(member.imageUrl, allowedHosts);
     if (!classified.ok) return classified.message;
-    if (!member.imageAlt) return "Add alternative text for each council photograph.";
+    if (!member.imageAlt?.trim()) {
+      member.imageAlt = member.name ? `${member.name} - ${member.role}` : "Council member";
+    }
     member.imageUrl = classified.url;
   }
   for (const photo of input.photos) {
     const classified = classifyMediaUrl(photo.url, allowedHosts);
     if (!classified.ok) return classified.message;
+    if (!photo.alt?.trim()) {
+      photo.alt = input.label ? `${input.label} Student Council photograph` : "Council photograph";
+    }
     photo.url = classified.url;
   }
   for (const post of input.posts) {
     if (!post.imageUrl) continue;
     const classified = classifyMediaUrl(post.imageUrl, allowedHosts);
     if (!classified.ok) return classified.message;
-    if (!post.imageAlt) return "Add alternative text for each post photograph.";
+    if (!post.imageAlt?.trim()) {
+      post.imageAlt = post.title || "Post photograph";
+    }
     post.imageUrl = classified.url;
   }
   return null;

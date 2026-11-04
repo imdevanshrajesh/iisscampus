@@ -104,13 +104,12 @@ export function CouncilForm({
     if (hasContent) {
       if (m.role.trim().length < 2) missingRequiredFields.push(`Member #${idx + 1}: Role / Post`);
       if (m.name.trim().length < 2) missingRequiredFields.push(`Member #${idx + 1}: Name`);
-      if (m.imageUrl.trim() && !m.imageAlt.trim()) missingRequiredFields.push(`Member #${idx + 1}: Image description`);
     }
   });
 
   photos.forEach((p, idx) => {
-    if (!p.url.trim() || !p.alt.trim()) {
-      missingRequiredFields.push(`Photo #${idx + 1}: URL and alternative text`);
+    if (!p.url.trim()) {
+      missingRequiredFields.push(`Photo #${idx + 1}: Image URL`);
     }
   });
 
@@ -454,13 +453,15 @@ export function CouncilForm({
               />
             </label>
             <label className="grid gap-1.5 text-sm">
-              <span>
-                Alternative text <span className="text-red-500 font-bold">*</span>
+              <span className="flex items-center justify-between">
+                <span>Alternative text</span>
+                <span className="text-[11px] text-muted">Auto-fills</span>
               </span>
               <input
                 name={`photos.${index}.alt`}
                 value={photo.alt}
                 disabled={locked}
+                placeholder={label || "Student Council photograph"}
                 className={fieldClass}
                 onChange={(event) =>
                   setPhotos((current) =>
@@ -788,15 +789,16 @@ function MemberBoard({
                 />
               </label>
               <label className="grid gap-1.5 text-sm">
-                <span>
-                  Photograph description {member.imageUrl.trim() && <span className="text-red-500 font-bold">*</span>}
+                <span className="flex items-center justify-between">
+                  <span>Photograph description</span>
+                  <span className="text-[11px] text-muted">Auto-fills</span>
                 </span>
                 <input
                   name={`members.${index}.imageAlt`}
                   value={member.imageAlt}
                   disabled={locked}
                   className={fieldClass}
-                  placeholder={member.imageUrl.trim() ? "Required when photograph is set" : ""}
+                  placeholder={member.name ? `${member.name} - ${member.role}` : "Auto-filled with name"}
                   onChange={(event) =>
                     setMembers((current) =>
                       current.map((item) => (item.key === member.key ? { ...item, imageAlt: event.target.value } : item)),

@@ -57,7 +57,12 @@ export function CustomProgramForm({
     setClientError(null);
   };
 
-  const photoPayload = photos.filter((photo) => photo.url.trim() && photo.alt.trim());
+  const photoPayload = photos
+    .filter((photo) => photo.url.trim())
+    .map((photo) => ({
+      ...photo,
+      alt: photo.alt.trim() || title.trim() || "Program photo",
+    }));
   const linkPayload = links.filter((link) => link.label.trim() && link.url.trim());
 
   return (
@@ -211,7 +216,7 @@ export function CustomProgramForm({
                 <span className="text-sm font-medium">Photos</span>
                 <button
                   type="button"
-                  onClick={() => setPhotos([...photos, { url: "", alt: "" }])}
+                  onClick={() => setPhotos([...photos, { url: "", alt: title.trim() || "Program photo" }])}
                   className="text-xs text-accent"
                 >
                   + Add photo
@@ -236,7 +241,7 @@ export function CustomProgramForm({
                         className={fieldClass}
                       />
                       <input
-                        placeholder="Alt text"
+                        placeholder={title || "Alt text"}
                         value={photo.alt}
                         onChange={(e) =>
                           setPhotos(

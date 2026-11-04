@@ -223,7 +223,7 @@ export function GalleryView({
                 {current.eventTitle}
               </span>
               <p className="text-sm font-medium text-white/90 truncate">
-                {current.caption || current.alt || "Photograph"}
+                {current.caption || current.eventTitle || "Photograph"}
               </p>
             </div>
 
