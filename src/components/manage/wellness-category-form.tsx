@@ -11,6 +11,16 @@ export function WellnessCategoryForm({ category }: { category: WellnessCategory 
   const [state, action, pending] = useActionState(saveWellnessCategory, {} as ActionState);
   const [deleteState, deleteAction, deleting] = useActionState(deleteWellnessCategory, {} as ActionState);
   const [isOpen, setIsOpen] = useState(!category); // Collapsed by default for existing categories
+  const [name, setName] = useState(category?.name ?? "");
+
+  const isFormValid = name.trim().length >= 2;
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (!isFormValid) {
+      event.preventDefault();
+      alert("Please enter a category name (at least 2 characters).");
+    }
+  }
 
   return (
     <div className="rounded-xl border border-line bg-white shadow-xs overflow-hidden transition-all duration-200">
@@ -29,7 +39,7 @@ export function WellnessCategoryForm({ category }: { category: WellnessCategory 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-xs text-ink truncate">
-                  {category.name}
+                  {name || category.name}
                 </span>
                 <span className="text-[10px] text-muted bg-gray-100 px-2 py-0.5 rounded-full">
                   Order #{category.sortOrder}
@@ -51,13 +61,16 @@ export function WellnessCategoryForm({ category }: { category: WellnessCategory 
       ) : null}
 
       <div className={`p-4 ${category && !isOpen ? "hidden" : "block"}`}>
-        <form action={action} className="grid gap-3 sm:grid-cols-[1fr_6rem_auto] sm:items-end">
+        <form action={action} onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-[1fr_6rem_auto] sm:items-end">
           {category ? <input type="hidden" name="id" value={category.id} /> : null}
           <label className="grid gap-1.5 text-sm">
-            Category name
+            <span>
+              Category name <span className="text-red-500 font-bold">*</span>
+            </span>
             <input
               name="name"
-              defaultValue={category?.name ?? ""}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Awareness, Mental Health, Physical Fitness"
               required
               className={fieldClass}
@@ -70,7 +83,7 @@ export function WellnessCategoryForm({ category }: { category: WellnessCategory 
           <div className="flex items-center gap-2">
             <button
               type="submit"
-              disabled={pending}
+              disabled={pending || !isFormValid}
               className="rounded-md bg-navy px-4 py-2 text-sm text-white hover:bg-navy/90 transition cursor-pointer disabled:opacity-50"
             >
               {pending ? "Saving..." : category ? "Save" : "Add category"}
@@ -85,6 +98,11 @@ export function WellnessCategoryForm({ category }: { category: WellnessCategory 
               </button>
             )}
           </div>
+          {!isFormValid && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 sm:col-span-3">
+              <span className="font-semibold">Required:</span> Category name must be at least 2 characters.
+            </div>
+          )}
           {state.error ? <p className="text-sm text-red-600 sm:col-span-3">{state.error}</p> : null}
           {state.ok ? <p className="text-sm text-accent sm:col-span-3">{state.ok}</p> : null}
         </form>

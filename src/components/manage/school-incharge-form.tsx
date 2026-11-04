@@ -23,7 +23,25 @@ export function SchoolInchargeForm({
 
   const [state, action, pending] = useActionState(saveSchoolIncharge, {} as ActionState);
   const [deleteState, deleteAction, deleting] = useActionState(deleteSchoolIncharge, {} as ActionState);
+  const [name, setName] = useState(incharge?.name ?? "");
+  const [role, setRole] = useState(incharge?.role ?? "");
   const [photoUrl, setPhotoUrl] = useState<string>(incharge?.photoUrl ?? "");
+  const [clientError, setClientError] = useState<string | null>(null);
+
+  const missingFields: string[] = [];
+  if (!name.trim() || name.trim().length < 2) missingFields.push("Full Name (min 2 chars)");
+  if (!role.trim() || role.trim().length < 2) missingFields.push("Role / Designation (min 2 chars)");
+
+  const isFormValid = missingFields.length === 0;
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (!isFormValid) {
+      e.preventDefault();
+      setClientError(`Please fill in all required fields marked with * before saving: ${missingFields.join(", ")}`);
+      return;
+    }
+    setClientError(null);
+  };
 
   return (
     <div className="rounded-2xl border border-line bg-white shadow-[0_1px_0_rgba(20,27,56,0.04)] overflow-hidden transition">
@@ -100,16 +118,19 @@ export function SchoolInchargeForm({
       {/* Expanded Form */}
       {isOpen && (
         <div className="p-4 sm:p-5 pt-3 bg-[#faf9f5]/50 border-t border-line/40 grid gap-5">
-          <form action={action} className="grid gap-4">
+          <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-4">
             {incharge ? <input type="hidden" name="id" value={incharge.id} /> : null}
             <input type="hidden" name="photoUrl" value={photoUrl} />
 
+            {clientError ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{clientError}</p> : null}
+
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-1.5 text-sm">
-                Full Name
+              <label className="grid gap-1.5 text-sm font-medium text-ink">
+                <span>Full Name <span className="text-red-500 font-bold" title="Required">*</span></span>
                 <input
                   name="name"
-                  defaultValue={incharge?.name ?? ""}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   required
                   maxLength={120}
                   className={fieldClass}
@@ -117,11 +138,12 @@ export function SchoolInchargeForm({
                 />
               </label>
 
-              <label className="grid gap-1.5 text-sm">
-                Role / Designation *
+              <label className="grid gap-1.5 text-sm font-medium text-ink">
+                <span>Role / Designation <span className="text-red-500 font-bold" title="Required">*</span></span>
                 <input
                   name="role"
-                  defaultValue={incharge?.role ?? ""}
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
                   required
                   maxLength={120}
                   className={fieldClass}
@@ -129,8 +151,8 @@ export function SchoolInchargeForm({
                 />
               </label>
 
-              <label className="grid gap-1.5 text-sm">
-                Hierarchy Tier *
+              <label className="grid gap-1.5 text-sm font-medium text-ink">
+                <span>Hierarchy Tier <span className="text-red-500 font-bold" title="Required">*</span></span>
                 <select
                   name="tier"
                   defaultValue={incharge?.tier ?? "section"}
@@ -215,14 +237,21 @@ export function SchoolInchargeForm({
               </label>
             </div>
 
-            {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
-            {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
+            {state.error ? <p className="text-sm text-red-600 font-medium">{state.error}</p> : null}
+            {state.ok ? <p className="text-sm text-accent font-medium">{state.ok}</p> : null}
+
+            {!isFormValid && (
+              <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs text-amber-900">
+                <span className="font-bold shrink-0">Required (*):</span>
+                <span>Fill in {missingFields.join(", ")} to save.</span>
+              </div>
+            )}
 
             <div className="flex items-center justify-between pt-2">
               <button
                 type="submit"
-                disabled={pending}
-                className="rounded-md bg-navy px-4 py-2 text-sm text-white transition hover:bg-navy/90 cursor-pointer disabled:opacity-50"
+                disabled={pending || !isFormValid}
+                className="rounded-md bg-navy px-4 py-2 text-sm text-white transition hover:bg-navy/90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {pending ? "Saving..." : incharge ? "Save Incharge" : "Add Incharge"}
               </button>

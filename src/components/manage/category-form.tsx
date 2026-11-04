@@ -22,15 +22,33 @@ export function CategoryForm({
   const [slug, setSlug] = useState(category?.slug ?? "");
   const [slugEdited, setSlugEdited] = useState(Boolean(category));
   const [imageUrl, setImageUrl] = useState(category?.imageUrl ?? "");
+  const [clientError, setClientError] = useState<string | null>(null);
   const image = classifyMediaUrl(imageUrl, mediaHosts);
 
+  const missingFields: string[] = [];
+  if (!title.trim() || title.trim().length < 2) missingFields.push("Name (min 2 chars)");
+  if (!slug.trim() || slug.trim().length < 2) missingFields.push("Address slug (min 2 chars)");
+  else if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug.trim())) missingFields.push("Address slug (lowercase, numbers, hyphens only)");
+
+  const isFormValid = missingFields.length === 0;
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (!isFormValid) {
+      e.preventDefault();
+      setClientError(`Please fill in all required fields marked with * before submitting: ${missingFields.join(", ")}`);
+      return;
+    }
+    setClientError(null);
+  };
+
   return (
-    <form action={action} className="grid max-w-xl gap-4 rounded-2xl border border-line bg-background p-5">
+    <form action={action} onSubmit={handleSubmit} noValidate className="grid max-w-xl gap-4 rounded-2xl border border-line bg-background p-5">
       {category ? <input type="hidden" name="id" value={category.id} /> : null}
-      {state.error ? <p className="text-sm">{state.error}</p> : null}
-      {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
-      <label className="grid gap-1.5 text-sm">
-        Name
+      {clientError ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{clientError}</p> : null}
+      {state.error ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{state.error}</p> : null}
+      {state.ok ? <p className="text-sm text-accent font-medium">{state.ok}</p> : null}
+      <label className="grid gap-1.5 text-sm font-medium text-ink">
+        <span>Name <span className="text-red-500 font-bold" title="Required">*</span></span>
         <input
           name="name"
           value={title}
@@ -40,10 +58,11 @@ export function CategoryForm({
           }}
           required
           className={fieldClass}
+          placeholder="e.g. Science & Innovation"
         />
       </label>
-      <label className="grid gap-1.5 text-sm">
-        Address
+      <label className="grid gap-1.5 text-sm font-medium text-ink">
+        <span>Address Slug <span className="text-red-500 font-bold" title="Required">*</span></span>
         <input
           name="slug"
           value={slug}
@@ -53,6 +72,7 @@ export function CategoryForm({
           }}
           required
           className={fieldClass}
+          placeholder="e.g. science-and-innovation"
         />
       </label>
       <label className="grid gap-1.5 text-sm">
@@ -77,8 +97,18 @@ export function CategoryForm({
         PDF URL
         <input name="pdfUrl" defaultValue={category?.pdfUrl ?? ""} placeholder="https://" className={fieldClass} />
       </label>
-      <button type="submit" disabled={pending} className="rounded-md bg-navy px-4 py-2 text-sm text-white">
-        {pending ? "Saving" : category ? "Save category" : "Add category"}
+      {!isFormValid && (
+        <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs text-amber-900">
+          <span className="font-bold shrink-0">Required (*):</span>
+          <span>Fill in {missingFields.join(", ")} to submit.</span>
+        </div>
+      )}
+      <button
+        type="submit"
+        disabled={pending || !isFormValid}
+        className="rounded-md bg-navy px-4 py-2 text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+      >
+        {pending ? "Saving..." : category ? "Save category" : "Add category"}
       </button>
     </form>
   );

@@ -40,9 +40,22 @@ export function CustomProgramForm({
 
   const [state, action, pending] = useActionState(saveCustomProgram, {} as ActionState);
   const [deleteState, deleteAction, deleting] = useActionState(deleteCustomProgram, {} as ActionState);
+  const [title, setTitle] = useState(program?.title ?? "");
   const [photos, setPhotos] = useState<CustomProgramPhoto[]>(program?.photos ?? []);
   const [links, setLinks] = useState<CustomProgramLink[]>(program?.links ?? []);
   const [pdfUrl, setPdfUrl] = useState<string>(program?.pdfUrl ?? "");
+  const [clientError, setClientError] = useState<string | null>(null);
+
+  const isFormValid = title.trim().length >= 2;
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (!isFormValid) {
+      e.preventDefault();
+      setClientError("Please enter a program title (at least 2 characters) before saving.");
+      return;
+    }
+    setClientError(null);
+  };
 
   const photoPayload = photos.filter((photo) => photo.url.trim() && photo.alt.trim());
   const linkPayload = links.filter((link) => link.label.trim() && link.url.trim());
@@ -106,11 +119,15 @@ export function CustomProgramForm({
 
       {isOpen && (
         <div className="p-4 sm:p-5 pt-3 bg-[#faf9f5]/50 border-t border-line/40 grid gap-4">
-          <form action={action} className="grid gap-3">
+          <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-3">
             {program ? <input type="hidden" name="id" value={program.id} /> : null}
             <input type="hidden" name="photos" value={JSON.stringify(photoPayload)} />
             <input type="hidden" name="links" value={JSON.stringify(linkPayload)} />
             <input type="hidden" name="pdfUrl" value={pdfUrl} />
+
+            {clientError ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{clientError}</p> : null}
+            {state.error ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{state.error}</p> : null}
+            {state.ok ? <p className="text-sm text-accent font-medium">{state.ok}</p> : null}
 
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="grid gap-1.5 text-sm">
@@ -135,9 +152,17 @@ export function CustomProgramForm({
               </label>
             </div>
 
-            <label className="grid gap-1.5 text-sm">
-              Title
-              <input name="title" defaultValue={program?.title ?? ""} required maxLength={120} className={fieldClass} />
+            <label className="grid gap-1.5 text-sm font-medium text-ink">
+              <span>Title <span className="text-red-500 font-bold" title="Required">*</span></span>
+              <input
+                name="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+                maxLength={120}
+                className={fieldClass}
+                placeholder="e.g. Student Wellness & Happiness Week"
+              />
             </label>
             <label className="grid gap-1.5 text-sm">
               Summary
@@ -328,10 +353,16 @@ export function CustomProgramForm({
             </label>
             {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
             {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
+            {!isFormValid && (
+              <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs text-amber-900">
+                <span className="font-bold shrink-0">Required (*):</span>
+                <span>Enter a program title (min 2 characters) to save.</span>
+              </div>
+            )}
             <button
               type="submit"
-              disabled={pending}
-              className="justify-self-start rounded-md bg-navy px-4 py-2 text-sm text-white transition hover:bg-navy/90"
+              disabled={pending || !isFormValid}
+              className="justify-self-start rounded-md bg-navy px-4 py-2 text-sm text-white transition hover:bg-navy/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {pending ? "Saving..." : program ? "Save changes" : "Add program"}
             </button>

@@ -50,6 +50,7 @@ export function EventForm({
   const [slug, setSlug] = useState(event?.slug ?? "");
   const [slugEdited, setSlugEdited] = useState(Boolean(event));
   const [coverUrl, setCoverUrl] = useState(event?.coverImageUrl ?? "");
+  const [coverAlt, setCoverAlt] = useState(event?.coverAlt ?? "");
   const [coverFailed, setCoverFailed] = useState(false);
   const [listing, setListing] = useState(event?.listing ?? "event");
   const [images, setImages] = useState<ImageDraft[]>(
@@ -64,6 +65,9 @@ export function EventForm({
   const [schedule, setSchedule] = useState<ScheduleItem[]>(event?.schedule ?? []);
   const [groups, setGroups] = useState<ParticipatingGroup[]>(event?.groups ?? []);
   const [resources, setResources] = useState<ContentResource[]>(event?.resources ?? []);
+  const [registrationEnabled, setRegistrationEnabled] = useState(Boolean(event?.registrationEnabled));
+  const [pushToArigo, setPushToArigo] = useState(Boolean(event?.pushToArigo));
+  const [registrationUrl, setRegistrationUrl] = useState(event?.registrationUrl ?? "");
   const [registrationProvider, setRegistrationProvider] = useState<"arigo" | "page" | "google_form">(
     event?.registrationProvider === "page" || event?.registrationProvider === "google_form"
       ? event.registrationProvider
@@ -101,6 +105,23 @@ export function EventForm({
   const [purpose, setPurpose] = useState(event?.purpose ?? "");
   const [activities, setActivities] = useState(event?.activities ?? "");
   const [eventStatus, setEventStatus] = useState(event?.eventStatus ?? "");
+  const [clientError, setClientError] = useState<string | null>(null);
+
+  const missingRequiredFields: string[] = [];
+  if (!title.trim() || title.trim().length < 2) missingRequiredFields.push("Title (min 2 characters)");
+  if (!slug.trim() || slug.trim().length < 2) missingRequiredFields.push("Address slug (min 2 characters)");
+  else if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug.trim())) missingRequiredFields.push("Address slug format (lowercase letters, numbers, and hyphens only)");
+  if (!categoryId.trim()) missingRequiredFields.push("Primary category");
+  if (!shortDescription.trim() || shortDescription.trim().length < 10) missingRequiredFields.push("Short description (min 10 characters)");
+  if (!fullDescription.trim() || fullDescription.trim().length < 20) missingRequiredFields.push("Full description (min 20 characters)");
+  if (listing === "external" && !hostName.trim()) missingRequiredFields.push("Host school name");
+  if (coverUrl.trim() && !coverAlt.trim()) missingRequiredFields.push("Cover image alternative text");
+  if (registrationEnabled) {
+    if (registrationProvider === "arigo" && !pushToArigo) missingRequiredFields.push("Push to Arigo (required for Arigo)");
+    if ((registrationProvider === "page" || registrationProvider === "google_form") && !registrationUrl.trim()) missingRequiredFields.push("Registration link or path");
+  }
+
+  const isFormValid = missingRequiredFields.length === 0;
 
   const handleAiApply = (fields: Record<string, any>) => {
     if (fields.title) {
@@ -139,8 +160,8 @@ export function EventForm({
   };
 
   const ALL_PANEL_IDS = ["event", "venue", "cover", "gallery", "programme", "registration", "links", "notices"];
-  // Collapsed by default (all false)
-  const [openPanels, setOpenPanels] = useState<Record<string, boolean>>(() => ({}));
+  // Event Details open by default so essential required fields are visible immediately
+  const [openPanels, setOpenPanels] = useState<Record<string, boolean>>(() => ({ event: true }));
 
   const togglePanel = (id: string) => {
     setOpenPanels((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -173,16 +194,33 @@ export function EventForm({
     });
   }
 
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (!isFormValid) {
+      e.preventDefault();
+      if (!title.trim() || title.trim().length < 2 || !slug.trim() || !categoryId.trim() || shortDescription.trim().length < 10 || fullDescription.trim().length < 20 || (listing === "external" && !hostName.trim())) {
+        setOpenPanels((prev) => ({ ...prev, event: true }));
+      } else if (coverUrl.trim() && !coverAlt.trim()) {
+        setOpenPanels((prev) => ({ ...prev, cover: true }));
+      } else if (registrationEnabled) {
+        setOpenPanels((prev) => ({ ...prev, registration: true }));
+      }
+      setClientError(`Please fill in all required fields marked with * before submitting: ${missingRequiredFields.join(", ")}`);
+      return;
+    }
+    setClientError(null);
+  };
+
   return (
-    <form action={action} className="grid gap-5">
+    <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-5">
       {event ? <input type="hidden" name="id" value={event.id} /> : null}
       <input type="hidden" name="images" value={JSON.stringify(images.filter((image) => image.url.trim()))} />
       <input type="hidden" name="schedule" value={JSON.stringify(schedule.filter((item) => item.time.trim() && item.title.trim()))} />
       <input type="hidden" name="groups" value={JSON.stringify(groups.filter((group) => group.name.trim()))} />
       <input type="hidden" name="resources" value={JSON.stringify(resources.filter((item) => item.title.trim()))} />
 
-      {state.error ? <p className="rounded-xl border border-accent/30 bg-white px-4 py-3 text-sm">{state.error}</p> : null}
-      {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
+      {clientError ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{clientError}</p> : null}
+      {state.error ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{state.error}</p> : null}
+      {state.ok ? <p className="text-sm text-accent font-medium">{state.ok}</p> : null}
       {locked ? (
         <p className="text-sm text-muted">
           This record is {event?.publicationStatus}. An administrator needs to change that before an editor can revise it.
@@ -200,7 +238,7 @@ export function EventForm({
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-3.5 shadow-xs">
         <div>
           <p className="text-xs font-semibold text-ink">Form Sections</p>
-          <p className="text-[11px] text-muted">All sections collapsed by default for fast navigation.</p>
+          <p className="text-[11px] text-muted">Essential details are open by default; expand other sections to configure venue, cover, and registration.</p>
         </div>
         <div className="flex items-center gap-2">
           {allPanelsCollapsed ? (
@@ -232,23 +270,29 @@ export function EventForm({
           badge={title ? <span className="rounded-full bg-navy/5 px-2 py-0.5 text-[10px] font-bold text-navy truncate max-w-[200px]">{title}</span> : null}
           isOpen={Boolean(openPanels.event)}
           onToggle={() => togglePanel("event")}
+          hasError={!title.trim() || !slug.trim() || !categoryId.trim() || shortDescription.trim().length < 10 || fullDescription.trim().length < 20}
         >
-        <label className="grid gap-1.5 text-sm">
-          Title
+        <label className="grid gap-1.5 text-sm font-medium text-ink">
+          <span>Title <span className="text-red-500 font-bold" title="Required">*</span></span>
           <input name="title" value={title} onChange={(event) => {
             setTitle(event.target.value);
             if (!slugEdited) setSlug(slugify(event.target.value));
-          }} required className={fieldClass} />
+          }} required className={fieldClass} placeholder="e.g. Annual Inter-School Science Fair 2026" />
         </label>
-        <label className="grid gap-1.5 text-sm">
-          Address
+        <label className="grid gap-1.5 text-sm font-medium text-ink">
+          <span>Address Slug <span className="text-red-500 font-bold" title="Required">*</span></span>
           <input name="slug" value={slug} onChange={(event) => {
             setSlugEdited(true);
             setSlug(event.target.value);
-          }} required className={fieldClass} />
+          }} required className={fieldClass} placeholder="e.g. annual-inter-school-science-fair-2026" />
         </label>
-        <label className="grid gap-1.5 text-sm">
-          Short description
+        <label className="grid gap-1.5 text-sm font-medium text-ink">
+          <span className="flex items-center justify-between">
+            <span>Short Description <span className="text-red-500 font-bold" title="Required">*</span></span>
+            <span className={`text-xs ${shortDescription.trim().length >= 10 ? "text-muted" : "text-amber-600 font-medium"}`}>
+              {shortDescription.trim().length}/10 min chars
+            </span>
+          </span>
           <textarea
             name="shortDescription"
             value={shortDescription}
@@ -256,10 +300,16 @@ export function EventForm({
             required
             rows={3}
             className={fieldClass}
+            placeholder="A punchy 1-2 sentence overview shown on event cards across the website..."
           />
         </label>
-        <label className="grid gap-1.5 text-sm">
-          Full description
+        <label className="grid gap-1.5 text-sm font-medium text-ink">
+          <span className="flex items-center justify-between">
+            <span>Full Description <span className="text-red-500 font-bold" title="Required">*</span></span>
+            <span className={`text-xs ${fullDescription.trim().length >= 20 ? "text-muted" : "text-amber-600 font-medium"}`}>
+              {fullDescription.trim().length}/20 min chars
+            </span>
+          </span>
           <textarea
             name="fullDescription"
             value={fullDescription}
@@ -267,9 +317,10 @@ export function EventForm({
             required
             rows={8}
             className={fieldClass}
+            placeholder="Comprehensive description of the event, eligibility, agenda, student guidelines..."
           />
         </label>
-        <label className="grid gap-1.5 text-sm">
+        <label className="grid gap-1.5 text-sm font-medium text-ink">
           Listing
           <select name="listing" value={listing} onChange={(change) => setListing(change.target.value as CampusEvent["listing"])} className={fieldClass}>
             <option value="event">Event</option>
@@ -283,8 +334,8 @@ export function EventForm({
         {listing === "external" ? (
           <fieldset className="grid gap-3 rounded-xl border border-line p-4">
             <legend className="px-1 text-sm font-medium">Where it is hosted</legend>
-            <label className="grid gap-1.5 text-sm">
-              Host school
+            <label className="grid gap-1.5 text-sm font-medium text-ink">
+              <span>Host School <span className="text-red-500 font-bold" title="Required">*</span></span>
               <input
                 name="hostName"
                 required
@@ -321,13 +372,14 @@ export function EventForm({
         ) : (
           <input type="hidden" name="hostName" value="" />
         )}
-        <label className="grid gap-1.5 text-sm">
-          Primary category
+        <label className="grid gap-1.5 text-sm font-medium text-ink">
+          <span>Primary Category <span className="text-red-500 font-bold" title="Required">*</span></span>
           <select
             name="categoryId"
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             className={fieldClass}
+            required
           >
             {categories.map((category) => (
               <option key={category.id} value={category.id}>{category.name}</option>
@@ -519,6 +571,7 @@ export function EventForm({
           badge={coverUrl ? <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700">Image set</span> : null}
           isOpen={Boolean(openPanels.cover)}
           onToggle={() => togglePanel("cover")}
+          hasError={Boolean(coverUrl.trim() && !coverAlt.trim())}
         >
           <ImageUploader
             name="coverImageUrl"
@@ -533,9 +586,15 @@ export function EventForm({
             aspectRatio="16:10"
           />
           {coverUrl && !cover.ok ? <p className="text-sm text-muted">{cover.message}</p> : null}
-          <label className="grid gap-1.5 text-sm">
-            Alternative text
-            <input name="coverAlt" defaultValue={event?.coverAlt ?? ""} className={fieldClass} />
+          <label className="grid gap-1.5 text-sm font-medium text-ink">
+            <span>Alternative Text {coverUrl ? <span className="text-red-500 font-bold" title="Required when cover photograph is set">*</span> : null}</span>
+            <input
+              name="coverAlt"
+              value={coverAlt}
+              onChange={(e) => setCoverAlt(e.target.value)}
+              placeholder="Descriptive text for accessibility and screen readers..."
+              className={fieldClass}
+            />
           </label>
           <label className="grid gap-1.5 text-sm">
             Attribution
@@ -665,23 +724,30 @@ export function EventForm({
         <Panel
           title="Registration & Capacity"
           hint="The due date sits next to the button. When the recorded number reaches the limit, visitors get the other form instead."
-          badge={event?.registrationEnabled ? <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700">Enabled</span> : null}
+          badge={registrationEnabled ? <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700">Enabled</span> : null}
           isOpen={Boolean(openPanels.registration)}
           onToggle={() => togglePanel("registration")}
+          hasError={registrationEnabled && ((registrationProvider === "arigo" && !pushToArigo) || ((registrationProvider === "page" || registrationProvider === "google_form") && !registrationUrl.trim()))}
         >
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="registrationEnabled" defaultChecked={event?.registrationEnabled} />
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              name="registrationEnabled"
+              checked={registrationEnabled}
+              onChange={(e) => setRegistrationEnabled(e.target.checked)}
+            />
             Show registration
           </label>
           <label className="flex items-start gap-2 text-sm">
             <input
               type="checkbox"
               name="pushToArigo"
-              defaultChecked={event?.pushToArigo}
+              checked={pushToArigo}
+              onChange={(e) => setPushToArigo(e.target.checked)}
               className="mt-0.5"
             />
             <span>
-              Push to Arigo
+              Push to Arigo {registrationEnabled && registrationProvider === "arigo" ? <span className="text-red-500 font-bold" title="Required when registration uses Arigo">*</span> : null}
               <span className="mt-1 block text-muted">
                 Lists this on Arigo as a partnered school event when you publish. Untick to remove it from Arigo.
               </span>
@@ -692,7 +758,7 @@ export function EventForm({
             opens that page. Visitors can read it without an account, and Arigo asks them to sign up only when they
             register.
           </p>
-          <label className="grid gap-1.5 text-sm">
+          <label className="grid gap-1.5 text-sm font-medium text-ink">
             How to register
             <select
               name="registrationProvider"
@@ -711,21 +777,22 @@ export function EventForm({
             </select>
           </label>
           {registrationProvider === "page" || registrationProvider === "google_form" ? (
-            <label className="grid gap-1.5 text-sm">
-              Registration URL or path
+            <label className="grid gap-1.5 text-sm font-medium text-ink">
+              <span>Registration URL or path <span className="text-red-500 font-bold" title="Required">*</span></span>
               <input
                 name="registrationUrl"
-                defaultValue={event?.registrationUrl ?? ""}
+                value={registrationUrl}
+                onChange={(e) => setRegistrationUrl(e.target.value)}
                 placeholder={registrationProvider === "page" ? "/events/..." : "https://forms.gle/..."}
                 className={fieldClass}
               />
             </label>
           ) : (
             <>
-              <input type="hidden" name="registrationUrl" value={event?.registrationUrl ?? ""} />
+              <input type="hidden" name="registrationUrl" value={registrationUrl} />
               <p className="text-sm text-muted">
-                {event?.registrationUrl
-                  ? `Register link: ${event.registrationUrl}`
+                {registrationUrl
+                  ? `Register link: ${registrationUrl}`
                   : "The register link is filled in when you publish."}
               </p>
             </>
@@ -888,31 +955,73 @@ export function EventForm({
       </fieldset>
 
       <div className="sticky bottom-3 z-20 flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-white p-3 shadow-[0_8px_30px_rgba(28,36,56,0.08)]">
-        <button type="submit" name="intent" value="save" className="rounded-md bg-navy px-4 py-2 text-sm text-white" disabled={locked}>
-          {pending ? "Saving" : event?.publicationStatus === "published" ? "Save changes" : "Save draft"}
+        {!isFormValid && (
+          <div className="w-full flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs text-amber-900">
+            <span className="font-bold shrink-0">Required (*):</span>
+            <span className="line-clamp-2">Fill in {missingRequiredFields.join(", ")} to submit.</span>
+          </div>
+        )}
+        <button
+          type="submit"
+          name="intent"
+          value="save"
+          className="rounded-md bg-navy px-4 py-2 text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+          disabled={locked || pending || !isFormValid}
+        >
+          {pending ? "Saving..." : event?.publicationStatus === "published" ? "Save changes" : "Save draft"}
         </button>
         {event?.publicationStatus === "draft" ? (
-          <button type="submit" name="intent" value="submit" className="rounded-md border border-line px-4 py-2 text-sm" disabled={locked}>
+          <button
+            type="submit"
+            name="intent"
+            value="submit"
+            className="rounded-md border border-line px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
+            disabled={locked || pending || !isFormValid}
+          >
             Submit for review
           </button>
         ) : null}
         {role === "administrator" && event ? (
           <>
-            <button type="submit" name="intent" value="publish" className="rounded-md bg-accent px-4 py-2 text-sm text-accent-ink">
+            <button
+              type="submit"
+              name="intent"
+              value="publish"
+              className="rounded-md bg-accent px-4 py-2 text-sm text-accent-ink disabled:opacity-50 disabled:cursor-not-allowed transition"
+              disabled={locked || pending || !isFormValid}
+            >
               Publish
             </button>
-            <button type="submit" name="intent" value="unpublish" className="rounded-md border border-line px-4 py-2 text-sm">
+            <button
+              type="submit"
+              name="intent"
+              value="unpublish"
+              className="rounded-md border border-line px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
+              disabled={locked || pending}
+            >
               Unpublish
             </button>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="confirmArchive" value="yes" />
               Confirm archive
             </label>
-            <button type="submit" name="intent" value="archive" className="rounded-md border border-line px-4 py-2 text-sm">
+            <button
+              type="submit"
+              name="intent"
+              value="archive"
+              className="rounded-md border border-line px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
+              disabled={locked || pending}
+            >
               Archive
             </button>
             {event.publicationStatus === "archived" ? (
-              <button type="submit" name="intent" value="restore" className="rounded-md border border-line px-4 py-2 text-sm">
+              <button
+                type="submit"
+                name="intent"
+                value="restore"
+                className="rounded-md border border-line px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
+                disabled={locked || pending}
+              >
                 Restore to draft
               </button>
             ) : null}
@@ -921,7 +1030,7 @@ export function EventForm({
         {event ? (
           <a
             href={`/events/${event.slug}?preview=1`}
-            className="self-center text-sm text-accent"
+            className="self-center text-sm text-accent ml-auto"
             rel="noopener noreferrer"
             target="_blank"
           >
@@ -940,6 +1049,7 @@ function Panel({
   isOpen,
   onToggle,
   children,
+  hasError,
 }: {
   title: string;
   hint?: string;
@@ -947,9 +1057,10 @@ function Panel({
   isOpen: boolean;
   onToggle: () => void;
   children: React.ReactNode;
+  hasError?: boolean;
 }) {
   return (
-    <section className="rounded-2xl border border-line bg-white shadow-[0_1px_0_rgba(20,27,56,0.04)] overflow-hidden transition">
+    <section className={`rounded-2xl border ${hasError ? "border-amber-400/80 ring-1 ring-amber-300" : "border-line"} bg-white shadow-[0_1px_0_rgba(20,27,56,0.04)] overflow-hidden transition`}>
       <button
         type="button"
         onClick={onToggle}
@@ -972,7 +1083,7 @@ function Panel({
           )}
         </div>
       </button>
-      {isOpen && <div className="p-4 sm:p-5 pt-3 grid gap-4 bg-[#faf9f5]/40">{children}</div>}
+      <div className={`p-4 sm:p-5 pt-3 grid gap-4 bg-[#faf9f5]/40 ${isOpen ? "" : "hidden"}`}>{children}</div>
     </section>
   );
 }

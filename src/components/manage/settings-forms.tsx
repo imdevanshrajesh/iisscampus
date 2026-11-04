@@ -270,11 +270,32 @@ export function SocialForm({ social }: { social: SocialLinks }) {
 
 export function RoleForm() {
   const [state, action, pending] = useActionState(grantRole, {} as ActionState);
+  const [userId, setUserId] = useState("");
+
+  const isFormValid = userId.trim().length > 0;
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (!isFormValid) {
+      event.preventDefault();
+      alert("Please enter the user's account ID.");
+    }
+  }
+
   return (
-    <form action={action} className="grid max-w-xl gap-3">
+    <form action={action} onSubmit={handleSubmit} className="grid max-w-xl gap-3">
       <label className="grid gap-1.5 text-sm">
-        Account id
-        <input name="userId" required className={fieldClass} autoComplete="off" />
+        <span>
+          Account id <span className="text-red-500 font-bold">*</span>
+        </span>
+        <input
+          name="userId"
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
+          required
+          className={fieldClass}
+          autoComplete="off"
+          placeholder="UUID format: e.g. 12345678-1234-1234-1234-123456789abc"
+        />
       </label>
       <label className="grid gap-1.5 text-sm">
         Role
@@ -287,9 +308,20 @@ export function RoleForm() {
         Note
         <input name="note" className={fieldClass} />
       </label>
-      {state.error ? <p className="text-sm">{state.error}</p> : null}
+      {!isFormValid && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800">
+          <span className="font-semibold">Required:</span> Enter an account ID to grant a role.
+        </div>
+      )}
+      {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
       {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
-      <button type="submit" disabled={pending} className="justify-self-start rounded-md bg-ink px-4 py-2 text-sm text-white">Update role</button>
+      <button
+        type="submit"
+        disabled={pending || !isFormValid}
+        className="justify-self-start rounded-md bg-ink px-4 py-2 text-sm text-white disabled:opacity-50"
+      >
+        Update role
+      </button>
     </form>
   );
 }

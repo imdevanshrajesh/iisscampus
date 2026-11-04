@@ -34,13 +34,29 @@ export function WellnessItemForm({
   );
   const [isOpen, setIsOpen] = useState(!item); // Collapsed by default for existing items
 
-  const image = classifyMediaUrl(imageUrl, mediaHosts);
   const defaultCategoryId =
     item?.categoryId && categories.some((category) => category.id === item.categoryId)
       ? item.categoryId
       : categories[0]?.id ?? "";
 
-  const categoryName = categories.find((c) => c.id === item?.categoryId)?.name ?? "Wellness";
+  const [title, setTitle] = useState(item?.title ?? "");
+  const [categoryId, setCategoryId] = useState(defaultCategoryId);
+
+  const image = classifyMediaUrl(imageUrl, mediaHosts);
+
+  const missingFields: string[] = [];
+  if (!categoryId) missingFields.push("Category");
+  if (title.trim().length < 2) missingFields.push("Title (at least 2 characters)");
+  const isFormValid = missingFields.length === 0 && categories.length > 0;
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (!isFormValid) {
+      event.preventDefault();
+      alert(`Please fill in required fields: ${missingFields.join(", ")}.`);
+    }
+  }
+
+  const categoryName = categories.find((c) => c.id === (categoryId || item?.categoryId))?.name ?? "Wellness";
 
   return (
     <div className="rounded-xl border border-line bg-white shadow-xs overflow-hidden transition-all duration-200">
@@ -100,11 +116,19 @@ export function WellnessItemForm({
       ) : null}
 
       <div className={`p-4 sm:p-5 ${item && !isOpen ? "hidden" : "block"}`}>
-        <form action={action} className="grid gap-3.5">
+        <form action={action} onSubmit={handleSubmit} className="grid gap-3.5">
           {item ? <input type="hidden" name="id" value={item.id} /> : null}
           <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">Category</span>
-            <select name="categoryId" defaultValue={defaultCategoryId} required className={fieldClass}>
+            <span className="font-medium">
+              Category <span className="text-red-500 font-bold">*</span>
+            </span>
+            <select
+              name="categoryId"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              required
+              className={fieldClass}
+            >
               {!categories.length ? <option value="">Add a category first</option> : null}
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
@@ -114,8 +138,16 @@ export function WellnessItemForm({
             </select>
           </label>
           <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">Title</span>
-            <input name="title" defaultValue={item?.title ?? ""} required className={fieldClass} />
+            <span className="font-medium">
+              Title <span className="text-red-500 font-bold">*</span>
+            </span>
+            <input
+              name="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              className={fieldClass}
+            />
           </label>
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">Text / Guidance</span>
@@ -169,12 +201,17 @@ export function WellnessItemForm({
             <input type="checkbox" name="published" defaultChecked={item?.published ?? false} />
             <span className="font-medium">Show on the wellness page</span>
           </label>
+          {missingFields.length > 0 && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800">
+              <span className="font-semibold">Required fields missing:</span> {missingFields.join(", ")}
+            </div>
+          )}
           {state.error ? <p className="text-sm text-red-600 font-medium">{state.error}</p> : null}
           {state.ok ? <p className="text-sm text-accent font-medium">{state.ok}</p> : null}
           <div className="flex items-center gap-2 mt-2">
             <button
               type="submit"
-              disabled={pending || !categories.length}
+              disabled={pending || !isFormValid}
               className="rounded-md bg-navy px-4 py-2 text-sm font-medium text-white hover:bg-navy/90 transition cursor-pointer disabled:opacity-50"
             >
               {pending ? "Saving..." : item ? "Save item" : "Add item"}

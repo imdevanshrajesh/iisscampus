@@ -5,9 +5,9 @@ import { googleFormUrl } from "@/lib/registration";
 const slugSchema = z
   .string()
   .trim()
-  .min(2)
-  .max(80)
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens.");
+  .min(2, "Address slug must be at least 2 characters.")
+  .max(80, "Address slug cannot exceed 80 characters.")
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Address slug must use lowercase letters, numbers, and hyphens.");
 
 const optionalText = (max: number) =>
   z
@@ -148,11 +148,11 @@ const registrationCount = z
 
 export const eventInputSchema = z
   .object({
-    title: z.string().trim().min(2).max(140),
+    title: z.string().trim().min(2, "Title must be at least 2 characters.").max(140, "Title cannot exceed 140 characters."),
     slug: slugSchema,
-    shortDescription: z.string().trim().min(10).max(280),
-    fullDescription: z.string().trim().min(20).max(12000),
-    categoryId: z.string().uuid(),
+    shortDescription: z.string().trim().min(10, "Short description must be at least 10 characters.").max(280, "Short description cannot exceed 280 characters."),
+    fullDescription: z.string().trim().min(20, "Full description must be at least 20 characters.").max(12000, "Full description cannot exceed 12,000 characters."),
+    categoryId: z.string().uuid("Please select a primary category."),
     categoryIds: z.array(z.string().uuid()).max(12).default([]),
     listing: z.enum(["event", "competition", "external"]).default("event"),
     coverImageUrl: optionalText(2048),
@@ -350,8 +350,8 @@ export function validateEventMedia(input: EventInput, allowedHosts: readonly str
 }
 
 export const achievementInputSchema = z.object({
-  title: z.string().trim().min(2).max(140),
-  competitionName: z.string().trim().min(2).max(140),
+  title: z.string().trim().min(2, "Title must be at least 2 characters.").max(140, "Title cannot exceed 140 characters."),
+  competitionName: z.string().trim().min(2, "Competition name must be at least 2 characters.").max(140, "Competition name cannot exceed 140 characters."),
   winnerName: optionalText(120),
   award: optionalText(80),
   eventDate: dateSchema,
@@ -366,7 +366,7 @@ export const achievementInputSchema = z.object({
 export type AchievementInput = z.infer<typeof achievementInputSchema>;
 
 export const categoryInputSchema = z.object({
-  name: z.string().trim().min(2).max(60),
+  name: z.string().trim().min(2, "Category name must be at least 2 characters.").max(60, "Category name cannot exceed 60 characters."),
   slug: slugSchema,
   description: optionalText(280),
   sortOrder: z.coerce.number().int().min(0).max(500).default(0),
@@ -378,8 +378,8 @@ export type CategoryInput = z.infer<typeof categoryInputSchema>;
 
 const councilMemberSchema = z.object({
   id: z.string().uuid().optional(),
-  role: z.string().trim().min(2).max(80),
-  name: z.string().trim().min(2).max(80),
+  role: z.string().trim().min(2, "Member role must be at least 2 characters.").max(80, "Member role cannot exceed 80 characters."),
+  name: z.string().trim().min(2, "Member name must be at least 2 characters.").max(80, "Member name cannot exceed 80 characters."),
   imageUrl: optionalText(2048),
   imageAlt: optionalText(200),
   quote: optionalText(400),
@@ -390,22 +390,22 @@ const councilMemberSchema = z.object({
 
 const councilPhotoSchema = z.object({
   id: z.string().uuid().optional(),
-  url: z.string().trim().min(1).max(2048),
-  alt: z.string().trim().min(1).max(200),
+  url: z.string().trim().min(1, "Photo URL is required.").max(2048, "Photo URL is too long."),
+  alt: z.string().trim().min(1, "Alternative text is required for the photo.").max(200, "Photo alt text cannot exceed 200 characters."),
   caption: optionalText(240),
 });
 
 const councilPostSchema = z.object({
   id: z.string().uuid().optional(),
-  title: z.string().trim().min(2).max(140),
-  body: z.string().trim().min(10).max(8000),
+  title: z.string().trim().min(2, "Post title must be at least 2 characters.").max(140, "Post title cannot exceed 140 characters."),
+  body: z.string().trim().min(10, "Post body must be at least 10 characters.").max(8000, "Post body cannot exceed 8000 characters."),
   publishedOn: dateSchema,
   imageUrl: optionalText(2048),
   imageAlt: optionalText(200),
 });
 
 export const councilInputSchema = z.object({
-  label: z.string().trim().min(2).max(40),
+  label: z.string().trim().min(2, "Council year label must be at least 2 characters.").max(40, "Label cannot exceed 40 characters."),
   slug: slugSchema,
   kind: z.enum(["current", "upcoming", "past"]),
   summary: z.string().trim().max(800).default(""),
@@ -495,7 +495,7 @@ export function councilInputFromForm(formData: FormData) {
 }
 
 export const announcementInputSchema = z.object({
-  title: z.string().trim().min(2).max(200),
+  title: z.string().trim().min(2, "Notice title must be at least 2 characters.").max(200, "Notice title cannot exceed 200 characters."),
   body: z.string().trim().max(8000).default(""),
   resources: z.array(resourceSchema).max(40).default([]),
   eventId: z.string().uuid().nullable().default(null),
@@ -570,7 +570,7 @@ const customProgramLinkSchema = z
 
 export const customProgramInputSchema = z
   .object({
-    title: z.string().trim().min(2).max(120),
+    title: z.string().trim().min(2, "Program title must be at least 2 characters.").max(120, "Program title cannot exceed 120 characters."),
     summary: z.string().trim().max(4000).default(""),
     websiteLabel: optionalText(80),
     websiteUrl: optionalText(2048),
@@ -596,7 +596,7 @@ export const customProgramInputSchema = z
   });
 
 export const marqueeInputSchema = z.object({
-  message: z.string().trim().min(2).max(500),
+  message: z.string().trim().min(2, "Marquee message must be at least 2 characters.").max(500, "Marquee message cannot exceed 500 characters."),
   eventId: z.string().uuid().nullable().default(null),
   enabled: z.boolean().default(true),
   sortOrder: z.number().int().min(0).max(500).default(0),
@@ -618,7 +618,7 @@ export function parseSiteHref(raw: string | null) {
 }
 
 export const navGroupInputSchema = z.object({
-  label: z.string().trim().min(1, "Enter a label.").max(40),
+  label: z.string().trim().min(1, "Enter a navigation label.").max(40, "Label cannot exceed 40 characters."),
   href: optionalSiteHref,
   includeListing: z.enum(["event", "competition"]).nullable().default(null),
   enabled: z.boolean().default(true),

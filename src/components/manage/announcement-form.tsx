@@ -43,10 +43,23 @@ export function AnnouncementForm({
 
   const [state, action, pending] = useActionState(saveAnnouncement, {} as ActionState);
   const [deleteState, deleteAction, deleting] = useActionState(deleteAnnouncement, {} as ActionState);
+  const [title, setTitle] = useState(announcement?.title ?? "");
   const [resources, setResources] = useState<ContentResource[]>(announcement?.resources ?? []);
   const [coverImageUrl, setCoverImageUrl] = useState<string>(announcement?.coverImageUrl ?? "");
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [clientError, setClientError] = useState<string | null>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
+
+  const isFormValid = title.trim().length >= 2;
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (!isFormValid) {
+      e.preventDefault();
+      setClientError("Please enter a notice title (at least 2 characters) before posting.");
+      return;
+    }
+    setClientError(null);
+  };
 
   const linkedEvent = events.find((ev) => ev.id === announcement?.eventId);
   const linkedProgram = programs.find((p) => p.id === announcement?.programId);
@@ -177,7 +190,7 @@ export function AnnouncementForm({
       {/* Expanded Form Body */}
       {isOpen && (
         <div className="p-4 sm:p-5 pt-3 bg-[#faf9f5]/50 border-t border-line/40 grid gap-4">
-          <form action={action} className="grid gap-3">
+          <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-3">
             {announcement ? <input type="hidden" name="id" value={announcement.id} /> : null}
             <input
               type="hidden"
@@ -185,6 +198,10 @@ export function AnnouncementForm({
               value={JSON.stringify(resources.filter((item) => item.title.trim()))}
             />
             <input type="hidden" name="coverImageUrl" value={coverImageUrl} />
+
+            {clientError ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{clientError}</p> : null}
+            {state.error ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{state.error}</p> : null}
+            {state.ok ? <p className="text-sm text-accent font-medium">{state.ok}</p> : null}
 
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="grid gap-1.5 text-sm">
@@ -202,11 +219,12 @@ export function AnnouncementForm({
                 </select>
               </label>
 
-              <label className="grid gap-1.5 text-sm">
-                Title
+              <label className="grid gap-1.5 text-sm font-medium text-ink">
+                <span>Title <span className="text-red-500 font-bold" title="Required">*</span></span>
                 <input
                   name="title"
-                  defaultValue={announcement?.title ?? ""}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
                   required
                   maxLength={200}
                   className={fieldClass}
@@ -338,10 +356,17 @@ export function AnnouncementForm({
             {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
             {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
 
+            {!isFormValid && (
+              <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs text-amber-900">
+                <span className="font-bold shrink-0">Required (*):</span>
+                <span>Enter a notice title (min 2 characters) to post.</span>
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={pending}
-              className="justify-self-start rounded-md bg-navy px-4 py-2 text-sm text-white transition hover:bg-navy/90 cursor-pointer disabled:opacity-50"
+              disabled={pending || !isFormValid}
+              className="justify-self-start rounded-md bg-navy px-4 py-2 text-sm text-white transition hover:bg-navy/90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {pending ? "Saving..." : announcement ? "Save Notice Changes" : "Post Council Notice"}
             </button>

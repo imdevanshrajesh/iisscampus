@@ -95,8 +95,42 @@ export function CouncilForm({
   const memberSlugs = councilMemberSlugs(members);
   const memberPageQuery = year?.publicationStatus === "published" ? "" : "?preview=1";
 
+  const missingRequiredFields: string[] = [];
+  if (label.trim().length < 2) missingRequiredFields.push("Year label (at least 2 characters)");
+  if (slug.trim().length < 2) missingRequiredFields.push("Address slug (at least 2 characters)");
+
+  members.forEach((m, idx) => {
+    const hasContent = m.role.trim() || m.name.trim() || m.imageUrl.trim();
+    if (hasContent) {
+      if (m.role.trim().length < 2) missingRequiredFields.push(`Member #${idx + 1}: Role / Post`);
+      if (m.name.trim().length < 2) missingRequiredFields.push(`Member #${idx + 1}: Name`);
+      if (m.imageUrl.trim() && !m.imageAlt.trim()) missingRequiredFields.push(`Member #${idx + 1}: Image description`);
+    }
+  });
+
+  photos.forEach((p, idx) => {
+    if (!p.url.trim() || !p.alt.trim()) {
+      missingRequiredFields.push(`Photo #${idx + 1}: URL and alternative text`);
+    }
+  });
+
+  posts.forEach((p, idx) => {
+    if (p.title.trim().length < 2) missingRequiredFields.push(`Post #${idx + 1}: Title`);
+    if (p.body.trim().length < 10) missingRequiredFields.push(`Post #${idx + 1}: Note / body (at least 10 characters)`);
+    if (!p.publishedOn.trim()) missingRequiredFields.push(`Post #${idx + 1}: Date`);
+  });
+
+  const isFormValid = missingRequiredFields.length === 0;
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (!isFormValid) {
+      event.preventDefault();
+      alert(`Please fill in all required fields:\n• ${missingRequiredFields.join("\n• ")}`);
+    }
+  }
+
   return (
-    <form action={action} className="grid max-w-3xl gap-8">
+    <form action={action} onSubmit={handleSubmit} className="grid max-w-3xl gap-8">
       {year ? <input type="hidden" name="id" value={year.id} /> : null}
       {state.error ? <p className="rounded-md bg-wash px-3 py-2 text-sm">{state.error}</p> : null}
       {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
@@ -104,7 +138,9 @@ export function CouncilForm({
       <fieldset disabled={locked} className="grid gap-4">
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-1.5 text-sm">
-            Year label
+            <span>
+              Year label <span className="text-red-500 font-bold">*</span>
+            </span>
             <input
               name="label"
               value={label}
@@ -119,7 +155,9 @@ export function CouncilForm({
             />
           </label>
           <label className="grid gap-1.5 text-sm">
-            Address
+            <span>
+              Address <span className="text-red-500 font-bold">*</span>
+            </span>
             <input
               name="slug"
               value={slug}
@@ -234,7 +272,9 @@ export function CouncilForm({
               <input type="hidden" name={`members.${index}.board`} value="main" />
               <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
               <label className="grid gap-1.5 text-sm">
-                Role
+                <span>
+                  Role <span className="text-red-500 font-bold">*</span>
+                </span>
                 <select
                   name={`members.${index}.role`}
                   value={member.role}
@@ -257,7 +297,9 @@ export function CouncilForm({
                 </select>
               </label>
               <label className="grid gap-1.5 text-sm">
-                Name
+                <span>
+                  Name <span className="text-red-500 font-bold">*</span>
+                </span>
                 <input
                   name={`members.${index}.name`}
                   value={member.name}
@@ -395,7 +437,9 @@ export function CouncilForm({
         {photos.map((photo, index) => (
           <div key={photo.key} className="grid gap-3 rounded-xl border border-line bg-background p-4">
             <label className="grid gap-1.5 text-sm">
-              Image URL
+              <span>
+                Image URL <span className="text-red-500 font-bold">*</span>
+              </span>
               <input
                 name={`photos.${index}.url`}
                 value={photo.url}
@@ -410,7 +454,9 @@ export function CouncilForm({
               />
             </label>
             <label className="grid gap-1.5 text-sm">
-              Alternative text
+              <span>
+                Alternative text <span className="text-red-500 font-bold">*</span>
+              </span>
               <input
                 name={`photos.${index}.alt`}
                 value={photo.alt}
@@ -470,7 +516,9 @@ export function CouncilForm({
         {posts.map((post, index) => (
           <div key={post.key} className="grid gap-3 rounded-xl border border-line bg-background p-4">
             <label className="grid gap-1.5 text-sm">
-              Title
+              <span>
+                Title <span className="text-red-500 font-bold">*</span>
+              </span>
               <input
                 name={`posts.${index}.title`}
                 value={post.title}
@@ -484,13 +532,16 @@ export function CouncilForm({
               />
             </label>
             <label className="grid gap-1.5 text-sm">
-              Note
+              <span>
+                Note <span className="text-red-500 font-bold">*</span>
+              </span>
               <textarea
                 name={`posts.${index}.body`}
                 value={post.body}
                 rows={5}
                 disabled={locked}
                 className={fieldClass}
+                placeholder="At least 10 characters required"
                 onChange={(event) =>
                   setPosts((current) =>
                     current.map((item) => (item.key === post.key ? { ...item, body: event.target.value } : item)),
@@ -499,7 +550,9 @@ export function CouncilForm({
               />
             </label>
             <label className="grid gap-1.5 text-sm">
-              Date
+              <span>
+                Date <span className="text-red-500 font-bold">*</span>
+              </span>
               <input
                 type="date"
                 name={`posts.${index}.publishedOn`}
@@ -555,34 +608,69 @@ export function CouncilForm({
         ))}
       </section>
 
+      {missingRequiredFields.length > 0 && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <p className="font-semibold">Cannot submit form. Required fields missing:</p>
+          <ul className="mt-1 list-disc pl-5 text-xs space-y-0.5">
+            {missingRequiredFields.map((field) => (
+              <li key={field}>{field}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-3">
         <button
           type="submit"
           name="intent"
           value="save"
-          disabled={locked || pending}
-          className="rounded-md bg-navy px-4 py-2 text-sm text-white disabled:opacity-60"
+          disabled={locked || pending || !isFormValid}
+          className="rounded-md bg-navy px-4 py-2 text-sm text-white disabled:opacity-50"
         >
           {year?.publicationStatus === "published" ? "Save changes" : "Save draft"}
         </button>
         {role === "administrator" && year ? (
           <>
-            <button type="submit" name="intent" value="publish" className="rounded-md bg-accent px-4 py-2 text-sm text-white">
+            <button
+              type="submit"
+              name="intent"
+              value="publish"
+              disabled={locked || pending || !isFormValid}
+              className="rounded-md bg-accent px-4 py-2 text-sm text-white disabled:opacity-50"
+            >
               Publish
             </button>
-            <button type="submit" name="intent" value="unpublish" className="rounded-md border border-line bg-background px-4 py-2 text-sm">
+            <button
+              type="submit"
+              name="intent"
+              value="unpublish"
+              disabled={locked || pending}
+              className="rounded-md border border-line bg-background px-4 py-2 text-sm disabled:opacity-50"
+            >
               Unpublish
             </button>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="confirmArchive" value="yes" />
               Confirm archive
             </label>
-            <button type="submit" name="intent" value="archive" className="rounded-md border border-line bg-background px-4 py-2 text-sm">
+            <button
+              type="submit"
+              name="intent"
+              value="archive"
+              disabled={locked || pending}
+              className="rounded-md border border-line bg-background px-4 py-2 text-sm disabled:opacity-50"
+            >
               Archive
             </button>
           </>
         ) : year ? (
-          <button type="submit" name="intent" value="submit" className="rounded-md border border-line bg-background px-4 py-2 text-sm">
+          <button
+            type="submit"
+            name="intent"
+            value="submit"
+            disabled={locked || pending || !isFormValid}
+            className="rounded-md border border-line bg-background px-4 py-2 text-sm disabled:opacity-50"
+          >
             Submit for review
           </button>
         ) : null}
@@ -651,7 +739,9 @@ function MemberBoard({
             <input type="hidden" name={`members.${index}.board`} value={board} />
             <div className="grid gap-3 md:grid-cols-2">
               <label className="grid gap-1.5 text-sm">
-                Post
+                <span>
+                  Post <span className="text-red-500 font-bold">*</span>
+                </span>
                 <input
                   name={`members.${index}.role`}
                   value={member.role}
@@ -665,7 +755,9 @@ function MemberBoard({
                 />
               </label>
               <label className="grid gap-1.5 text-sm">
-                Name
+                <span>
+                  Name <span className="text-red-500 font-bold">*</span>
+                </span>
                 <input
                   name={`members.${index}.name`}
                   value={member.name}
@@ -696,12 +788,15 @@ function MemberBoard({
                 />
               </label>
               <label className="grid gap-1.5 text-sm">
-                Photograph description
+                <span>
+                  Photograph description {member.imageUrl.trim() && <span className="text-red-500 font-bold">*</span>}
+                </span>
                 <input
                   name={`members.${index}.imageAlt`}
                   value={member.imageAlt}
                   disabled={locked}
                   className={fieldClass}
+                  placeholder={member.imageUrl.trim() ? "Required when photograph is set" : ""}
                   onChange={(event) =>
                     setMembers((current) =>
                       current.map((item) => (item.key === member.key ? { ...item, imageAlt: event.target.value } : item)),

@@ -25,20 +25,59 @@ export function AchievementForm({
   mediaHosts: string[];
 }) {
   const [state, action, pending] = useActionState(saveAchievement, {} as ActionState);
+  const [title, setTitle] = useState(achievement?.title ?? "");
+  const [competitionName, setCompetitionName] = useState(achievement?.competitionName ?? "");
   const [imageUrl, setImageUrl] = useState(achievement?.imageUrl ?? "");
   const [resources, setResources] = useState<ContentResource[]>(achievement?.resources ?? []);
+  const [clientError, setClientError] = useState<string | null>(null);
   const image = classifyMediaUrl(imageUrl, mediaHosts);
   const locked = role === "editor" && (achievement?.publicationStatus === "published" || achievement?.publicationStatus === "archived");
 
+  const missingFields: string[] = [];
+  if (!title.trim() || title.trim().length < 2) missingFields.push("Title (min 2 chars)");
+  if (!competitionName.trim() || competitionName.trim().length < 2) missingFields.push("Competition (min 2 chars)");
+
+  const isFormValid = missingFields.length === 0;
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (!isFormValid) {
+      e.preventDefault();
+      setClientError(`Please fill in all required fields marked with * before submitting: ${missingFields.join(", ")}`);
+      return;
+    }
+    setClientError(null);
+  };
+
   return (
-    <form action={action} className="grid max-w-2xl gap-4">
+    <form action={action} onSubmit={handleSubmit} noValidate className="grid max-w-2xl gap-4">
       {achievement ? <input type="hidden" name="id" value={achievement.id} /> : null}
       <input type="hidden" name="resources" value={JSON.stringify(resources.filter((item) => item.title.trim()))} />
-      {state.error ? <p className="text-sm">{state.error}</p> : null}
-      {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
+      {clientError ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{clientError}</p> : null}
+      {state.error ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{state.error}</p> : null}
+      {state.ok ? <p className="text-sm text-accent font-medium">{state.ok}</p> : null}
       <fieldset disabled={locked} className="grid gap-4">
-        <label className="grid gap-1.5 text-sm">Title<input name="title" defaultValue={achievement?.title} required className={fieldClass} /></label>
-        <label className="grid gap-1.5 text-sm">Competition<input name="competitionName" defaultValue={achievement?.competitionName} required className={fieldClass} /></label>
+        <label className="grid gap-1.5 text-sm font-medium text-ink">
+          <span>Title <span className="text-red-500 font-bold" title="Required">*</span></span>
+          <input
+            name="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+            className={fieldClass}
+            placeholder="e.g. 1st Place at National Debating Championship"
+          />
+        </label>
+        <label className="grid gap-1.5 text-sm font-medium text-ink">
+          <span>Competition <span className="text-red-500 font-bold" title="Required">*</span></span>
+          <input
+            name="competitionName"
+            value={competitionName}
+            onChange={(e) => setCompetitionName(e.target.value)}
+            required
+            className={fieldClass}
+            placeholder="e.g. UAE National Debate Championship 2026"
+          />
+        </label>
         <label className="grid gap-1.5 text-sm">Winner or team, if approved<input name="winnerName" defaultValue={achievement?.winnerName ?? ""} className={fieldClass} /></label>
         <label className="grid gap-1.5 text-sm">Award<input name="award" defaultValue={achievement?.award ?? ""} className={fieldClass} /></label>
         <label className="grid gap-1.5 text-sm">Date<input type="date" name="eventDate" defaultValue={achievement?.eventDate ?? ""} className={fieldClass} /></label>
@@ -70,18 +109,66 @@ export function AchievementForm({
         <label className="grid gap-1.5 text-sm">Alternative text<input name="imageAlt" defaultValue={achievement?.imageAlt ?? ""} className={fieldClass} /></label>
         <ResourceRepeater resources={resources} onChange={setResources} />
       </fieldset>
-      <div className="flex flex-wrap gap-3">
-        <button type="submit" name="intent" value="save" disabled={locked || pending} className="rounded-md bg-navy px-4 py-2 text-sm text-white">{achievement?.publicationStatus === "published" ? "Save changes" : "Save draft"}</button>
-        {role === "administrator" && achievement ? (
-          <>
-            <button type="submit" name="intent" value="publish" className="rounded-md bg-accent px-4 py-2 text-sm text-white">Publish</button>
-            <button type="submit" name="intent" value="unpublish" className="rounded-md border border-line px-4 py-2 text-sm">Unpublish</button>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="confirmArchive" value="yes" />Confirm archive</label>
-            <button type="submit" name="intent" value="archive" className="rounded-md border border-line px-4 py-2 text-sm">Archive</button>
-          </>
-        ) : achievement ? (
-          <button type="submit" name="intent" value="submit" className="rounded-md border border-line px-4 py-2 text-sm">Submit for review</button>
-        ) : null}
+      <div className="flex flex-col gap-2">
+        {!isFormValid && (
+          <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs text-amber-900">
+            <span className="font-bold shrink-0">Required (*):</span>
+            <span>Fill in {missingFields.join(", ")} to submit.</span>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="submit"
+            name="intent"
+            value="save"
+            disabled={locked || pending || !isFormValid}
+            className="rounded-md bg-navy px-4 py-2 text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            {pending ? "Saving..." : achievement?.publicationStatus === "published" ? "Save changes" : "Save draft"}
+          </button>
+          {role === "administrator" && achievement ? (
+            <>
+              <button
+                type="submit"
+                name="intent"
+                value="publish"
+                disabled={locked || pending || !isFormValid}
+                className="rounded-md bg-accent px-4 py-2 text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Publish
+              </button>
+              <button
+                type="submit"
+                name="intent"
+                value="unpublish"
+                disabled={locked || pending}
+                className="rounded-md border border-line px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Unpublish
+              </button>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="confirmArchive" value="yes" />Confirm archive</label>
+              <button
+                type="submit"
+                name="intent"
+                value="archive"
+                disabled={locked || pending}
+                className="rounded-md border border-line px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Archive
+              </button>
+            </>
+          ) : achievement ? (
+            <button
+              type="submit"
+              name="intent"
+              value="submit"
+              disabled={locked || pending || !isFormValid}
+              className="rounded-md border border-line px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Submit for review
+            </button>
+          ) : null}
+        </div>
       </div>
     </form>
   );

@@ -1,10 +1,21 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { signIn, type ActionState } from "@/lib/manage/actions";
 
 export function LoginForm({ configured }: { configured: boolean }) {
   const [state, action, pending] = useActionState(signIn, {} as ActionState);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const isFormValid = email.trim().length > 0 && password.trim().length > 0;
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (!isFormValid) {
+      event.preventDefault();
+      alert("Please enter both email and password.");
+    }
+  }
 
   if (!configured) {
     return (
@@ -23,18 +34,42 @@ export function LoginForm({ configured }: { configured: boolean }) {
       <p className="mt-3 text-sm leading-6 text-muted">
         Use an existing account that has been granted campus access. There is no public signup here.
       </p>
-      <form action={action} className="mt-8 grid gap-4">
-        {state.error ? <p className="text-sm">{state.error}</p> : null}
+      <form action={action} onSubmit={handleSubmit} className="mt-8 grid gap-4">
+        {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
         <label className="grid gap-1.5 text-sm">
-          Email
-          <input name="email" type="email" autoComplete="username" required className="rounded-md border border-line bg-white px-3 py-2" />
+          <span>
+            Email <span className="text-red-500 font-bold">*</span>
+          </span>
+          <input
+            name="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="username"
+            required
+            className="rounded-md border border-line bg-white px-3 py-2"
+          />
         </label>
         <label className="grid gap-1.5 text-sm">
-          Password
-          <input name="password" type="password" autoComplete="current-password" required className="rounded-md border border-line bg-white px-3 py-2" />
+          <span>
+            Password <span className="text-red-500 font-bold">*</span>
+          </span>
+          <input
+            name="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            required
+            className="rounded-md border border-line bg-white px-3 py-2"
+          />
         </label>
-        <button type="submit" disabled={pending} className="rounded-md bg-ink px-4 py-2 text-sm text-white">
-          {pending ? "Signing in" : "Sign in"}
+        <button
+          type="submit"
+          disabled={pending || !isFormValid}
+          className="rounded-md bg-ink px-4 py-2 text-sm text-white disabled:opacity-50"
+        >
+          {pending ? "Signing in..." : "Sign in"}
         </button>
       </form>
     </div>

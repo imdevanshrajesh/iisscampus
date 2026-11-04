@@ -12,7 +12,19 @@ export function SocialPostForm({ post }: { post: SocialPost | null }) {
   const [state, action, pending] = useActionState(saveSocialPost, {} as ActionState);
   const [deleteState, deleteAction, deleting] = useActionState(deleteSocialPost, {} as ActionState);
   const [url, setUrl] = useState(post?.instagramUrl ?? "");
+  const [clientError, setClientError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(!post); // Collapsed by default for existing posts
+
+  const isFormValid = url.trim().length >= 5 && (url.includes("instagram.com") || url.includes("instagr.am"));
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (!isFormValid) {
+      e.preventDefault();
+      setClientError("Please enter a valid Instagram post or reel address before saving.");
+      return;
+    }
+    setClientError(null);
+  };
 
   // Extract a readable Instagram snippet
   const captionPreview = post?.caption?.trim() || post?.instagramUrl || "Instagram Post";
@@ -71,15 +83,17 @@ export function SocialPostForm({ post }: { post: SocialPost | null }) {
 
       {/* Expanded Form Content */}
       <div className={`p-4 sm:p-5 ${post && !isOpen ? "hidden" : "block"}`}>
-        <form action={action} className="grid gap-3.5">
+        <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-3.5">
           {post ? <input type="hidden" name="id" value={post.id} /> : null}
+
+          {clientError ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{clientError}</p> : null}
 
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium flex items-center gap-1.5">
               <span className="text-accent">
                 <InstagramMark size={15} />
               </span>{" "}
-              Instagram Post or Reel Link
+              Instagram Post or Reel Link <span className="text-red-500 font-bold" title="Required">*</span>
             </span>
             <input
               name="instagramUrl"
@@ -168,11 +182,18 @@ export function SocialPostForm({ post }: { post: SocialPost | null }) {
           {state.error ? <p className="text-sm text-red-600 font-medium">{state.error}</p> : null}
           {state.ok ? <p className="text-sm text-accent font-medium">{state.ok}</p> : null}
 
+          {!isFormValid && (
+            <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs text-amber-900">
+              <span className="font-bold shrink-0">Required (*):</span>
+              <span>Enter a valid Instagram link to pin.</span>
+            </div>
+          )}
+
           <div className="flex items-center gap-2 mt-2">
             <button
               type="submit"
-              disabled={pending}
-              className="rounded-md bg-navy px-4 py-2 text-sm font-medium text-white transition hover:bg-navy/90 cursor-pointer disabled:opacity-50"
+              disabled={pending || !isFormValid}
+              className="rounded-md bg-navy px-4 py-2 text-sm font-medium text-white transition hover:bg-navy/90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {pending ? "Saving..." : post ? "Save changes" : "Pin new post"}
             </button>

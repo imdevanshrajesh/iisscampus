@@ -77,8 +77,152 @@ async function staffContext(): Promise<
   return { supabase, actor: session.actor };
 }
 
-function issueMessage(error: { issues: { message: string }[] }) {
-  return error.issues[0]?.message || "Check the form and try again.";
+const FIELD_LABELS: Record<string, string> = {
+  title: "Title",
+  slug: "Address Slug",
+  name: "Name",
+  label: "Label",
+  question: "Question",
+  answer: "Answer",
+  message: "Message",
+  body: "Content / Body",
+  shortDescription: "Short Description",
+  fullDescription: "Full Description",
+  description: "Description",
+  summary: "Summary",
+  categoryId: "Primary Category",
+  categoryIds: "Categories",
+  eventId: "Related Event",
+  competitionName: "Competition Name",
+  winnerName: "Winner Name",
+  award: "Award",
+  eventDate: "Event Date",
+  endDate: "End Date",
+  startTime: "Start Time",
+  endTime: "End Time",
+  locationName: "Location / Venue",
+  locationMapUrl: "Map URL",
+  hostName: "Host School",
+  gradeFrom: "Grade From",
+  gradeTo: "Grade To",
+  feeAed: "Fee",
+  capacity: "Capacity",
+  packingList: "Packing List",
+  eventStatus: "Event Status",
+  coverImageUrl: "Cover Image",
+  coverAlt: "Cover Image Alternative Text",
+  imageUrl: "Photograph URL",
+  imageAlt: "Photograph Alternative Text",
+  registrationUrl: "Registration URL",
+  registrationProvider: "Registration Method",
+  registrationDeadline: "Registration Deadline",
+  registrationLimit: "Registration Limit",
+  overflowRegistrationUrl: "Overflow Google Form URL",
+  instagramUrl: "Instagram URL",
+  videoUrl: "Video URL",
+  inchargeName: "Incharge Name",
+  inchargeTitle: "Incharge Title",
+  captainName: "Captain Name",
+  viceCaptainName: "Vice Captain Name",
+  role: "Role / Designation",
+  color: "House Color",
+  points: "Points",
+  email: "Email Address",
+  phone: "Phone Number",
+  href: "Link Address",
+  groupId: "Navigation Group",
+  tier: "Hierarchy Tier",
+  publishedOn: "Published Date",
+  pushToArigo: "Push to Arigo",
+  url: "URL / Link",
+  alt: "Alternative Text",
+  quote: "Quote / Message",
+  about: "About Text",
+  work: "Work / Achievements",
+  juniorHeading: "Junior Heading",
+  navLabel: "Menu Label",
+  pageTitle: "Page Title",
+  pdfUrl: "PDF Link",
+  navLogoUrl: "Navbar Logo URL",
+  navLogoHref: "Navbar Link",
+  councilLogoUrl: "Council Logo URL",
+  contactEmail: "Contact Email",
+  mediaHosts: "Approved Image Hosts",
+  caption: "Caption",
+};
+
+function issueMessage(error: { issues?: readonly any[] | any[] }) {
+  if (!error?.issues || !error.issues.length) return "Check the form and try again.";
+
+  const messages: string[] = [];
+  const seenFields = new Set<string>();
+
+  for (const issue of error.issues) {
+    const rawPath = issue.path ?? [];
+    const fieldKey = String(rawPath[rawPath.length - 1] ?? "");
+    const fieldLabel =
+      FIELD_LABELS[fieldKey] ||
+      (fieldKey
+        ? fieldKey.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())
+        : "Field");
+
+    if (fieldKey && seenFields.has(fieldKey)) continue;
+    if (fieldKey) seenFields.add(fieldKey);
+
+    const rawMsg = (issue.message ?? "").trim();
+    const code = issue.code ?? "";
+
+    if (
+      code === "invalid_type" ||
+      rawMsg.includes("received null") ||
+      rawMsg.includes("received undefined") ||
+      rawMsg === "Required" ||
+      rawMsg.toLowerCase() === "invalid input"
+    ) {
+      messages.push(`${fieldLabel} is required.`);
+      continue;
+    }
+
+    if (
+      code === "invalid_format" &&
+      (rawMsg.toLowerCase().includes("uuid") || issue.format === "uuid")
+    ) {
+      messages.push(`Please select a valid ${fieldLabel}.`);
+      continue;
+    }
+
+    if (code === "too_small" || rawMsg.startsWith("Too small")) {
+      const min = issue.minimum ?? 1;
+      if (min <= 2 && rawMsg.startsWith("Too small")) {
+        messages.push(`${fieldLabel} is required.`);
+      } else if (rawMsg.startsWith("Too small")) {
+        messages.push(`${fieldLabel} must have at least ${min} characters.`);
+      } else {
+        messages.push(rawMsg.includes(fieldLabel) ? rawMsg : `${fieldLabel}: ${rawMsg}`);
+      }
+      continue;
+    }
+
+    if (code === "too_big" || rawMsg.startsWith("Too big")) {
+      const max = issue.maximum;
+      if (max && rawMsg.startsWith("Too big")) {
+        messages.push(`${fieldLabel} cannot exceed ${max} characters.`);
+      } else {
+        messages.push(rawMsg.includes(fieldLabel) ? rawMsg : `${fieldLabel}: ${rawMsg}`);
+      }
+      continue;
+    }
+
+    if (rawMsg && !rawMsg.toLowerCase().startsWith("invalid input")) {
+      messages.push(rawMsg.includes(fieldLabel) ? rawMsg : `${fieldLabel}: ${rawMsg}`);
+    } else {
+      messages.push(`${fieldLabel} has an invalid value.`);
+    }
+
+    if (messages.length >= 3) break;
+  }
+
+  return messages.join(" ") || "Check the form and try again.";
 }
 
 function httpsOrNull(value: string | null) {
@@ -1697,8 +1841,7 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
     enabled,
   });
   if (!parsed.success) {
-    const issue = parsed.error.issues[0];
-    return { error: issue?.message ?? "Check the announcement fields and try again." };
+    return { error: issueMessage(parsed.error) };
   }
 
   const { title, body, eventId, programId, wellnessId, category, coverImageUrl } = parsed.data;
@@ -1780,7 +1923,7 @@ export async function saveMarquee(_state: ActionState, formData: FormData): Prom
     sortOrder: Number(formData.get("sortOrder") ?? 0) || 0,
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Enter a marquee message." };
+    return { error: issueMessage(parsed.error) };
   }
 
   const { message, eventId, enabled, sortOrder } = parsed.data;
@@ -1979,7 +2122,7 @@ export async function saveCustomProgram(_state: ActionState, formData: FormData)
     pdfUrl: formData.get("pdfUrl") || null,
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Check the program fields and try again." };
+    return { error: issueMessage(parsed.error) };
   }
 
   let websiteUrl = parsed.data.websiteUrl;
@@ -2404,7 +2547,7 @@ export async function saveNavGroup(_state: ActionState, formData: FormData): Pro
     enabled: formData.get("enabled") === "on",
     sortOrder: Number(formData.get("sortOrder") ?? 0) || 0,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Enter a label." };
+  if (!parsed.success) return { error: issueMessage(parsed.error) };
   const href = parseSiteHref(parsed.data.href);
   if (parsed.data.href && !href) return { error: "Use a site path such as /events, or an https:// link." };
 
@@ -2485,7 +2628,7 @@ export async function saveNavItem(_state: ActionState, formData: FormData): Prom
     enabled: formData.get("enabled") === "on",
     sortOrder: Number(formData.get("sortOrder") ?? 0) || 0,
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check this card." };
+  if (!parsed.success) return { error: issueMessage(parsed.error) };
 
   let href = parseSiteHref(parsed.data.href);
   if (!parsed.data.eventId) {
@@ -2575,7 +2718,7 @@ export async function saveSocialPost(_state: ActionState, formData: FormData): P
     councilTag: String(formData.get("councilTag") ?? "all"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Check the form and try again." };
+    return { error: issueMessage(parsed.error) };
   }
 
   const { instagramUrl, caption, imageUrl, pinned, sortOrder, councilTag } = parsed.data;
@@ -2671,7 +2814,7 @@ export async function saveSchoolIncharge(_state: ActionState, formData: FormData
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Check the head leadership fields and try again." };
+    return { error: issueMessage(parsed.error) };
   }
 
   if ((await contentMode()) === "file") {
@@ -2790,7 +2933,7 @@ export async function saveHouse(_state: ActionState, formData: FormData): Promis
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Check the house fields and try again." };
+    return { error: issueMessage(parsed.error) };
   }
 
   if ((await contentMode()) === "file") {

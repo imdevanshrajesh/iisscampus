@@ -57,6 +57,13 @@ export function HouseForm({
     {} as ActionState
   );
 
+  const [name, setName] = useState(house?.name ?? "");
+  const [slug, setSlug] = useState(house?.slug ?? "");
+  const [inchargeName, setInchargeName] = useState(house?.inchargeName ?? "");
+  const [captainName, setCaptainName] = useState(house?.captainName ?? "");
+  const [viceCaptainName, setViceCaptainName] = useState(house?.viceCaptainName ?? "");
+  const [clientError, setClientError] = useState<string | null>(null);
+
   const [inchargePhotoUrl, setInchargePhotoUrl] = useState<string>(
     house?.inchargePhotoUrl ?? ""
   );
@@ -66,6 +73,24 @@ export function HouseForm({
   const [viceCaptainPhotoUrl, setViceCaptainPhotoUrl] = useState<string>(
     house?.viceCaptainPhotoUrl ?? ""
   );
+
+  const missingFields: string[] = [];
+  if (!name.trim() || name.trim().length < 2) missingFields.push("House Name");
+  if (!slug.trim() || slug.trim().length < 2) missingFields.push("House Slug");
+  if (!inchargeName.trim() || inchargeName.trim().length < 2) missingFields.push("Incharge Name");
+  if (!captainName.trim() || captainName.trim().length < 2) missingFields.push("Captain Name");
+  if (!viceCaptainName.trim() || viceCaptainName.trim().length < 2) missingFields.push("Vice Captain Name");
+
+  const isFormValid = missingFields.length === 0;
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (!isFormValid) {
+      e.preventDefault();
+      setClientError(`Please fill in all required fields marked with * before saving: ${missingFields.join(", ")}`);
+      return;
+    }
+    setClientError(null);
+  };
 
   const theme = house ? HOUSE_THEMES[house.color] ?? HOUSE_THEMES.ruby : null;
 
@@ -132,7 +157,7 @@ export function HouseForm({
       {/* Full Edit Form */}
       {isOpen && (
         <div className="p-5 sm:p-6 border-t border-line/60 bg-[#fdfdfc]/50">
-          <form action={action} className="grid gap-5">
+          <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-5">
             {house?.id && <input type="hidden" name="id" value={house.id} />}
             <input type="hidden" name="inchargePhotoUrl" value={inchargePhotoUrl} />
             <input type="hidden" name="captainPhotoUrl" value={captainPhotoUrl} />
@@ -141,10 +166,11 @@ export function HouseForm({
             {/* Basic Info */}
             <div className="grid gap-4 sm:grid-cols-3">
               <label className="grid gap-1.5 text-sm font-medium text-ink">
-                House Name *
+                <span>House Name <span className="text-red-500 font-bold" title="Required">*</span></span>
                 <input
                   name="name"
-                  defaultValue={house?.name ?? ""}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   required
                   placeholder="e.g. Ruby"
                   className={fieldClass}
@@ -152,10 +178,11 @@ export function HouseForm({
               </label>
 
               <label className="grid gap-1.5 text-sm font-medium text-ink">
-                House Slug *
+                <span>House Slug <span className="text-red-500 font-bold" title="Required">*</span></span>
                 <input
                   name="slug"
-                  defaultValue={house?.slug ?? ""}
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
                   required
                   placeholder="ruby"
                   className={fieldClass}
@@ -163,7 +190,7 @@ export function HouseForm({
               </label>
 
               <label className="grid gap-1.5 text-sm font-medium text-ink">
-                House Color *
+                <span>House Color <span className="text-red-500 font-bold" title="Required">*</span></span>
                 <select
                   name="color"
                   defaultValue={house?.color ?? "ruby"}
@@ -196,11 +223,12 @@ export function HouseForm({
 
               {/* Incharge */}
               <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-line/50">
-                <label className="grid gap-1.5 text-sm">
-                  Faculty Incharge Name *
+                <label className="grid gap-1.5 text-sm font-medium text-ink">
+                  <span>Faculty Incharge Name <span className="text-red-500 font-bold" title="Required">*</span></span>
                   <input
                     name="inchargeName"
-                    defaultValue={house?.inchargeName ?? ""}
+                    value={inchargeName}
+                    onChange={(e) => setInchargeName(e.target.value)}
                     required
                     placeholder="e.g. Mr. Tariq Mansoor"
                     className={fieldClass}
@@ -243,11 +271,12 @@ export function HouseForm({
               {/* Captain & Vice Captain */}
               <div className="grid gap-4 sm:grid-cols-2 pt-3 border-t border-line/50">
                 <div className="space-y-3">
-                  <label className="grid gap-1.5 text-sm">
-                    House Captain Name (Student) *
+                  <label className="grid gap-1.5 text-sm font-medium text-ink">
+                    <span>House Captain Name (Student) <span className="text-red-500 font-bold" title="Required">*</span></span>
                     <input
                       name="captainName"
-                      defaultValue={house?.captainName ?? ""}
+                      value={captainName}
+                      onChange={(e) => setCaptainName(e.target.value)}
                       required
                       placeholder="e.g. ZAYAN JASSEER"
                       className={fieldClass}
@@ -265,11 +294,12 @@ export function HouseForm({
                 </div>
 
                 <div className="space-y-3">
-                  <label className="grid gap-1.5 text-sm">
-                    Vice Captain Name (Student) *
+                  <label className="grid gap-1.5 text-sm font-medium text-ink">
+                    <span>Vice Captain Name (Student) <span className="text-red-500 font-bold" title="Required">*</span></span>
                     <input
                       name="viceCaptainName"
-                      defaultValue={house?.viceCaptainName ?? ""}
+                      value={viceCaptainName}
+                      onChange={(e) => setViceCaptainName(e.target.value)}
                       required
                       placeholder="e.g. DANIAL POULOSE"
                       className={fieldClass}
@@ -324,6 +354,11 @@ export function HouseForm({
             </div>
 
             {/* Status alerts */}
+            {clientError && (
+              <div className="p-3 rounded-lg bg-rose-50 text-rose-800 text-sm font-medium border border-rose-200">
+                {clientError}
+              </div>
+            )}
             {state?.ok && (
               <div className="p-3 rounded-lg bg-emerald-50 text-emerald-800 text-sm font-medium border border-emerald-200">
                 {state.ok}
@@ -335,13 +370,20 @@ export function HouseForm({
               </div>
             )}
 
+            {!isFormValid && (
+              <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs text-amber-900">
+                <span className="font-bold shrink-0">Required (*):</span>
+                <span>Fill in {missingFields.join(", ")} to save.</span>
+              </div>
+            )}
+
             {/* Submit Action Buttons */}
             <div className="flex items-center justify-between gap-3 pt-3 border-t border-line">
               <div className="flex items-center gap-3">
                 <button
                   type="submit"
-                  disabled={pending}
-                  className="px-5 py-2.5 bg-navy text-white hover:bg-navy/90 rounded-lg font-semibold text-sm transition shadow-sm disabled:opacity-50 cursor-pointer"
+                  disabled={pending || !isFormValid}
+                  className="px-5 py-2.5 bg-navy text-white hover:bg-navy/90 rounded-lg font-semibold text-sm transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   {pending ? "Saving..." : house ? "Update House Details" : "Create House"}
                 </button>

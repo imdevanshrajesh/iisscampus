@@ -22,6 +22,24 @@ export function FaqForm({
 
   const [state, action, pending] = useActionState(saveFaq, {} as ActionState);
   const [deleteState, deleteAction, deleting] = useActionState(deleteFaq, {} as ActionState);
+  const [question, setQuestion] = useState(faq?.question ?? "");
+  const [answer, setAnswer] = useState(faq?.answer ?? "");
+  const [clientError, setClientError] = useState<string | null>(null);
+
+  const missingFields: string[] = [];
+  if (!question.trim() || question.trim().length < 2) missingFields.push("Question (min 2 chars)");
+  if (!answer.trim() || answer.trim().length < 2) missingFields.push("Answer (min 2 chars)");
+
+  const isFormValid = missingFields.length === 0;
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (!isFormValid) {
+      e.preventDefault();
+      setClientError(`Please fill in all required fields marked with * before saving: ${missingFields.join(", ")}`);
+      return;
+    }
+    setClientError(null);
+  };
 
   return (
     <div className="rounded-2xl border border-line bg-white shadow-[0_1px_0_rgba(20,27,56,0.04)] overflow-hidden transition">
@@ -79,15 +97,31 @@ export function FaqForm({
 
       {isOpen && (
         <div className="p-4 sm:p-5 pt-3 bg-[#faf9f5]/50 border-t border-line/40 grid gap-4">
-          <form action={action} className="grid gap-3">
+          <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-3">
             {faq ? <input type="hidden" name="id" value={faq.id} /> : null}
-            <label className="grid gap-1.5 text-sm">
-              Question
-              <input name="question" defaultValue={faq?.question ?? ""} required className={fieldClass} />
+            {clientError ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{clientError}</p> : null}
+            <label className="grid gap-1.5 text-sm font-medium text-ink">
+              <span>Question <span className="text-red-500 font-bold" title="Required">*</span></span>
+              <input
+                name="question"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                required
+                className={fieldClass}
+                placeholder="e.g. How do I participate in campus events?"
+              />
             </label>
-            <label className="grid gap-1.5 text-sm">
-              Answer
-              <textarea name="answer" defaultValue={faq?.answer ?? ""} rows={5} required className={fieldClass} />
+            <label className="grid gap-1.5 text-sm font-medium text-ink">
+              <span>Answer <span className="text-red-500 font-bold" title="Required">*</span></span>
+              <textarea
+                name="answer"
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                rows={5}
+                required
+                className={fieldClass}
+                placeholder="Detailed answer for students and parents..."
+              />
             </label>
             <label className="grid max-w-32 gap-1.5 text-sm">
               Order
@@ -97,12 +131,20 @@ export function FaqForm({
               <input type="checkbox" name="published" defaultChecked={faq?.published ?? true} />
               Published
             </label>
-            {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
-            {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
+            {state.error ? <p className="text-sm text-red-600 font-medium">{state.error}</p> : null}
+            {state.ok ? <p className="text-sm text-accent font-medium">{state.ok}</p> : null}
+
+            {!isFormValid && (
+              <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs text-amber-900">
+                <span className="font-bold shrink-0">Required (*):</span>
+                <span>Fill in {missingFields.join(", ")} to save.</span>
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={pending}
-              className="justify-self-start rounded-md bg-navy px-4 py-2 text-sm text-white transition hover:bg-navy/90"
+              disabled={pending || !isFormValid}
+              className="justify-self-start rounded-md bg-navy px-4 py-2 text-sm text-white transition hover:bg-navy/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {pending ? "Saving..." : faq ? "Save changes" : "Add FAQ"}
             </button>

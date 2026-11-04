@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { deleteMarquee, saveMarquee, type ActionState } from "@/lib/manage/actions";
 import type { CampusEvent, MarqueeMessage } from "@/lib/types";
 
@@ -15,16 +15,31 @@ export function MarqueeForm({
 }) {
   const [state, action, pending] = useActionState(saveMarquee, {} as ActionState);
   const [deleteState, deleteAction, deleting] = useActionState(deleteMarquee, {} as ActionState);
+  const [message, setMessage] = useState(item?.message ?? "");
+  const [clientError, setClientError] = useState<string | null>(null);
+
+  const isFormValid = message.trim().length >= 2;
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (!isFormValid) {
+      e.preventDefault();
+      setClientError("Please enter a marquee message (at least 2 characters) before saving.");
+      return;
+    }
+    setClientError(null);
+  };
 
   return (
     <div className="grid gap-4 rounded-xl border border-line p-4">
-      <form action={action} className="grid gap-3">
+      <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-3">
         {item ? <input type="hidden" name="id" value={item.id} /> : null}
-        <label className="grid gap-1.5 text-sm">
-          Message
+        {clientError ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{clientError}</p> : null}
+        <label className="grid gap-1.5 text-sm font-medium text-ink">
+          <span>Message <span className="text-red-500 font-bold" title="Required">*</span></span>
           <textarea
             name="message"
-            defaultValue={item?.message ?? ""}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
             rows={3}
             required
             maxLength={500}
@@ -52,9 +67,21 @@ export function MarqueeForm({
           <input type="checkbox" name="enabled" defaultChecked={item?.enabled ?? true} />
           Show in the scrolling bar
         </label>
-        {state.error ? <p className="text-sm">{state.error}</p> : null}
-        {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
-        <button type="submit" disabled={pending} className="justify-self-start rounded-md bg-navy px-4 py-2 text-sm text-white">
+        {state.error ? <p className="text-sm text-red-600 font-medium">{state.error}</p> : null}
+        {state.ok ? <p className="text-sm text-accent font-medium">{state.ok}</p> : null}
+
+        {!isFormValid && (
+          <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs text-amber-900">
+            <span className="font-bold shrink-0">Required (*):</span>
+            <span>Enter a message (min 2 characters) to save.</span>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={pending || !isFormValid}
+          className="justify-self-start rounded-md bg-navy px-4 py-2 text-sm text-white disabled:opacity-50 disabled:cursor-not-allowed transition"
+        >
           {item ? "Save" : "Add message"}
         </button>
       </form>
