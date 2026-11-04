@@ -77,7 +77,7 @@ body.dark-canvas::before {
 }
 
 body.dark-canvas::after {
-  opacity: 0.25;
+  opacity: 0.45;
 }
 
 body.manage-dark-body {
@@ -103,8 +103,9 @@ body::after {
   pointer-events: none;
   background-image: url("/textures/abc-paper.avif");
   background-repeat: repeat;
-  background-size: 480px 480px;
-  opacity: 0.35;
+  background-size: 1000px 1000px;
+  opacity: 0.58;
+  filter: contrast(135%) brightness(98%);
 }
 
 @keyframes sxsw-marquee {
@@ -251,7 +252,7 @@ h1.profile-name {
   background-color: var(--council);
   background-image: url("/textures/council-grain.webp");
   background-repeat: repeat;
-  background-size: 280px 280px;
+  background-size: 560px 560px;
   color: #f4f8f7;
 }
 
