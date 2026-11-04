@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useRef } from "react";
-import { UploadCloud, RefreshCw, FileText, CheckCircle2, AlertCircle } from "lucide-react";
+import { UploadCloud, RefreshCw, FileText, CheckCircle2, AlertCircle, ExternalLink, Trash2 } from "lucide-react";
 import { ImageUploader } from "@/components/manage/image-uploader";
 import { saveNewsletter } from "@/lib/manage/actions";
 import type { Newsletter } from "@/lib/types";
@@ -126,47 +126,94 @@ export function NewsletterForm({ newsletter }: { newsletter: Newsletter | null }
           />
         </label>
 
-        {/* Big prominent RustFS PDF upload button */}
-        <div className="rounded-xl border-2 border-dashed border-accent/40 bg-accent/5 p-4 text-center">
-          <input
-            type="file"
-            accept=".pdf,application/pdf"
-            ref={pdfInputRef}
-            className="hidden"
-            onChange={handlePdfUpload}
-          />
+        {/* PDF Upload / Attached status */}
+        <input
+          type="file"
+          accept=".pdf,application/pdf"
+          ref={pdfInputRef}
+          className="hidden"
+          onChange={handlePdfUpload}
+        />
 
-          <div className="flex flex-col items-center justify-center gap-2">
-            <button
-              type="button"
-              disabled={uploadingPdf}
-              onClick={() => pdfInputRef.current?.click()}
-              className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-bold text-accent-ink hover:opacity-90 active:scale-[0.99] transition shadow-xs cursor-pointer disabled:opacity-60"
-            >
-              {uploadingPdf ? (
-                <>
-                  <RefreshCw size={18} className="animate-spin" />
-                  <span>Uploading Newsletter PDF via RustFS...</span>
-                </>
-              ) : (
-                <>
-                  <UploadCloud size={18} />
-                  <span>+ Upload Newsletter PDF via RustFS</span>
-                </>
-              )}
-            </button>
-            <p className="text-xs text-muted">
-              Directly upload this month&apos;s full PDF edition to the Newsletter folder in RustFS.
-            </p>
-
-            {pdfError ? (
-              <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg mt-1">
-                <AlertCircle size={14} className="shrink-0" />
-                <span>{pdfError}</span>
+        {pdfUrl ? (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 shadow-2xs">
+                <FileText size={22} />
               </div>
-            ) : null}
+              <div className="min-w-0">
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-600/10 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
+                  <CheckCircle2 size={12} /> Newsletter PDF Attached
+                </span>
+                <p className="mt-1 truncate font-mono text-xs text-ink/80 select-all" title={pdfUrl}>
+                  {pdfUrl}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-2xs hover:bg-wash transition"
+              >
+                <ExternalLink size={13} />
+                <span>Open PDF</span>
+              </a>
+              <button
+                type="button"
+                disabled={uploadingPdf}
+                onClick={() => pdfInputRef.current?.click()}
+                className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-2xs hover:bg-wash transition"
+              >
+                <RefreshCw size={13} className={uploadingPdf ? "animate-spin" : ""} />
+                <span>{uploadingPdf ? "Uploading..." : "Replace"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPdfUrl("")}
+                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100/60 transition"
+              >
+                <Trash2 size={13} />
+                <span>Remove</span>
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="rounded-xl border-2 border-dashed border-accent/40 bg-accent/5 p-4 text-center">
+            <div className="flex flex-col items-center justify-center gap-2">
+              <button
+                type="button"
+                disabled={uploadingPdf}
+                onClick={() => pdfInputRef.current?.click()}
+                className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-bold text-accent-ink hover:opacity-90 active:scale-[0.99] transition shadow-xs cursor-pointer disabled:opacity-60"
+              >
+                {uploadingPdf ? (
+                  <>
+                    <RefreshCw size={18} className="animate-spin" />
+                    <span>Uploading Newsletter PDF via RustFS...</span>
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud size={18} />
+                    <span>+ Upload Newsletter PDF via RustFS</span>
+                  </>
+                )}
+              </button>
+              <p className="text-xs text-muted">
+                Directly upload this month&apos;s full PDF edition to the Newsletter folder in RustFS.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {pdfError ? (
+          <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg mt-1">
+            <AlertCircle size={14} className="shrink-0" />
+            <span>{pdfError}</span>
+          </div>
+        ) : null}
       </div>
 
       <label className="block text-sm font-medium text-ink">

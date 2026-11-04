@@ -49,6 +49,11 @@ function parseHttps(raw: string): UrlClassification {
     return fail("length", "That URL is too long.");
   }
 
+  // Allow root-relative paths like /uploads/...
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//") && !trimmed.startsWith("/\\")) {
+    return { ok: true, url: trimmed, host: "local" };
+  }
+
   let url: URL;
   try {
     url = new URL(trimmed);
@@ -60,7 +65,12 @@ function parseHttps(raw: string): UrlClassification {
     return fail("scheme", "That URL scheme is not allowed.");
   }
 
-  if (url.protocol !== "https:") {
+  // Allow localhost uploads in local development
+  const isLocalhostUpload =
+    (url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
+    url.pathname.startsWith("/uploads/");
+
+  if (url.protocol !== "https:" && !isLocalhostUpload) {
     return fail("scheme", "Image URLs must start with https://.");
   }
 
@@ -68,17 +78,18 @@ function parseHttps(raw: string): UrlClassification {
     return fail("credentials", "URLs must not include a username or password.");
   }
 
-  if (url.port) {
+  if (url.port && !isLocalhostUpload) {
     return fail("port", "URLs must not include a custom port.");
   }
 
   const host = url.hostname.toLowerCase();
   if (
-    !host ||
-    host === "localhost" ||
-    host.endsWith(".localhost") ||
-    host.endsWith(".local") ||
-    isIpHost(host)
+    !isLocalhostUpload &&
+    (!host ||
+      host === "localhost" ||
+      host.endsWith(".localhost") ||
+      host.endsWith(".local") ||
+      isIpHost(host))
   ) {
     return fail("host", "That image host is not allowed.");
   }
@@ -91,7 +102,15 @@ export function classifyNavigationUrl(raw: string | null | undefined): UrlClassi
   if (!raw?.trim()) {
     return fail("empty", "Enter a URL.");
   }
-  const parsed = parseHttps(raw);
+  const trimmed = raw.trim();
+  if (trimmed.length > MAX_URL_LENGTH) {
+    return fail("length", "That URL is too long.");
+  }
+  // Allow root-relative paths (e.g. /uploads/Documents/doc.pdf, /newsletter, /events)
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//") && !trimmed.startsWith("/\\")) {
+    return { ok: true, url: trimmed, host: "local" };
+  }
+  const parsed = parseHttps(trimmed);
   if (!parsed.ok && parsed.code === "scheme") {
     return fail("scheme", "Links must start with https://.");
   }
@@ -106,7 +125,17 @@ export function classifyMediaUrl(
     return fail("empty", "Enter an image URL.");
   }
 
-  const parsed = parseHttps(raw);
+  const trimmed = raw.trim();
+  if (trimmed.length > MAX_URL_LENGTH) {
+    return fail("length", "That URL is too long.");
+  }
+
+  // Allow locally uploaded media paths
+  if (trimmed.startsWith("/uploads/") && !trimmed.includes("..")) {
+    return { ok: true, url: trimmed, host: "local" };
+  }
+
+  const parsed = parseHttps(trimmed);
   if (!parsed.ok) return parsed;
 
   if (blockedImageHost(parsed.host)) {
@@ -114,6 +143,10 @@ export function classifyMediaUrl(
       "drive",
       "Google Drive sharing links cannot be displayed as images. Use a direct HTTPS image address from an approved host.",
     );
+  }
+
+  if (parsed.host === "local" || parsed.host === "localhost" || parsed.host === "127.0.0.1") {
+    return parsed;
   }
 
   const allowed = new Set(allowedHosts.map((host) => host.toLowerCase()));

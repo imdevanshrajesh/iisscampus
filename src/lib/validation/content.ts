@@ -71,7 +71,7 @@ export const resourceSchema = z
           context.addIssue({
             code: "custom",
             path: ["href"],
-            message: "Use a valid https:// link, or leave the link blank.",
+            message: "Use a valid link, or leave the link blank.",
           });
         }
       }
@@ -83,10 +83,10 @@ export const resourceSchema = z
         path: ["href"],
         message:
           value.kind === "pdf"
-            ? "Add an https:// PDF link."
+            ? "Add a PDF document link or upload a PDF via RustFS."
             : value.kind === "video"
-              ? "Add an https:// video link."
-              : "Add an https:// link.",
+              ? "Add a video link."
+              : "Add a link.",
       });
       return;
     }
@@ -95,7 +95,12 @@ export const resourceSchema = z
       context.addIssue({
         code: "custom",
         path: ["href"],
-        message: "Use a valid https:// link.",
+        message:
+          value.kind === "pdf"
+            ? "Add a valid PDF document link or upload a PDF."
+            : value.kind === "video"
+              ? "Add a valid video link."
+              : "Add a valid link.",
       });
     }
   });

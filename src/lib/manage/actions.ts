@@ -943,7 +943,7 @@ export async function saveCategory(_state: ActionState, formData: FormData): Pro
   const pdfRaw = parsed.data.pdfUrl;
   if (pdfRaw) {
     const pdf = classifyNavigationUrl(pdfRaw);
-    if (!pdf.ok) return { error: "Category PDF must be a valid https:// link." };
+    if (!pdf.ok) return { error: "Category PDF must be a valid link or uploaded file." };
     parsed.data.pdfUrl = pdf.url;
   }
 
@@ -1534,7 +1534,7 @@ export async function saveNewsletter(_state: ActionState, formData: FormData): P
   let pdfUrl: string | null = null;
   if (pdfRaw) {
     const classified = classifyNavigationUrl(pdfRaw);
-    if (!classified.ok) return { error: "PDF must be a valid https:// link." };
+    if (!classified.ok) return { error: "Newsletter PDF must be a valid link or uploaded file." };
     pdfUrl = classified.url;
   }
 
@@ -2416,7 +2416,7 @@ export async function saveWellnessItem(_state: ActionState, formData: FormData):
   let pdfUrl: string | null = null;
   if (pdfRaw) {
     const pdf = classifyNavigationUrl(pdfRaw);
-    if (!pdf.ok) return { error: "PDF must be a valid https:// link." };
+    if (!pdf.ok) return { error: "Wellness PDF must be a valid link or uploaded file." };
     pdfUrl = pdf.url;
   }
 

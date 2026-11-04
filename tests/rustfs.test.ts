@@ -7,7 +7,7 @@ import {
   ALLOWED_MIME_TYPES,
   DEFAULT_UPLOAD_FOLDERS,
 } from "../src/lib/media/rustfs.ts";
-import { classifyMediaUrl } from "../src/lib/media/url.ts";
+import { classifyMediaUrl, classifyNavigationUrl } from "../src/lib/media/url.ts";
 
 describe("RustFS media integration", () => {
   it("sanitizes folder names safely and prevents path traversal", () => {
@@ -57,5 +57,12 @@ describe("RustFS media integration", () => {
     assert.ok(ALLOWED_MIME_TYPES.has("image/gif"));
     assert.ok(ALLOWED_MIME_TYPES.has("application/pdf"));
     assert.ok(!ALLOWED_MIME_TYPES.has("text/html"));
+  });
+
+  it("accepts uploaded PDF document URLs in navigation and resource validation", () => {
+    const cdnPdf = classifyNavigationUrl("https://cdn.iissboys.com/iissimages/Documents/rulebook.pdf");
+    assert.equal(cdnPdf.ok, true);
+    const localPdf = classifyNavigationUrl("/uploads/Documents/rulebook.pdf");
+    assert.equal(localPdf.ok, true);
   });
 });

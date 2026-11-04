@@ -6,7 +6,7 @@ import { deleteWellnessItem, saveWellnessItem, type ActionState } from "@/lib/ma
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import { classifyMediaUrl } from "@/lib/media/url";
 import type { WellnessCategory, WellnessItem } from "@/lib/types";
-import { ChevronDown, HeartHandshake, Paperclip, Trash2 } from "lucide-react";
+import { ChevronDown, HeartHandshake, Paperclip, Trash2, CheckCircle2, ExternalLink, RefreshCw, FileText } from "lucide-react";
 
 const fieldClass = "w-full rounded-md border border-line bg-background px-3 py-2 text-sm";
 
@@ -239,15 +239,64 @@ export function WellnessItemForm({
                 className="hidden"
                 id={`wellness-pdf-file-${item?.id ?? "new"}`}
               />
+            </div>
+
+            {pdfUrl ? (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-3.5">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
+                    <FileText size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800">
+                      <CheckCircle2 size={12} /> Wellness PDF Attached
+                    </span>
+                    <p className="truncate font-mono text-xs text-ink/80 select-all" title={pdfUrl}>
+                      {pdfUrl}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href={pdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 rounded-md border border-line bg-white px-2.5 py-1 text-xs font-medium text-ink hover:bg-wash"
+                  >
+                    <ExternalLink size={12} />
+                    <span>Open</span>
+                  </a>
+                  <button
+                    type="button"
+                    disabled={uploadingPdf}
+                    onClick={() => pdfInputRef.current?.click()}
+                    className="inline-flex items-center gap-1 rounded-md border border-line bg-white px-2.5 py-1 text-xs font-medium text-ink hover:bg-wash"
+                  >
+                    <RefreshCw size={12} className={uploadingPdf ? "animate-spin" : ""} />
+                    <span>{uploadingPdf ? "Uploading..." : "Replace"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPdfUrl("")}
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 size={12} />
+                    <span>Remove</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
               <button
                 type="button"
                 onClick={() => pdfInputRef.current?.click()}
                 disabled={uploadingPdf}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-wash px-3 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-accent hover:text-accent transition disabled:opacity-50 cursor-pointer"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-accent/40 bg-accent/5 p-3.5 text-xs font-bold text-accent hover:bg-accent/10 transition disabled:opacity-50 cursor-pointer"
               >
-                <span>{uploadingPdf ? "Uploading PDF..." : "+ Upload PDF via RustFS"}</span>
+                <RefreshCw size={14} className={uploadingPdf ? "animate-spin" : "hidden"} />
+                <span>{uploadingPdf ? "Uploading PDF via RustFS..." : "+ Upload PDF via RustFS"}</span>
               </button>
-            </div>
+            )}
+
             <input
               id={`wellness-pdf-${item?.id ?? "new"}`}
               name="pdfUrl"
