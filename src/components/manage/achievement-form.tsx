@@ -100,14 +100,15 @@ export function AchievementForm({
           name="imageUrl"
           value={imageUrl}
           onChange={(url) => setImageUrl(url)}
-          folder="Activities"
+          folder="Achievements"
+          targetName={`achievement-${title.trim() || "award"}`}
           label="Achievement Photograph"
           hint="Upload directly to RustFS or frame the image."
           aspectRatio="4:3"
         />
         {imageUrl && !image.ok ? <p className="text-sm text-muted">{image.message}</p> : null}
         <label className="grid gap-1.5 text-sm">Alternative text<input name="imageAlt" defaultValue={achievement?.imageAlt ?? ""} className={fieldClass} /></label>
-        <ResourceRepeater resources={resources} onChange={setResources} />
+        <ResourceRepeater resources={resources} onChange={setResources} folder="Achievements" />
       </fieldset>
       <div className="flex flex-col gap-2">
         {!isFormValid && (

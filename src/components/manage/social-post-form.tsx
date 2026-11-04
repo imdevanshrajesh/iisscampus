@@ -5,6 +5,7 @@ import { deleteSocialPost, saveSocialPost, type ActionState } from "@/lib/manage
 import type { SocialPost } from "@/lib/types";
 import { ChevronDown, ExternalLink, Pin, Trash2 } from "lucide-react";
 import { InstagramMark } from "@/components/brand/instagram-mark";
+import { ImageUploader } from "@/components/manage/image-uploader";
 
 const fieldClass = "w-full rounded-md border border-line bg-background px-3 py-2 text-sm";
 
@@ -12,6 +13,7 @@ export function SocialPostForm({ post }: { post: SocialPost | null }) {
   const [state, action, pending] = useActionState(saveSocialPost, {} as ActionState);
   const [deleteState, deleteAction, deleting] = useActionState(deleteSocialPost, {} as ActionState);
   const [url, setUrl] = useState(post?.instagramUrl ?? "");
+  const [imageUrl, setImageUrl] = useState(post?.imageUrl ?? "");
   const [clientError, setClientError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(!post); // Collapsed by default for existing posts
 
@@ -145,15 +147,19 @@ export function SocialPostForm({ post }: { post: SocialPost | null }) {
               </select>
             </label>
 
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium">Preview Image URL (optional)</span>
-              <input
-                name="imageUrl"
-                defaultValue={post?.imageUrl ?? ""}
-                className={fieldClass}
-                placeholder="https://images.example.com/cover.jpg"
+            <div className="space-y-1">
+              <input type="hidden" name="imageUrl" value={imageUrl} />
+              <ImageUploader
+                name="socialImageUpload"
+                value={imageUrl}
+                onChange={setImageUrl}
+                folder="Socials"
+                targetName={`social-${postCode || "instagram-post"}`}
+                label="Preview Photograph (Optional)"
+                hint="Upload a social preview image to the Socials folder or enter URL."
+                aspectRatio="1:1"
               />
-            </label>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-4 pt-1">

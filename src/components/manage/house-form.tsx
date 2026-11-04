@@ -261,7 +261,8 @@ export function HouseForm({
                   name="inchargePhoto"
                   value={inchargePhotoUrl}
                   onChange={setInchargePhotoUrl}
-                  folder="Incharges"
+                  folder="Houses"
+                  targetName={`house-${name.trim() || "house"}-incharge`}
                   label="Incharge Photograph (Optional)"
                   hint="Upload an official faculty photo (JPG, PNG, or WebP)."
                   aspectRatio="1:1"
@@ -286,7 +287,8 @@ export function HouseForm({
                     name="captainPhoto"
                     value={captainPhotoUrl}
                     onChange={setCaptainPhotoUrl}
-                    folder="Council"
+                    folder="Houses"
+                    targetName={`house-${name.trim() || "house"}-captain`}
                     label="Captain Photo (Optional)"
                     hint="Clear portrait photo of the house captain."
                     aspectRatio="1:1"
@@ -309,7 +311,8 @@ export function HouseForm({
                     name="viceCaptainPhoto"
                     value={viceCaptainPhotoUrl}
                     onChange={setViceCaptainPhotoUrl}
-                    folder="Council"
+                    folder="Houses"
+                    targetName={`house-${name.trim() || "house"}-vice-captain`}
                     label="Vice Captain Photo (Optional)"
                     hint="Clear portrait photo of the vice captain."
                     aspectRatio="1:1"

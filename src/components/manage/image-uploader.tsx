@@ -23,12 +23,14 @@ type ImageUploaderProps = {
   value: string;
   onChange: (url: string) => void;
   folder?: string;
+  targetName?: string;
   label?: string;
   hint?: string;
   aspectRatio?: CropAspectRatio;
   className?: string;
   required?: boolean;
   allowPdf?: boolean;
+  disabled?: boolean;
 };
 
 export function ImageUploader({
@@ -36,16 +38,22 @@ export function ImageUploader({
   value,
   onChange,
   folder = "Events",
+  targetName,
   label = "Photograph",
   hint,
   aspectRatio = "16:10",
   className = "",
   required = false,
   allowPdf = false,
+  disabled = false,
 }: ImageUploaderProps) {
   const [selectedFolder, setSelectedFolder] = useState<string>(folder);
   const [customFolder, setCustomFolder] = useState<string>("");
   const [isCustomFolder, setIsCustomFolder] = useState<boolean>(false);
+
+  useEffect(() => {
+    setSelectedFolder(folder);
+  }, [folder]);
 
   // Upload state
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -69,12 +77,32 @@ export function ImageUploader({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const getSanitizedTargetName = (fallbackName: string, extOverride?: string) => {
+    const dotIndex = fallbackName.lastIndexOf(".");
+    const originalExt = dotIndex !== -1 ? fallbackName.slice(dotIndex).toLowerCase() : "";
+    const ext = extOverride || originalExt || ".webp";
+
+    if (!targetName || !targetName.trim()) {
+      return fallbackName;
+    }
+
+    const clean = targetName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    return clean ? `${clean}${ext}` : fallbackName;
+  };
+
   // Process selected file
   const processFile = (file: File) => {
+    if (disabled) return;
     const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
     if (isPdf && allowPdf) {
       setUploadError(null);
-      executeUpload(file, file.name);
+      executeUpload(file, getSanitizedTargetName(file.name, ".pdf"));
       return;
     }
 
@@ -98,6 +126,7 @@ export function ImageUploader({
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
     const file = e.target.files?.[0];
     if (file) {
       processFile(file);
@@ -106,16 +135,19 @@ export function ImageUploader({
 
   // Drag and Drop
   const handleDragOver = (e: React.DragEvent) => {
+    if (disabled) return;
     e.preventDefault();
     setIsDragging(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
+    if (disabled) return;
     e.preventDefault();
     setIsDragging(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
+    if (disabled) return;
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
@@ -126,15 +158,18 @@ export function ImageUploader({
 
   // Execute upload to /api/manage/upload with XMLHttpRequest for live progress
   const executeUpload = (fileBlob: Blob | File, filename: string) => {
+    if (disabled) return;
     setIsCropOpen(false);
     setIsUploading(true);
     setUploadProgress(0);
     setUploadError(null);
 
     const targetFolder = isCustomFolder && customFolder.trim() ? customFolder.trim() : selectedFolder;
+    const finalFilename = getSanitizedTargetName(filename);
 
     const formData = new FormData();
-    formData.append("file", fileBlob, filename);
+    formData.append("file", fileBlob, finalFilename);
+    formData.append("folder", targetFolder);
     formData.append("folder", targetFolder);
 
     const xhr = new XMLHttpRequest();
@@ -171,7 +206,7 @@ export function ImageUploader({
   };
 
   const handleConfirmCrop = (croppedBlob: Blob, croppedFileName: string) => {
-    executeUpload(croppedBlob, croppedFileName);
+    executeUpload(croppedBlob, getSanitizedTargetName(croppedFileName, ".webp"));
   };
 
   const handleSkipCrop = async () => {
@@ -212,10 +247,9 @@ export function ImageUploader({
             canvas.toBlob(
               (blob) => {
                 if (blob) {
-                  const baseName = cropFile.file.name.replace(/\.[^/.]+$/, "");
-                  executeUpload(blob, `${baseName}.webp`);
+                  executeUpload(blob, getSanitizedTargetName(cropFile.file.name, ".webp"));
                 } else {
-                  executeUpload(cropFile.file, cropFile.file.name);
+                  executeUpload(cropFile.file, getSanitizedTargetName(cropFile.file.name));
                 }
               },
               "image/webp",
@@ -229,7 +263,7 @@ export function ImageUploader({
       }
     }
 
-    executeUpload(cropFile.file, cropFile.file.name);
+    executeUpload(cropFile.file, getSanitizedTargetName(cropFile.file.name));
   };
 
   const handleCancelCrop = () => {
@@ -353,24 +387,28 @@ export function ImageUploader({
                   Open
                 </a>
 
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1 text-xs font-medium text-ink/80 hover:bg-wash transition shadow-2xs"
-                >
-                  <RefreshCw size={12} />
-                  Change
-                </button>
+                {!disabled ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1 text-xs font-medium text-ink/80 hover:bg-wash transition shadow-2xs"
+                    >
+                      <RefreshCw size={12} />
+                      Change
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={() => onChange("")}
-                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition"
-                  title="Remove file"
-                >
-                  <Trash2 size={12} />
-                  Remove
-                </button>
+                    <button
+                      type="button"
+                      onClick={() => onChange("")}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition"
+                      title="Remove file"
+                    >
+                      <Trash2 size={12} />
+                      Remove
+                    </button>
+                  </>
+                ) : null}
               </div>
             </div>
           </div>
@@ -381,11 +419,13 @@ export function ImageUploader({
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition ${
-            isDragging
-              ? "border-navy bg-navy/5 scale-[0.99]"
-              : "border-line bg-wash/30 hover:border-navy/40 hover:bg-wash/60"
+          onClick={() => !disabled && fileInputRef.current?.click()}
+          className={`group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition ${
+            disabled
+              ? "border-line/60 bg-wash/10 opacity-60 cursor-not-allowed"
+              : isDragging
+                ? "border-navy bg-navy/5 scale-[0.99] cursor-pointer"
+                : "border-line bg-wash/30 hover:border-navy/40 hover:bg-wash/60 cursor-pointer"
           }`}
         >
           {isUploading ? (
@@ -435,6 +475,7 @@ export function ImageUploader({
       <input
         ref={fileInputRef}
         type="file"
+        disabled={disabled}
         accept={
           allowPdf
             ? "image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf"
@@ -463,8 +504,9 @@ export function ImageUploader({
       <div className="pt-0.5">
         <button
           type="button"
+          disabled={disabled}
           onClick={() => setShowManualInput(!showManualInput)}
-          className="inline-flex items-center gap-1 text-[11px] text-muted hover:text-ink transition"
+          className="inline-flex items-center gap-1 text-[11px] text-muted hover:text-ink transition disabled:opacity-50"
         >
           <LinkIcon size={11} />
           {showManualInput ? "Hide manual URL input" : "Or enter external image address manually"}
@@ -474,10 +516,11 @@ export function ImageUploader({
           <div className="mt-2 grid gap-1.5 animate-in fade-in duration-150">
             <input
               type="url"
+              disabled={disabled}
               placeholder="https://cdn.iissboys.com/iissimages/... or https://..."
               value={value}
               onChange={(e) => onChange(e.target.value)}
-              className="h-9 w-full rounded-xl border border-line bg-surface px-3 font-mono text-xs text-ink placeholder:text-muted/60"
+              className="h-9 w-full rounded-xl border border-line bg-surface px-3 font-mono text-xs text-ink placeholder:text-muted/60 disabled:opacity-50"
             />
             <p className="text-[11px] text-muted">
               Direct HTTPS URLs from <span className="font-mono">cdn.iissboys.com</span> or approved image hosts.
@@ -491,7 +534,7 @@ export function ImageUploader({
         <ImageCropModal
           isOpen={isCropOpen}
           imageUrl={cropFile.dataUrl}
-          fileName={cropFile.file.name}
+          fileName={getSanitizedTargetName(cropFile.file.name)}
           initialAspectRatio={aspectRatio}
           onConfirm={handleConfirmCrop}
           onSkipCrop={handleSkipCrop}

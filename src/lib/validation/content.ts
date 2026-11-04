@@ -61,7 +61,7 @@ export const resourceSchema = z
     title: z.string().trim().min(1).max(120),
     detail: optionalText(500),
     href: optionalText(2048),
-    kind: z.enum(["card", "link", "pdf"]).default("card"),
+    kind: z.enum(["card", "link", "pdf", "video"]).default("card"),
   })
   .superRefine((value, context) => {
     if (value.kind === "card") {
@@ -81,7 +81,12 @@ export const resourceSchema = z
       context.addIssue({
         code: "custom",
         path: ["href"],
-        message: value.kind === "pdf" ? "Add an https:// PDF link." : "Add an https:// link.",
+        message:
+          value.kind === "pdf"
+            ? "Add an https:// PDF link."
+            : value.kind === "video"
+              ? "Add an https:// video link."
+              : "Add an https:// link.",
       });
       return;
     }

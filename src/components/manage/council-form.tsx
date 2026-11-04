@@ -2,6 +2,7 @@
 
 import { useActionState, useState, type Dispatch, type SetStateAction } from "react";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
+import { ImageUploader } from "@/components/manage/image-uploader";
 import { councilMemberSlugs, isCouncilStaffRole } from "@/lib/data/catalog";
 import { saveCouncilYear, type ActionState } from "@/lib/manage/actions";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
@@ -320,28 +321,37 @@ export function CouncilForm({
                 Remove
               </button>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3">
+                <ImageUploader
+                  name={`members.${index}.imageUrl`}
+                  value={member.imageUrl}
+                  disabled={locked}
+                  onChange={(url) =>
+                    setMembers((current) =>
+                      current.map((item) =>
+                        item.key === member.key
+                          ? {
+                              ...item,
+                              imageUrl: url,
+                              imageAlt: item.imageAlt || `${item.name.trim() || "Council Member"} portrait`,
+                            }
+                          : item,
+                      ),
+                    )
+                  }
+                  folder="Council"
+                  targetName={`member-${member.name.trim() || member.role.trim() || `senior-${index + 1}`}`}
+                  label="Member Photograph"
+                  hint="Upload portrait to Council folder via RustFS or enter direct URL."
+                  aspectRatio="1:1"
+                />
                 <label className="grid gap-1.5 text-sm">
-                  Photograph URL
-                  <input
-                    name={`members.${index}.imageUrl`}
-                    value={member.imageUrl}
-                    disabled={locked}
-                    className={fieldClass}
-                    placeholder={IMAGE_URL_EXAMPLE}
-                    onChange={(event) =>
-                      setMembers((current) =>
-                        current.map((item) => (item.key === member.key ? { ...item, imageUrl: event.target.value } : item)),
-                      )
-                    }
-                  />
-                </label>
-                <label className="grid gap-1.5 text-sm">
-                  Photograph description
+                  <span>Photograph description (Alt text)</span>
                   <input
                     name={`members.${index}.imageAlt`}
                     value={member.imageAlt}
                     disabled={locked}
+                    placeholder={`${member.name.trim() || "Council Member"} portrait`}
                     className={fieldClass}
                     onChange={(event) =>
                       setMembers((current) =>
@@ -435,23 +445,29 @@ export function CouncilForm({
         <ImageUrlHint />
         {photos.map((photo, index) => (
           <div key={photo.key} className="grid gap-3 rounded-xl border border-line bg-background p-4">
-            <label className="grid gap-1.5 text-sm">
-              <span>
-                Image URL <span className="text-red-500 font-bold">*</span>
-              </span>
-              <input
-                name={`photos.${index}.url`}
-                value={photo.url}
-                disabled={locked}
-                className={fieldClass}
-                placeholder={IMAGE_URL_EXAMPLE}
-                onChange={(event) =>
-                  setPhotos((current) =>
-                    current.map((item) => (item.key === photo.key ? { ...item, url: event.target.value } : item)),
-                  )
-                }
-              />
-            </label>
+            <ImageUploader
+              name={`photos.${index}.url`}
+              value={photo.url}
+              disabled={locked}
+              onChange={(url) =>
+                setPhotos((current) =>
+                  current.map((item) =>
+                    item.key === photo.key
+                      ? {
+                          ...item,
+                          url,
+                          alt: item.alt || label || `Council photograph #${index + 1}`,
+                        }
+                      : item,
+                  ),
+                )
+              }
+              folder="Council"
+              targetName={`council-${slug || slugFromLabel(label) || "year"}-photo-${index + 1}`}
+              label={`Council Gallery Photograph #${index + 1}`}
+              hint="Upload directly to Council folder via RustFS or enter direct URL."
+              aspectRatio="16:10"
+            />
             <label className="grid gap-1.5 text-sm">
               <span className="flex items-center justify-between">
                 <span>Alternative text</span>
@@ -567,21 +583,21 @@ export function CouncilForm({
                 }
               />
             </label>
-            <label className="grid gap-1.5 text-sm">
-              Photograph URL
-              <input
-                name={`posts.${index}.imageUrl`}
-                value={post.imageUrl}
-                disabled={locked}
-                className={fieldClass}
-                placeholder={IMAGE_URL_EXAMPLE}
-                onChange={(event) =>
-                  setPosts((current) =>
-                    current.map((item) => (item.key === post.key ? { ...item, imageUrl: event.target.value } : item)),
-                  )
-                }
-              />
-            </label>
+            <ImageUploader
+              name={`posts.${index}.imageUrl`}
+              value={post.imageUrl}
+              disabled={locked}
+              onChange={(url) =>
+                setPosts((current) =>
+                  current.map((item) => (item.key === post.key ? { ...item, imageUrl: url } : item)),
+                )
+              }
+              folder="Council"
+              targetName={`council-post-${index + 1}`}
+              label="Post Photograph (Optional)"
+              hint="Upload update photograph to Council folder via RustFS or enter URL."
+              aspectRatio="16:10"
+            />
             <ImageUrlHint />
             <label className="grid gap-1.5 text-sm">
               Photograph description
@@ -772,25 +788,33 @@ function MemberBoard({
                 />
               </label>
             </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="grid gap-1.5 text-sm">
-                Photograph URL
-                <input
-                  name={`members.${index}.imageUrl`}
-                  value={member.imageUrl}
-                  disabled={locked}
-                  className={fieldClass}
-                  placeholder={IMAGE_URL_EXAMPLE}
-                  onChange={(event) =>
-                    setMembers((current) =>
-                      current.map((item) => (item.key === member.key ? { ...item, imageUrl: event.target.value } : item)),
-                    )
-                  }
-                />
-              </label>
+            <div className="grid gap-3">
+              <ImageUploader
+                name={`members.${index}.imageUrl`}
+                value={member.imageUrl}
+                disabled={locked}
+                onChange={(url) =>
+                  setMembers((current) =>
+                    current.map((item) =>
+                      item.key === member.key
+                        ? {
+                            ...item,
+                            imageUrl: url,
+                            imageAlt: item.imageAlt || `${item.name.trim() || "Junior Member"} portrait`,
+                          }
+                        : item,
+                    ),
+                  )
+                }
+                folder="Council"
+                targetName={`member-${member.name.trim() || member.role.trim() || `junior-${index + 1}`}`}
+                label="Junior Member Photograph"
+                hint="Upload junior member portrait to Council folder via RustFS or enter URL."
+                aspectRatio="1:1"
+              />
               <label className="grid gap-1.5 text-sm">
                 <span className="flex items-center justify-between">
-                  <span>Photograph description</span>
+                  <span>Photograph description (Alt text)</span>
                   <span className="text-[11px] text-muted">Auto-fills</span>
                 </span>
                 <input

@@ -12,7 +12,7 @@ export type CouncilBoard = "main" | "junior";
 
 export type CampusRole = "editor" | "administrator";
 
-export type ResourceKind = "card" | "link" | "pdf";
+export type ResourceKind = "card" | "link" | "pdf" | "video";
 
 export type ContentResource = {
   title: string;

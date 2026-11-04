@@ -36,7 +36,7 @@ export type ArigoCampusEvent = {
     title: string;
     detail?: string | null;
     href?: string | null;
-    kind?: "card" | "link" | "pdf";
+    kind?: "card" | "link" | "pdf" | "video";
   }>;
   images?: Array<{ url: string; alt?: string | null; caption?: string | null }>;
 };

@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { ImageUrlHint } from "@/components/manage/image-url-hint";
+import { useActionState, useRef, useState } from "react";
+import { ImageUploader } from "@/components/manage/image-uploader";
 import { deleteWellnessItem, saveWellnessItem, type ActionState } from "@/lib/manage/actions";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import { classifyMediaUrl } from "@/lib/media/url";
@@ -29,6 +29,10 @@ export function WellnessItemForm({
   const [state, action, pending] = useActionState(saveWellnessItem, {} as ActionState);
   const [deleteState, deleteAction, deleting] = useActionState(deleteWellnessItem, {} as ActionState);
   const [imageUrl, setImageUrl] = useState(item?.imageUrl ?? "");
+  const [pdfUrl, setPdfUrl] = useState(item?.pdfUrl ?? "");
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
   const [orientation, setOrientation] = useState<WellnessItem["imageOrientation"]>(
     item?.imageOrientation ?? "auto",
   );
@@ -48,6 +52,40 @@ export function WellnessItemForm({
   if (!categoryId) missingFields.push("Category");
   if (title.trim().length < 2) missingFields.push("Title (at least 2 characters)");
   const isFormValid = missingFields.length === 0 && categories.length > 0;
+
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPdf(true);
+    setPdfError(null);
+
+    try {
+      const cleanTitle = title.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-") || "document";
+      const formData = new FormData();
+      formData.append("file", file, `wellness-${cleanTitle}.pdf`);
+      formData.append("folder", "Wellness");
+
+      const res = await fetch("/api/manage/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data?.url) {
+        setPdfUrl(data.url);
+      } else {
+        setPdfError(data?.error || "Could not upload wellness PDF.");
+      }
+    } catch {
+      setPdfError("Error uploading PDF. Please check network connection.");
+    } finally {
+      setUploadingPdf(false);
+      if (pdfInputRef.current) {
+        pdfInputRef.current.value = "";
+      }
+    }
+  };
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     if (!isFormValid) {
@@ -173,30 +211,53 @@ export function WellnessItemForm({
               </select>
             </label>
           </div>
-          <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">Image URL</span>
-            <input
-              name="imageUrl"
-              value={imageUrl}
-              onChange={(event) => setImageUrl(event.target.value)}
-              placeholder={IMAGE_URL_EXAMPLE}
-              className={fieldClass}
-            />
-          </label>
-          <ImageUrlHint />
+          <ImageUploader
+            name="imageUrl"
+            value={imageUrl}
+            onChange={setImageUrl}
+            folder="Wellness"
+            targetName={`wellness-${title.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-") || "photo"}`}
+            label="Photograph / Illustration"
+            hint="Upload image directly to RustFS or enter a trusted URL."
+            aspectRatio={orientation === "portrait" ? "4:3" : orientation === "landscape" ? "16:10" : orientation === "square" ? "1:1" : "free"}
+          />
           {imageUrl && !image.ok ? <p className="text-sm text-muted">{image.message}</p> : null}
-          {image.ok ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={image.url} alt="" className={`rounded-xl border border-line ${orientationClass[orientation]}`} />
-          ) : null}
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">Image description</span>
             <input name="imageAlt" defaultValue={item?.imageAlt ?? ""} className={fieldClass} />
           </label>
-          <label className="grid gap-1.5 text-sm">
-            <span className="font-medium">PDF Document URL</span>
-            <input name="pdfUrl" defaultValue={item?.pdfUrl ?? ""} placeholder="https://" className={fieldClass} />
-          </label>
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-ink" htmlFor={`wellness-pdf-${item?.id ?? "new"}`}>
+                PDF Document URL (Optional)
+              </label>
+              <input
+                ref={pdfInputRef}
+                type="file"
+                accept="application/pdf"
+                onChange={handlePdfUpload}
+                className="hidden"
+                id={`wellness-pdf-file-${item?.id ?? "new"}`}
+              />
+              <button
+                type="button"
+                onClick={() => pdfInputRef.current?.click()}
+                disabled={uploadingPdf}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-wash px-3 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-accent hover:text-accent transition disabled:opacity-50 cursor-pointer"
+              >
+                <span>{uploadingPdf ? "Uploading PDF..." : "+ Upload PDF via RustFS"}</span>
+              </button>
+            </div>
+            <input
+              id={`wellness-pdf-${item?.id ?? "new"}`}
+              name="pdfUrl"
+              value={pdfUrl}
+              onChange={(e) => setPdfUrl(e.target.value)}
+              placeholder="https://... or upload above"
+              className={fieldClass}
+            />
+            {pdfError && <p className="text-xs text-red-600 font-medium">{pdfError}</p>}
+          </div>
           <label className="flex items-center gap-2 text-sm pt-1">
             <input type="checkbox" name="published" defaultChecked={item?.published ?? false} />
             <span className="font-medium">Show on the wellness page</span>

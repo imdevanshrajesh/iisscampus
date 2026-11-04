@@ -188,6 +188,7 @@ export function CustomProgramForm({
                 value={pdfUrl}
                 onChange={setPdfUrl}
                 folder="Programs"
+                targetName={`flyer-${title.trim() || "program"}`}
                 label="Activity Flyer / PDF Guide (Optional)"
                 hint="Upload an event flyer, poster, or PDF guide using RustFS."
                 allowPdf
@@ -226,20 +227,27 @@ export function CustomProgramForm({
               {photos.map((photo, index) => {
                 const checked = classifyMediaUrl(photo.url, mediaHosts);
                 return (
-                  <div key={index} className="space-y-2 rounded-lg border border-line bg-background p-3">
-                    <div className="grid gap-2 md:grid-cols-2">
-                      <input
-                        placeholder={IMAGE_URL_EXAMPLE}
-                        value={photo.url}
-                        onChange={(e) =>
-                          setPhotos(
-                            photos.map((item, itemIndex) =>
-                              itemIndex === index ? { ...item, url: e.target.value } : item,
-                            ),
-                          )
-                        }
-                        className={fieldClass}
-                      />
+                  <div key={index} className="space-y-3 rounded-xl border border-line bg-wash/20 p-4">
+                    <ImageUploader
+                      name={`program_photo_${index}`}
+                      value={photo.url}
+                      onChange={(url) =>
+                        setPhotos(
+                          photos.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, url, alt: item.alt || title.trim() || `Program photograph #${index + 1}` }
+                              : item,
+                          ),
+                        )
+                      }
+                      folder="Programs"
+                      targetName={`program-${title.trim() || "activity"}-${index + 1}`}
+                      label={`Program Photo #${index + 1}`}
+                      hint="Upload directly to Programs folder via RustFS or enter URL."
+                      aspectRatio="4:3"
+                    />
+                    <label className="grid gap-1 text-xs">
+                      <span className="font-medium text-ink">Alternative text</span>
                       <input
                         placeholder={title || "Alt text"}
                         value={photo.alt}
@@ -252,7 +260,7 @@ export function CustomProgramForm({
                         }
                         className={fieldClass}
                       />
-                    </div>
+                    </label>
                     {photo.url && !checked.ok ? <p className="text-xs text-muted">{checked.message}</p> : null}
                     <div className="flex items-center gap-3">
                       <button

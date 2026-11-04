@@ -197,6 +197,7 @@ export function SchoolInchargeForm({
                 value={photoUrl}
                 onChange={setPhotoUrl}
                 folder="Incharges"
+                targetName={`incharge-${name.trim() || "faculty"}`}
                 label="Head Photograph / Portrait"
                 hint="Upload a clear portrait photograph (JPG, PNG, or WebP). Framing tool included."
                 aspectRatio="1:1"

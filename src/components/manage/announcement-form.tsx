@@ -581,6 +581,7 @@ export function AnnouncementForm({
                 value={coverImageUrl}
                 onChange={setCoverImageUrl}
                 folder="Notices"
+                targetName={`cover-${title.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-") || "notice"}`}
                 label="Cover Photograph / Article Banner (Optional)"
                 hint="Visual header banner for the notice / blog post. RustFS supported."
                 aspectRatio="16:10"
@@ -622,7 +623,7 @@ export function AnnouncementForm({
                 </div>
               </div>
 
-              <ResourceRepeater resources={resources} onChange={setResources} />
+              <ResourceRepeater resources={resources} onChange={setResources} folder="Notices" />
             </div>
 
             {/* Linking section */}

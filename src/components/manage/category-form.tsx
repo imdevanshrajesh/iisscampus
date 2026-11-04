@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { saveCategory, type ActionState } from "@/lib/manage/actions";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
 import { ImageUploader } from "@/components/manage/image-uploader";
@@ -22,6 +22,10 @@ export function CategoryForm({
   const [slug, setSlug] = useState(category?.slug ?? "");
   const [slugEdited, setSlugEdited] = useState(Boolean(category));
   const [imageUrl, setImageUrl] = useState(category?.imageUrl ?? "");
+  const [pdfUrl, setPdfUrl] = useState(category?.pdfUrl ?? "");
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
   const [clientError, setClientError] = useState<string | null>(null);
   const image = classifyMediaUrl(imageUrl, mediaHosts);
 
@@ -31,6 +35,40 @@ export function CategoryForm({
   else if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug.trim())) missingFields.push("Address slug (lowercase, numbers, hyphens only)");
 
   const isFormValid = missingFields.length === 0;
+
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPdf(true);
+    setPdfError(null);
+
+    try {
+      const cleanName = slug || title.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-") || "category";
+      const formData = new FormData();
+      formData.append("file", file, `category-${cleanName}.pdf`);
+      formData.append("folder", "Categories");
+
+      const res = await fetch("/api/manage/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data?.url) {
+        setPdfUrl(data.url);
+      } else {
+        setPdfError(data?.error || "Could not upload category PDF.");
+      }
+    } catch {
+      setPdfError("Error uploading PDF. Please check your network connection.");
+    } finally {
+      setUploadingPdf(false);
+      if (pdfInputRef.current) {
+        pdfInputRef.current.value = "";
+      }
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     if (!isFormValid) {
@@ -87,16 +125,45 @@ export function CategoryForm({
         name="imageUrl"
         value={imageUrl}
         onChange={(url) => setImageUrl(url)}
-        folder="General"
+        folder="Categories"
+        targetName={`category-${slug || title || "image"}`}
         label="Category Photograph"
         hint="Upload directly to RustFS or frame the image."
         aspectRatio="16:10"
       />
       {imageUrl && !image.ok ? <p className="text-sm text-muted">{image.message}</p> : null}
-      <label className="grid gap-1.5 text-sm">
-        PDF URL
-        <input name="pdfUrl" defaultValue={category?.pdfUrl ?? ""} placeholder="https://" className={fieldClass} />
-      </label>
+      <div className="grid gap-2">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium text-ink" htmlFor="cat-pdf-url">
+            Category Document / PDF URL
+          </label>
+          <input
+            ref={pdfInputRef}
+            type="file"
+            accept="application/pdf"
+            onChange={handlePdfUpload}
+            className="hidden"
+            id="cat-pdf-upload"
+          />
+          <button
+            type="button"
+            onClick={() => pdfInputRef.current?.click()}
+            disabled={uploadingPdf}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-wash px-3 py-1.5 text-xs font-semibold text-ink shadow-xs hover:border-accent hover:text-accent transition disabled:opacity-50 cursor-pointer"
+          >
+            <span>{uploadingPdf ? "Uploading PDF..." : "+ Upload PDF via RustFS"}</span>
+          </button>
+        </div>
+        <input
+          id="cat-pdf-url"
+          name="pdfUrl"
+          value={pdfUrl}
+          onChange={(e) => setPdfUrl(e.target.value)}
+          placeholder="https://... or upload above"
+          className={fieldClass}
+        />
+        {pdfError && <p className="text-xs text-red-600 font-medium">{pdfError}</p>}
+      </div>
       {!isFormValid && (
         <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs text-amber-900">
           <span className="font-bold shrink-0">Required (*):</span>

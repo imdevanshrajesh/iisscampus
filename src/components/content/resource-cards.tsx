@@ -21,18 +21,18 @@ export function ResourceCards({
           return (
             <li key={`${item.title}-${item.href ?? ""}`} className="rounded-xl border border-line bg-background p-5">
               <p className="text-xs uppercase tracking-[0.14em] text-muted">
-                {item.kind === "pdf" ? "PDF" : item.kind === "link" ? "Link" : "Card"}
+                {item.kind === "pdf" ? "PDF" : item.kind === "video" ? "Video" : item.kind === "link" ? "Link" : "Card"}
               </p>
               <h3 className="mt-2 text-lg font-medium tracking-tight">{item.title}</h3>
               {item.detail ? <p className="mt-2 text-sm leading-6 text-muted">{item.detail}</p> : null}
               {href ? (
                 <a
                   href={href}
-                  className="mt-4 inline-flex text-sm text-accent"
+                  className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
                   rel="noopener noreferrer"
                   target="_blank"
                 >
-                  {item.kind === "pdf" ? "Download PDF" : "Open link"}
+                  {item.kind === "pdf" ? "Download PDF" : item.kind === "video" ? "Watch video ↗" : "Open link ↗"}
                 </a>
               ) : null}
             </li>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { ImageUploader } from "@/components/manage/image-uploader";
 import {
   grantRole,
   saveContactEmail,
@@ -43,19 +44,21 @@ export function HostForm({ hosts }: { hosts: string[] }) {
 
 export function CouncilLogoForm({ logoUrl }: { logoUrl: string | null }) {
   const [state, action, pending] = useActionState(saveCouncilLogo, {} as ActionState);
+  const [currentLogoUrl, setCurrentLogoUrl] = useState(logoUrl ?? "");
   return (
     <form action={action} className="grid max-w-xl gap-3">
-      <label className="grid gap-1.5 text-sm">
-        Council logo URL
-        <input
-          name="councilLogoUrl"
-          defaultValue={logoUrl ?? ""}
-          className={fieldClass}
-          placeholder={IMAGE_URL_EXAMPLE}
-        />
-      </label>
+      <ImageUploader
+        name="councilLogoUrl"
+        value={currentLogoUrl}
+        onChange={setCurrentLogoUrl}
+        folder="Council"
+        targetName="council-logo"
+        label="Council Logo Photograph / Crest"
+        hint="Used on the council page, the intro, the admin bar, and the site icon. RustFS upload supported."
+        aspectRatio="1:1"
+      />
       <p className="text-xs leading-5 text-muted">
-        Used on the council page, the intro, the admin bar, and the site icon. Leave blank to use the logo saved in the project. The host must be listed under image hosts.
+        Leave blank to use the logo saved in the project. The host must be listed under image hosts.
       </p>
       {state.error ? <p className="text-sm">{state.error}</p> : null}
       {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
@@ -76,16 +79,23 @@ export function NavBrandForm({
   label: string;
 }) {
   const [state, action, pending] = useActionState(saveNavBrand, {} as ActionState);
+  const [currentNavLogo, setCurrentNavLogo] = useState(logoUrl ?? "");
   return (
     <form action={action} className="grid max-w-xl gap-3">
       <label className="grid gap-1.5 text-sm">
         Name
         <input name="navLabel" defaultValue={label} maxLength={40} className={fieldClass} />
       </label>
-      <label className="grid gap-1.5 text-sm">
-        Navbar logo URL
-        <input name="navLogoUrl" defaultValue={logoUrl ?? ""} className={fieldClass} placeholder={IMAGE_URL_EXAMPLE} />
-      </label>
+      <ImageUploader
+        name="navLogoUrl"
+        value={currentNavLogo}
+        onChange={setCurrentNavLogo}
+        folder="General"
+        targetName="navbar-logo"
+        label="Navbar Logo Photograph / Crest"
+        hint="This logo is shown in the top bar. RustFS upload supported."
+        aspectRatio="1:1"
+      />
       <label className="grid gap-1.5 text-sm">
         Link
         <input name="navLogoHref" defaultValue={href ?? ""} className={fieldClass} placeholder="/ or https://" />

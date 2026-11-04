@@ -606,6 +606,7 @@ export function EventForm({
               }
             }}
             folder="Events"
+            targetName={`cover-${slug.trim() || title.trim() || "event"}`}
             label="Cover Photograph"
             hint="Uploads directly to your RustFS iissimages bucket. Use the visual framing tool to pick what shows on cards."
             aspectRatio="16:10"
@@ -669,6 +670,7 @@ export function EventForm({
                     updateImage(index, { url, alt: nextAlt });
                   }}
                   folder="Gallery"
+                  targetName={`gallery-${slug.trim() || title.trim() || "event"}-${index + 1}`}
                   label={`Gallery Photograph #${index + 1}`}
                   hint="Upload directly to RustFS or frame the image."
                   aspectRatio="4:3"
@@ -766,7 +768,7 @@ export function EventForm({
           onRemove={(index) => setGroups((current) => current.filter((_, rowIndex) => rowIndex !== index))}
         />
 
-        <ResourceRepeater resources={resources} onChange={setResources} />
+        <ResourceRepeater resources={resources} onChange={setResources} folder="Events" />
         </Panel>
 
         <Panel
@@ -926,8 +928,16 @@ export function EventForm({
           <input name="instagramUrl" defaultValue={event?.instagramUrl ?? ""} className={fieldClass} />
         </label>
         <label className="grid gap-1.5 text-sm">
-          Video URL
-          <input name="videoUrl" defaultValue={event?.videoUrl ?? ""} className={fieldClass} />
+          <span>Video URL (YouTube / Vimeo / Direct Stream)</span>
+          <input
+            name="videoUrl"
+            defaultValue={event?.videoUrl ?? ""}
+            placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/... or Vimeo"
+            className={fieldClass}
+          />
+          <span className="text-[11px] text-muted">
+            Supports YouTube videos, YouTube Shorts, Vimeo links, and direct video URLs. Embeds automatically on the event page.
+          </span>
         </label>
         <label className="grid gap-1.5 text-sm">
           Related events
