@@ -1,17 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
 import {
   FileText,
   Video,
   Link2,
-  UploadCloud,
-  RefreshCw,
   ArrowUp,
   ArrowDown,
   Trash2,
   CheckCircle2,
-  AlertCircle,
   Plus,
   ExternalLink,
 } from "lucide-react";
@@ -22,16 +18,12 @@ const fieldClass = "w-full rounded-md border border-line bg-background px-3 py-2
 export function ResourceRepeater({
   resources,
   onChange,
-  folder = "Documents",
+  folder: _folder = "Documents",
 }: {
   resources: ContentResource[];
   onChange: (resources: ContentResource[]) => void;
   folder?: string;
 }) {
-  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
-  const [uploadError, setUploadError] = useState<{ index: number; message: string } | null>(null);
-  const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
-
   function update(index: number, patch: Partial<ContentResource>) {
     onChange(resources.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)));
   }
@@ -45,46 +37,6 @@ export function ResourceRepeater({
     copy.splice(next, 0, item);
     onChange(copy);
   }
-
-  const handlePdfUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingIndex(index);
-    setUploadError(null);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file, file.name);
-      formData.append("folder", folder);
-
-      const res = await fetch("/api/manage/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (res.ok && data?.url) {
-        const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]+/g, " ");
-        const currentItem = resources[index];
-        update(index, {
-          href: data.url,
-          kind: "pdf",
-          title: currentItem?.title?.trim() ? currentItem.title : cleanName,
-          detail: currentItem?.detail?.trim() ? currentItem.detail : "Official PDF Document",
-        });
-      } else {
-        setUploadError({ index, message: data?.error || "Could not upload PDF document." });
-      }
-    } catch {
-      setUploadError({ index, message: "Error uploading PDF document. Please check network connection." });
-    } finally {
-      setUploadingIndex(null);
-      if (fileInputRefs.current[index]) {
-        fileInputRefs.current[index]!.value = "";
-      }
-    }
-  };
 
   return (
     <div className="grid gap-3 border-t border-line pt-5">
@@ -114,8 +66,6 @@ export function ResourceRepeater({
       {resources.map((item, index) => {
         const isPdf = item.kind === "pdf";
         const isVideo = item.kind === "video";
-        const isUploading = uploadingIndex === index;
-        const err = uploadError?.index === index ? uploadError.message : null;
 
         return (
           <div key={index} className="grid gap-3 rounded-2xl border border-line bg-white p-4 sm:p-5 shadow-2xs">
@@ -205,7 +155,7 @@ export function ResourceRepeater({
             <div className="grid gap-1.5 text-sm">
               <span className="font-medium text-ink flex items-center justify-between">
                 <span>
-                  {isPdf ? "PDF Document URL" : isVideo ? "Video Stream URL" : "Link URL"}
+                  {isPdf ? "PDF / Document Link (Google Drive)" : isVideo ? "Video Stream URL" : "Link URL"}
                 </span>
                 {item.href ? (
                   <span className="text-[11px] font-mono text-emerald-700 flex items-center gap-1 font-normal">
@@ -218,13 +168,18 @@ export function ResourceRepeater({
                 onChange={(event) => update(index, { href: event.target.value || null })}
                 placeholder={
                   isPdf
-                    ? "https://cdn.iissboys.com/iissimages/Documents/rulebook.pdf or upload below"
+                    ? "https://drive.google.com/file/d/... or direct document link"
                     : isVideo
                       ? "https://www.youtube.com/watch?v=... or https://youtu.be/... or Vimeo"
                       : "https://"
                 }
                 className={fieldClass}
               />
+              {isPdf ? (
+                <span className="text-xs text-muted">
+                  Paste a Google Drive sharing link, cloud document link, or direct PDF link.
+                </span>
+              ) : null}
             </div>
 
             {/* Video guidance box */}
@@ -240,100 +195,42 @@ export function ResourceRepeater({
               </div>
             ) : null}
 
-            {/* Prominent RustFS PDF Upload Button for PDF Kind */}
-            {isPdf ? (
-              <div className="rounded-2xl border border-line bg-wash/30 p-4 sm:p-5">
-                <input
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  ref={(el) => {
-                    fileInputRefs.current[index] = el;
-                  }}
-                  className="hidden"
-                  onChange={(e) => handlePdfUpload(index, e)}
-                />
-
-                {item.href ? (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 shadow-2xs">
-                        <FileText size={22} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-600/10 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
-                            <CheckCircle2 size={12} /> PDF Document Attached
-                          </span>
-                        </div>
-                        <p className="mt-1 truncate font-mono text-xs text-ink/80 select-all" title={item.href}>
-                          {item.href}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <a
-                        href={item.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-2xs hover:bg-wash transition"
-                      >
-                        <ExternalLink size={13} />
-                        <span>Open PDF</span>
-                      </a>
-                      <button
-                        type="button"
-                        disabled={isUploading}
-                        onClick={() => fileInputRefs.current[index]?.click()}
-                        className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-2xs hover:bg-wash transition"
-                      >
-                        <RefreshCw size={13} className={isUploading ? "animate-spin" : ""} />
-                        <span>{isUploading ? "Uploading..." : "Replace"}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => update(index, { href: null })}
-                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100/60 transition"
-                      >
-                        <Trash2 size={13} />
-                        <span>Remove</span>
-                      </button>
-                    </div>
+            {/* Attached PDF / Document Preview */}
+            {isPdf && item.href ? (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-3 sm:p-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 shadow-2xs">
+                    <FileText size={20} />
                   </div>
-                ) : (
-                  <div className="rounded-xl border-2 border-dashed border-accent/40 bg-accent/5 p-4 sm:p-5 text-center">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        disabled={isUploading}
-                        onClick={() => fileInputRefs.current[index]?.click()}
-                        className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-bold text-accent-ink hover:opacity-90 active:scale-[0.99] transition shadow-xs cursor-pointer disabled:opacity-60"
-                      >
-                        {isUploading ? (
-                          <>
-                            <RefreshCw size={18} className="animate-spin" />
-                            <span>Uploading PDF via RustFS...</span>
-                          </>
-                        ) : (
-                          <>
-                            <UploadCloud size={18} />
-                            <span>+ Upload PDF via RustFS</span>
-                          </>
-                        )}
-                      </button>
-                      <p className="text-xs text-muted max-w-sm">
-                        Upload official campus circulars, directives, permission slips, or rulebooks directly to RustFS.
-                      </p>
-                    </div>
+                  <div className="min-w-0">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-600/10 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
+                      <CheckCircle2 size={12} /> Document Link Attached
+                    </span>
+                    <p className="mt-0.5 truncate font-mono text-xs text-ink/80 select-all" title={item.href}>
+                      {item.href}
+                    </p>
                   </div>
-                )}
+                </div>
 
-                {err ? (
-                  <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg mt-2">
-                    <AlertCircle size={14} className="shrink-0" />
-                    <span>{err}</span>
-                  </div>
-                ) : null}
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-2xs hover:bg-wash transition"
+                  >
+                    <ExternalLink size={13} />
+                    <span>Open Link</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => update(index, { href: null })}
+                    className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100/60 transition cursor-pointer"
+                  >
+                    <Trash2 size={13} />
+                    <span>Clear</span>
+                  </button>
+                </div>
               </div>
             ) : null}
           </div>

@@ -29,7 +29,6 @@ type ImageUploaderProps = {
   aspectRatio?: CropAspectRatio;
   className?: string;
   required?: boolean;
-  allowPdf?: boolean;
   disabled?: boolean;
 };
 
@@ -44,7 +43,6 @@ export function ImageUploader({
   aspectRatio = "16:10",
   className = "",
   required = false,
-  allowPdf = false,
   disabled = false,
 }: ImageUploaderProps) {
   const [selectedFolder, setSelectedFolder] = useState<string>(folder);
@@ -99,19 +97,9 @@ export function ImageUploader({
   // Process selected file
   const processFile = (file: File) => {
     if (disabled) return;
-    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-    if (isPdf && allowPdf) {
-      setUploadError(null);
-      executeUpload(file, getSanitizedTargetName(file.name, ".pdf"));
-      return;
-    }
 
     if (!file.type.startsWith("image/")) {
-      setUploadError(
-        allowPdf
-          ? "Please select an image or PDF document file."
-          : "Please select an image file (PNG, JPG, WebP, GIF, or SVG)."
-      );
+      setUploadError("Please select an image file (PNG, JPG, WebP, GIF, or SVG).");
       return;
     }
 
@@ -454,17 +442,15 @@ export function ImageUploader({
               </div>
               <div className="mt-2.5 space-y-1">
                 <p className="text-sm font-medium text-ink">
-                  {allowPdf ? "Click to upload photograph or PDF document" : "Click to upload or drag & drop photograph"}
+                  Click to upload or drag &amp; drop photograph
                 </p>
                 <p className="text-xs text-muted">
-                  {allowPdf
-                    ? "PNG, JPG, WebP, GIF, SVG or PDF files up to 20MB."
-                    : "Includes visual cropping & visible area framing before saving."}
+                  Includes visual cropping &amp; visible area framing before saving.
                 </p>
               </div>
               <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-surface border border-line px-3 py-1 text-[11px] font-medium text-muted">
-                {allowPdf ? <FileText size={11} className="text-navy" /> : <Crop size={11} className="text-navy" />}
-                {allowPdf ? "PDF documents & images supported" : "Framing tool included &bull; Up to 20MB"}
+                <Crop size={11} className="text-navy" />
+                Framing tool included &bull; Up to 20MB
               </div>
             </>
           )}
@@ -476,11 +462,7 @@ export function ImageUploader({
         ref={fileInputRef}
         type="file"
         disabled={disabled}
-        accept={
-          allowPdf
-            ? "image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf"
-            : "image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
-        }
+        accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
         onChange={handleFileChange}
         className="hidden"
       />

@@ -10,8 +10,6 @@ import {
   Plus,
   Sparkles,
   HeartHandshake,
-  UploadCloud,
-  RefreshCw,
   Bold,
   Italic,
   Underline as UnderlineIcon,
@@ -74,9 +72,7 @@ export function AnnouncementForm({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [resources, setResources] = useState<ContentResource[]>(announcement?.resources ?? []);
   const [coverImageUrl, setCoverImageUrl] = useState<string>(announcement?.coverImageUrl ?? "");
-  const [uploadingPdf, setUploadingPdf] = useState(false);
   const [clientError, setClientError] = useState<string | null>(null);
-  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   const isFormValid = title.trim().length >= 2;
 
@@ -198,43 +194,6 @@ export function AnnouncementForm({
   const linkedEvent = events.find((ev) => ev.id === announcement?.eventId);
   const linkedProgram = programs.find((p) => p.id === announcement?.programId);
   const linkedWellness = wellnessItems.find((w) => w.id === announcement?.wellnessId);
-
-  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingPdf(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file, file.name);
-      formData.append("folder", "Notices");
-
-      const res = await fetch("/api/manage/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (res.ok && data?.url) {
-        const cleanName = file.name.replace(/\.[^/.]+$/, "");
-        setResources((prev) => [
-          ...prev,
-          {
-            title: cleanName || "Official Document (PDF)",
-            detail: "Official notice document attachment",
-            href: data.url,
-            kind: "pdf",
-          },
-        ]);
-      } else {
-        alert(data?.error || "Could not upload PDF document.");
-      }
-    } catch {
-      alert("Error uploading PDF document. Please check network connection.");
-    } finally {
-      setUploadingPdf(false);
-      if (pdfInputRef.current) pdfInputRef.current.value = "";
-    }
-  };
 
   return (
     <div className="rounded-2xl border border-line bg-white shadow-[0_1px_0_rgba(20,27,56,0.04)] overflow-hidden transition">
@@ -588,39 +547,15 @@ export function AnnouncementForm({
               />
             </div>
 
-            {/* Direct PDF upload button via RustFS */}
+            {/* Attached Documents & Links */}
             <div className="rounded-xl border border-line bg-white p-3.5 space-y-2.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-ink flex items-center gap-1.5">
-                    <Paperclip size={13} className="text-accent" /> Attached Documents &amp; PDFs
-                  </h4>
-                  <p className="text-[11px] text-muted">
-                    Attach circular PDFs, official guidelines, or permission slips using RustFS.
-                  </p>
-                </div>
-                <div>
-                  <input
-                    ref={pdfInputRef}
-                    type="file"
-                    accept="application/pdf,image/*"
-                    onChange={handlePdfUpload}
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => pdfInputRef.current?.click()}
-                    disabled={uploadingPdf}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-navy/20 bg-navy/5 px-3 py-1.5 text-xs font-semibold text-navy hover:bg-navy/10 transition cursor-pointer disabled:opacity-50"
-                  >
-                    {uploadingPdf ? (
-                      <RefreshCw size={12} className="animate-spin text-navy" />
-                    ) : (
-                      <UploadCloud size={12} className="text-navy" />
-                    )}
-                    <span>{uploadingPdf ? "Uploading PDF..." : "+ Upload PDF via RustFS"}</span>
-                  </button>
-                </div>
+              <div>
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-ink flex items-center gap-1.5">
+                  <Paperclip size={13} className="text-accent" /> Attached Documents &amp; Links
+                </h4>
+                <p className="text-[11px] text-muted">
+                  Attach circulars, Google Drive documents, official guidelines, or video links.
+                </p>
               </div>
 
               <ResourceRepeater resources={resources} onChange={setResources} folder="Notices" />

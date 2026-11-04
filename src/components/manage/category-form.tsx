@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
-import { FileText, CheckCircle2, ExternalLink, RefreshCw, Trash2 } from "lucide-react";
+import { useActionState, useState } from "react";
+import { FileText, CheckCircle2, ExternalLink, Trash2 } from "lucide-react";
 import { saveCategory, type ActionState } from "@/lib/manage/actions";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
 import { ImageUploader } from "@/components/manage/image-uploader";
@@ -24,9 +24,6 @@ export function CategoryForm({
   const [slugEdited, setSlugEdited] = useState(Boolean(category));
   const [imageUrl, setImageUrl] = useState(category?.imageUrl ?? "");
   const [pdfUrl, setPdfUrl] = useState(category?.pdfUrl ?? "");
-  const [uploadingPdf, setUploadingPdf] = useState(false);
-  const [pdfError, setPdfError] = useState<string | null>(null);
-  const pdfInputRef = useRef<HTMLInputElement>(null);
   const [clientError, setClientError] = useState<string | null>(null);
   const image = classifyMediaUrl(imageUrl, mediaHosts);
 
@@ -36,40 +33,6 @@ export function CategoryForm({
   else if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug.trim())) missingFields.push("Address slug (lowercase, numbers, hyphens only)");
 
   const isFormValid = missingFields.length === 0;
-
-  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingPdf(true);
-    setPdfError(null);
-
-    try {
-      const cleanName = slug || title.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-") || "category";
-      const formData = new FormData();
-      formData.append("file", file, `category-${cleanName}.pdf`);
-      formData.append("folder", "Categories");
-
-      const res = await fetch("/api/manage/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (res.ok && data?.url) {
-        setPdfUrl(data.url);
-      } else {
-        setPdfError(data?.error || "Could not upload category PDF.");
-      }
-    } catch {
-      setPdfError("Error uploading PDF. Please check your network connection.");
-    } finally {
-      setUploadingPdf(false);
-      if (pdfInputRef.current) {
-        pdfInputRef.current.value = "";
-      }
-    }
-  };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     if (!isFormValid) {
@@ -134,29 +97,30 @@ export function CategoryForm({
       />
       {imageUrl && !image.ok ? <p className="text-sm text-muted">{image.message}</p> : null}
       <div className="grid gap-2">
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-ink" htmlFor="cat-pdf-url">
-            Category Document / PDF URL (Optional)
-          </label>
-          <input
-            ref={pdfInputRef}
-            type="file"
-            accept="application/pdf"
-            onChange={handlePdfUpload}
-            className="hidden"
-            id="cat-pdf-upload"
-          />
-        </div>
+        <label className="text-sm font-medium text-ink" htmlFor="cat-pdf-url">
+          Category Document / PDF URL (Optional)
+        </label>
+        <input
+          id="cat-pdf-url"
+          name="pdfUrl"
+          value={pdfUrl}
+          onChange={(e) => setPdfUrl(e.target.value)}
+          placeholder="https://drive.google.com/file/d/... or direct document link"
+          className={fieldClass}
+        />
+        <span className="text-xs text-muted">
+          Paste a Google Drive sharing link, curriculum document, or direct PDF link.
+        </span>
 
         {pdfUrl ? (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-3.5">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
-                <FileText size={18} />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
+                <FileText size={16} />
               </div>
               <div className="min-w-0">
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800">
-                  <CheckCircle2 size={12} /> Category PDF Attached
+                  <CheckCircle2 size={12} /> Document Attached
                 </span>
                 <p className="truncate font-mono text-xs text-ink/80 select-all" title={pdfUrl}>
                   {pdfUrl}
@@ -175,44 +139,15 @@ export function CategoryForm({
               </a>
               <button
                 type="button"
-                disabled={uploadingPdf}
-                onClick={() => pdfInputRef.current?.click()}
-                className="inline-flex items-center gap-1 rounded-md border border-line bg-white px-2.5 py-1 text-xs font-medium text-ink hover:bg-wash"
-              >
-                <RefreshCw size={12} className={uploadingPdf ? "animate-spin" : ""} />
-                <span>{uploadingPdf ? "Uploading..." : "Replace"}</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => setPdfUrl("")}
-                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 cursor-pointer"
               >
                 <Trash2 size={12} />
-                <span>Remove</span>
+                <span>Clear</span>
               </button>
             </div>
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => pdfInputRef.current?.click()}
-            disabled={uploadingPdf}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-accent/40 bg-accent/5 p-3.5 text-xs font-bold text-accent hover:bg-accent/10 transition disabled:opacity-50 cursor-pointer"
-          >
-            <RefreshCw size={14} className={uploadingPdf ? "animate-spin" : "hidden"} />
-            <span>{uploadingPdf ? "Uploading PDF via RustFS..." : "+ Upload Category PDF via RustFS"}</span>
-          </button>
-        )}
-
-        <input
-          id="cat-pdf-url"
-          name="pdfUrl"
-          value={pdfUrl}
-          onChange={(e) => setPdfUrl(e.target.value)}
-          placeholder="https://... or upload above"
-          className={fieldClass}
-        />
-        {pdfError && <p className="text-xs text-red-600 font-medium">{pdfError}</p>}
+        ) : null}
       </div>
       {!isFormValid && (
         <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200/80 px-3 py-2 text-xs text-amber-900">

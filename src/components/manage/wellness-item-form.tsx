@@ -1,12 +1,12 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useState } from "react";
 import { ImageUploader } from "@/components/manage/image-uploader";
 import { deleteWellnessItem, saveWellnessItem, type ActionState } from "@/lib/manage/actions";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
 import { classifyMediaUrl } from "@/lib/media/url";
 import type { WellnessCategory, WellnessItem } from "@/lib/types";
-import { ChevronDown, HeartHandshake, Paperclip, Trash2, CheckCircle2, ExternalLink, RefreshCw, FileText } from "lucide-react";
+import { ChevronDown, HeartHandshake, Paperclip, Trash2, CheckCircle2, ExternalLink, FileText } from "lucide-react";
 
 const fieldClass = "w-full rounded-md border border-line bg-background px-3 py-2 text-sm";
 
@@ -30,9 +30,6 @@ export function WellnessItemForm({
   const [deleteState, deleteAction, deleting] = useActionState(deleteWellnessItem, {} as ActionState);
   const [imageUrl, setImageUrl] = useState(item?.imageUrl ?? "");
   const [pdfUrl, setPdfUrl] = useState(item?.pdfUrl ?? "");
-  const [uploadingPdf, setUploadingPdf] = useState(false);
-  const [pdfError, setPdfError] = useState<string | null>(null);
-  const pdfInputRef = useRef<HTMLInputElement>(null);
   const [orientation, setOrientation] = useState<WellnessItem["imageOrientation"]>(
     item?.imageOrientation ?? "auto",
   );
@@ -52,40 +49,6 @@ export function WellnessItemForm({
   if (!categoryId) missingFields.push("Category");
   if (title.trim().length < 2) missingFields.push("Title (at least 2 characters)");
   const isFormValid = missingFields.length === 0 && categories.length > 0;
-
-  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingPdf(true);
-    setPdfError(null);
-
-    try {
-      const cleanTitle = title.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-") || "document";
-      const formData = new FormData();
-      formData.append("file", file, `wellness-${cleanTitle}.pdf`);
-      formData.append("folder", "Wellness");
-
-      const res = await fetch("/api/manage/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (res.ok && data?.url) {
-        setPdfUrl(data.url);
-      } else {
-        setPdfError(data?.error || "Could not upload wellness PDF.");
-      }
-    } catch {
-      setPdfError("Error uploading PDF. Please check network connection.");
-    } finally {
-      setUploadingPdf(false);
-      if (pdfInputRef.current) {
-        pdfInputRef.current.value = "";
-      }
-    }
-  };
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     if (!isFormValid) {
@@ -227,29 +190,30 @@ export function WellnessItemForm({
             <input name="imageAlt" defaultValue={item?.imageAlt ?? ""} className={fieldClass} />
           </label>
           <div className="grid gap-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-ink" htmlFor={`wellness-pdf-${item?.id ?? "new"}`}>
-                PDF Document URL (Optional)
-              </label>
-              <input
-                ref={pdfInputRef}
-                type="file"
-                accept="application/pdf"
-                onChange={handlePdfUpload}
-                className="hidden"
-                id={`wellness-pdf-file-${item?.id ?? "new"}`}
-              />
-            </div>
+            <label className="text-sm font-medium text-ink" htmlFor={`wellness-pdf-${item?.id ?? "new"}`}>
+              PDF / Google Drive Document URL (Optional)
+            </label>
+            <input
+              id={`wellness-pdf-${item?.id ?? "new"}`}
+              name="pdfUrl"
+              value={pdfUrl}
+              onChange={(e) => setPdfUrl(e.target.value)}
+              placeholder="https://drive.google.com/file/d/... or direct document link"
+              className={fieldClass}
+            />
+            <span className="text-xs text-muted">
+              Paste a Google Drive sharing link, cloud document link, or direct PDF link.
+            </span>
 
             {pdfUrl ? (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-3.5">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
-                    <FileText size={18} />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
+                    <FileText size={16} />
                   </div>
                   <div className="min-w-0">
                     <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800">
-                      <CheckCircle2 size={12} /> Wellness PDF Attached
+                      <CheckCircle2 size={12} /> Document Attached
                     </span>
                     <p className="truncate font-mono text-xs text-ink/80 select-all" title={pdfUrl}>
                       {pdfUrl}
@@ -268,44 +232,15 @@ export function WellnessItemForm({
                   </a>
                   <button
                     type="button"
-                    disabled={uploadingPdf}
-                    onClick={() => pdfInputRef.current?.click()}
-                    className="inline-flex items-center gap-1 rounded-md border border-line bg-white px-2.5 py-1 text-xs font-medium text-ink hover:bg-wash"
-                  >
-                    <RefreshCw size={12} className={uploadingPdf ? "animate-spin" : ""} />
-                    <span>{uploadingPdf ? "Uploading..." : "Replace"}</span>
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setPdfUrl("")}
-                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 cursor-pointer"
                   >
                     <Trash2 size={12} />
-                    <span>Remove</span>
+                    <span>Clear</span>
                   </button>
                 </div>
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => pdfInputRef.current?.click()}
-                disabled={uploadingPdf}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-accent/40 bg-accent/5 p-3.5 text-xs font-bold text-accent hover:bg-accent/10 transition disabled:opacity-50 cursor-pointer"
-              >
-                <RefreshCw size={14} className={uploadingPdf ? "animate-spin" : "hidden"} />
-                <span>{uploadingPdf ? "Uploading PDF via RustFS..." : "+ Upload PDF via RustFS"}</span>
-              </button>
-            )}
-
-            <input
-              id={`wellness-pdf-${item?.id ?? "new"}`}
-              name="pdfUrl"
-              value={pdfUrl}
-              onChange={(e) => setPdfUrl(e.target.value)}
-              placeholder="https://... or upload above"
-              className={fieldClass}
-            />
-            {pdfError && <p className="text-xs text-red-600 font-medium">{pdfError}</p>}
+            ) : null}
           </div>
           <label className="flex items-center gap-2 text-sm pt-1">
             <input type="checkbox" name="published" defaultChecked={item?.published ?? false} />

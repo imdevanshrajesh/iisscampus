@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState, useRef } from "react";
-import { UploadCloud, RefreshCw, FileText, CheckCircle2, AlertCircle, ExternalLink, Trash2 } from "lucide-react";
+import { useActionState, useState } from "react";
+import { FileText, CheckCircle2, ExternalLink, Trash2 } from "lucide-react";
 import { ImageUploader } from "@/components/manage/image-uploader";
 import { saveNewsletter } from "@/lib/manage/actions";
 import type { Newsletter } from "@/lib/types";
@@ -16,10 +16,6 @@ export function NewsletterForm({ newsletter }: { newsletter: Newsletter | null }
   const [href, setHref] = useState(newsletter?.href ?? "");
   const [published, setPublished] = useState(newsletter?.published ?? false);
 
-  const [uploadingPdf, setUploadingPdf] = useState(false);
-  const [pdfError, setPdfError] = useState<string | null>(null);
-  const pdfInputRef = useRef<HTMLInputElement>(null);
-
   const missingFields: string[] = [];
   if (title.trim().length < 2) missingFields.push("Title (at least 2 characters)");
   if (published && !pdfUrl.trim() && !href.trim()) {
@@ -33,44 +29,6 @@ export function NewsletterForm({ newsletter }: { newsletter: Newsletter | null }
       alert(`Please fill in required fields: ${missingFields.join(", ")}.`);
     }
   }
-
-  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingPdf(true);
-    setPdfError(null);
-
-    try {
-      const cleanTitle = title.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-") || "issue";
-      const formData = new FormData();
-      formData.append("file", file, `newsletter-${cleanTitle}.pdf`);
-      formData.append("folder", "Newsletter");
-
-      const res = await fetch("/api/manage/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (res.ok && data?.url) {
-        setPdfUrl(data.url);
-        if (!title.trim()) {
-          const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]+/g, " ");
-          setTitle(cleanName);
-        }
-      } else {
-        setPdfError(data?.error || "Could not upload newsletter PDF.");
-      }
-    } catch {
-      setPdfError("Error uploading newsletter PDF. Please check network connection.");
-    } finally {
-      setUploadingPdf(false);
-      if (pdfInputRef.current) {
-        pdfInputRef.current.value = "";
-      }
-    }
-  };
 
   return (
     <form action={action} onSubmit={handleSubmit} className="max-w-xl space-y-5">
@@ -104,16 +62,16 @@ export function NewsletterForm({ newsletter }: { newsletter: Newsletter | null }
         />
       </div>
 
-      {/* PDF Download Section with RustFS Upload */}
-      <div className="space-y-2 rounded-2xl border border-line bg-white p-4 sm:p-5 shadow-2xs">
+      {/* PDF / Google Drive Download Section */}
+      <div className="space-y-3 rounded-2xl border border-line bg-white p-4 sm:p-5 shadow-2xs">
         <label className="block text-sm font-medium text-ink">
           <span className="flex items-center justify-between">
             <span>
-              PDF Download URL {published && !href.trim() && <span className="text-red-500 font-bold">*</span>}
+              PDF / Google Drive Download URL {published && !href.trim() && <span className="text-red-500 font-bold">*</span>}
             </span>
             {pdfUrl ? (
               <span className="text-xs font-mono text-emerald-700 flex items-center gap-1 font-normal">
-                <CheckCircle2 size={12} /> PDF Attached
+                <CheckCircle2 size={12} /> Link attached
               </span>
             ) : null}
           </span>
@@ -121,31 +79,25 @@ export function NewsletterForm({ newsletter }: { newsletter: Newsletter | null }
             name="pdfUrl"
             value={pdfUrl}
             onChange={(e) => setPdfUrl(e.target.value)}
-            placeholder="https://cdn.iissboys.com/iissimages/Newsletter/... or upload below"
+            placeholder="https://drive.google.com/file/d/... or direct PDF link"
             className={fieldClass}
           />
+          <span className="mt-1 block text-xs text-muted">
+            Paste your Google Drive sharing link, cloud storage link, or direct PDF document URL.
+          </span>
         </label>
 
-        {/* PDF Upload / Attached status */}
-        <input
-          type="file"
-          accept=".pdf,application/pdf"
-          ref={pdfInputRef}
-          className="hidden"
-          onChange={handlePdfUpload}
-        />
-
         {pdfUrl ? (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-3 sm:p-4">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 shadow-2xs">
-                <FileText size={22} />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 shadow-2xs">
+                <FileText size={20} />
               </div>
               <div className="min-w-0">
                 <span className="inline-flex items-center gap-1 rounded-md bg-emerald-600/10 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
-                  <CheckCircle2 size={12} /> Newsletter PDF Attached
+                  <CheckCircle2 size={12} /> Document Link Attached
                 </span>
-                <p className="mt-1 truncate font-mono text-xs text-ink/80 select-all" title={pdfUrl}>
+                <p className="mt-0.5 truncate font-mono text-xs text-ink/80 select-all" title={pdfUrl}>
                   {pdfUrl}
                 </p>
               </div>
@@ -159,59 +111,17 @@ export function NewsletterForm({ newsletter }: { newsletter: Newsletter | null }
                 className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-2xs hover:bg-wash transition"
               >
                 <ExternalLink size={13} />
-                <span>Open PDF</span>
+                <span>Test Link</span>
               </a>
               <button
                 type="button"
-                disabled={uploadingPdf}
-                onClick={() => pdfInputRef.current?.click()}
-                className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink shadow-2xs hover:bg-wash transition"
-              >
-                <RefreshCw size={13} className={uploadingPdf ? "animate-spin" : ""} />
-                <span>{uploadingPdf ? "Uploading..." : "Replace"}</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => setPdfUrl("")}
-                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100/60 transition"
+                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100/60 transition cursor-pointer"
               >
                 <Trash2 size={13} />
-                <span>Remove</span>
+                <span>Clear</span>
               </button>
             </div>
-          </div>
-        ) : (
-          <div className="rounded-xl border-2 border-dashed border-accent/40 bg-accent/5 p-4 text-center">
-            <div className="flex flex-col items-center justify-center gap-2">
-              <button
-                type="button"
-                disabled={uploadingPdf}
-                onClick={() => pdfInputRef.current?.click()}
-                className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-bold text-accent-ink hover:opacity-90 active:scale-[0.99] transition shadow-xs cursor-pointer disabled:opacity-60"
-              >
-                {uploadingPdf ? (
-                  <>
-                    <RefreshCw size={18} className="animate-spin" />
-                    <span>Uploading Newsletter PDF via RustFS...</span>
-                  </>
-                ) : (
-                  <>
-                    <UploadCloud size={18} />
-                    <span>+ Upload Newsletter PDF via RustFS</span>
-                  </>
-                )}
-              </button>
-              <p className="text-xs text-muted">
-                Directly upload this month&apos;s full PDF edition to the Newsletter folder in RustFS.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {pdfError ? (
-          <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-lg mt-1">
-            <AlertCircle size={14} className="shrink-0" />
-            <span>{pdfError}</span>
           </div>
         ) : null}
       </div>

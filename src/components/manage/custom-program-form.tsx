@@ -181,18 +181,22 @@ export function CustomProgramForm({
               />
             </label>
 
-            {/* Flyer / PDF upload via RustFS */}
-            <div className="pt-1">
-              <ImageUploader
-                name="programPdfUploader"
+            {/* Activity Flyer / PDF Guide Link */}
+            <div className="grid gap-1.5 text-sm pt-1">
+              <label className="font-medium text-ink" htmlFor="program-pdf-url">
+                Activity Guide / Flyer Link (Google Drive / PDF URL)
+              </label>
+              <input
+                id="program-pdf-url"
+                name="pdfUrl"
                 value={pdfUrl}
-                onChange={setPdfUrl}
-                folder="Programs"
-                targetName={`flyer-${title.trim() || "program"}`}
-                label="Activity Flyer / PDF Guide (Optional)"
-                hint="Upload an event flyer, poster, or PDF guide using RustFS."
-                allowPdf
+                onChange={(e) => setPdfUrl(e.target.value)}
+                placeholder="https://drive.google.com/file/d/... or direct document link"
+                className={fieldClass}
               />
+              <span className="text-xs text-muted">
+                Paste a Google Drive sharing link, cloud storage link, or direct PDF document URL.
+              </span>
             </div>
             <div className="grid gap-3 md:grid-cols-[8rem_1fr]">
               <label className="grid gap-1.5 text-sm">
