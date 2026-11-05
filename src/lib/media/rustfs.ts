@@ -124,6 +124,7 @@ export async function uploadObjectToRustFS({
     Key: key,
     Body: buffer,
     ContentType: mimeType,
+    CacheControl: "public, max-age=31536000, immutable",
   });
 
   await client.send(command);
@@ -161,6 +162,7 @@ export async function createPresignedUploadUrl({
     Bucket: RUSTFS_BUCKET,
     Key: key,
     ContentType: mimeType,
+    CacheControl: "public, max-age=31536000, immutable",
   });
 
   const uploadUrl = await getSignedUrl(client, command, {

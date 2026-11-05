@@ -212,7 +212,7 @@ export function ImageUploader({
         });
 
         if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-          const maxDim = 3200;
+          const maxDim = 1920;
           let w = img.naturalWidth;
           let h = img.naturalHeight;
           if (w > maxDim || h > maxDim) {
@@ -241,7 +241,7 @@ export function ImageUploader({
                 }
               },
               "image/webp",
-              0.90,
+              0.85,
             );
             return;
           }

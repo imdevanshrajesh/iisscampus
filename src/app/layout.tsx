@@ -61,6 +61,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
+      <head>
+        <link rel="preconnect" href="https://cdn.iissboys.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://cdn.iissboys.com" />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

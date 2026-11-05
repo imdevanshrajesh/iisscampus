@@ -208,7 +208,7 @@ export function ImageCropModal({
     const sourceHeight = (cropRect.height / 100) * naturalHeight;
 
     // Limit maximum canvas dimensions for high quality without memory lag
-    const maxOutputDim = 2400;
+    const maxOutputDim = 1920;
     let targetWidth = sourceWidth;
     let targetHeight = sourceHeight;
 
@@ -252,7 +252,7 @@ export function ImageCropModal({
         onConfirm(blob, croppedName);
       },
       "image/webp",
-      0.92,
+      0.85,
     );
   };
 

@@ -31,7 +31,6 @@ export function CouncilLogo({
       alt={alt}
       width={width}
       height={height}
-      unoptimized
       className={className}
       priority={priority}
     />
