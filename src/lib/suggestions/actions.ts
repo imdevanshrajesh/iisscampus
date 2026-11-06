@@ -19,6 +19,7 @@ import {
   suggestionRateKey,
   suggestionTimingOk,
 } from "@/lib/suggestions";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 export type SuggestionActionState = {
   error?: string;
@@ -40,6 +41,19 @@ export async function submitSuggestion(
   formData: FormData,
 ): Promise<SuggestionActionState> {
   if (String(formData.get("company") ?? "").trim()) return { ok: thanks };
+
+  const token = formData.get("cf-turnstile-response");
+  const ip = await clientAddress();
+
+  const turnstile = await verifyTurnstileToken({
+    token,
+    expectedAction: "suggestion",
+    clientIp: ip,
+  });
+  if (!turnstile.success) {
+    return { error: "Security check failed. Please refresh and try again." };
+  }
+
   if (!suggestionTimingOk(String(formData.get("openedAt") ?? ""))) {
     return { error: "Please wait a moment, then send it again." };
   }
@@ -51,7 +65,6 @@ export async function submitSuggestion(
   const cleaned = cleanSuggestionBody(String(formData.get("suggestion") ?? ""));
   if (!cleaned.ok) return { error: cleaned.error };
 
-  const ip = await clientAddress();
   const ipKey = `suggestion-ip:${ip}`;
   const emailLimitKey = `suggestion-email:${emailKey}`;
   if (

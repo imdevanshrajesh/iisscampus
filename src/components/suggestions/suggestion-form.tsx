@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { submitSuggestion, type SuggestionActionState } from "@/lib/suggestions/actions";
+import { TurnstileWidget } from "@/components/turnstile/turnstile-widget";
 
 const fieldClass = "rounded-md border border-line bg-background px-3 py-2 text-base text-ink";
 
@@ -41,6 +42,7 @@ export function SuggestionForm() {
         <textarea name="suggestion" required minLength={20} maxLength={1500} rows={6} className={fieldClass} />
       </label>
       <p className="text-sm leading-6 text-muted">Use a @gmail.com or @iiss.ae address. A name is not needed.</p>
+      <TurnstileWidget action="suggestion" resetKey={state} />
       <button
         type="submit"
         disabled={pending}
