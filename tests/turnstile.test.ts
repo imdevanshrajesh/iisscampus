@@ -128,6 +128,35 @@ describe("turnstile verification", () => {
     }
   });
 
+  it("approves production iissboys.com and www.iissboys.com hosts by default", async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = async () => {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            action: "suggestion",
+            hostname: "www.iissboys.com",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      };
+
+      const result = await verifyTurnstileToken({
+        token: "mock-token",
+        expectedAction: "suggestion",
+        secret: "dummy-secret",
+      });
+
+      assert.equal(result.success, true);
+      if (result.success) {
+        assert.equal(result.hostname, "www.iissboys.com");
+      }
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("handles Cloudflare error codes on failed verification", async () => {
     const originalFetch = globalThis.fetch;
     try {

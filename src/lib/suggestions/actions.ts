@@ -44,13 +44,23 @@ export async function submitSuggestion(
 
   const token = formData.get("cf-turnstile-response");
   const ip = await clientAddress();
+  const headerStore = await headers();
+  const host = (headerStore.get("x-forwarded-host") || headerStore.get("host") || "")
+    .split(":")[0]
+    .trim();
 
   const turnstile = await verifyTurnstileToken({
     token,
     expectedAction: "suggestion",
     clientIp: ip,
+    clientHost: host,
   });
   if (!turnstile.success) {
+    console.error("[submitSuggestion] Turnstile verification failed:", {
+      error: turnstile.error,
+      code: turnstile.code,
+      host,
+    });
     return { error: "Security check failed. Please refresh and try again." };
   }
 

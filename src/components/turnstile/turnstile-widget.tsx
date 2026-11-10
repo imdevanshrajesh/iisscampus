@@ -94,13 +94,18 @@ export function TurnstileWidget({
     };
   }, [scriptLoaded, siteKey, action, onVerify, onExpire]);
 
+  const prevResetKeyRef = useRef(resetKey);
+
   // Reset widget when resetKey updates (e.g. after form submission)
   useEffect(() => {
-    if (widgetIdRef.current && window.turnstile && resetKey !== undefined) {
-      try {
-        window.turnstile.reset(widgetIdRef.current);
-      } catch {
-        // ignore reset errors
+    if (prevResetKeyRef.current !== resetKey) {
+      prevResetKeyRef.current = resetKey;
+      if (widgetIdRef.current && window.turnstile) {
+        try {
+          window.turnstile.reset(widgetIdRef.current);
+        } catch {
+          // ignore reset errors
+        }
       }
     }
   }, [resetKey]);
