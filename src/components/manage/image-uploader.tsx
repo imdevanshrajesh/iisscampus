@@ -16,6 +16,14 @@ import {
   FileText,
 } from "lucide-react";
 import { ImageCropModal, type CropAspectRatio } from "./image-crop-modal";
+import {
+  createFastImagePreviewUrl,
+  extensionForMime,
+  prepareUncroppedImageForUpload,
+  revokeImagePreviewUrl,
+  uploadPreparedBlobWithProgress,
+  type UploadPhase,
+} from "@/lib/media/client-image";
 import { DEFAULT_UPLOAD_FOLDERS } from "@/lib/media/rustfs";
 
 type ImageUploaderProps = {
@@ -45,27 +53,41 @@ export function ImageUploader({
   required = false,
   disabled = false,
 }: ImageUploaderProps) {
+  const [prevFolderProp, setPrevFolderProp] = useState<string>(folder);
   const [selectedFolder, setSelectedFolder] = useState<string>(folder);
   const [customFolder, setCustomFolder] = useState<string>("");
   const [isCustomFolder, setIsCustomFolder] = useState<boolean>(false);
 
-  useEffect(() => {
+  if (prevFolderProp !== folder) {
+    setPrevFolderProp(folder);
     setSelectedFolder(folder);
-  }, [folder]);
+  }
 
   // Upload state
   const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadPhase, setUploadPhase] = useState<UploadPhase>("uploading");
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [showManualInput, setShowManualInput] = useState<boolean>(false);
 
-  // Crop modal state
-  const [cropFile, setCropFile] = useState<{ file: File; dataUrl: string } | null>(null);
+  // Crop modal state (uses instant object URLs instead of heavy base64 strings)
+  const [cropFile, setCropFile] = useState<{ file: File; previewUrl: string } | null>(null);
   const [isCropOpen, setIsCropOpen] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const activePreviewUrlRef = useRef<string>("");
+
+  useEffect(() => {
+    activePreviewUrlRef.current = cropFile?.previewUrl ?? "";
+  }, [cropFile]);
+
+  useEffect(() => {
+    return () => {
+      revokeImagePreviewUrl(activePreviewUrlRef.current);
+    };
+  }, []);
 
   // Handle clipboard copy
   const handleCopy = () => {
@@ -94,7 +116,7 @@ export function ImageUploader({
     return clean ? `${clean}${ext}` : fallbackName;
   };
 
-  // Process selected file
+  // Process selected file with instant object URL preview
   const processFile = (file: File) => {
     if (disabled) return;
 
@@ -104,18 +126,22 @@ export function ImageUploader({
     }
 
     setUploadError(null);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      setCropFile({ file, dataUrl });
-      setIsCropOpen(true);
-    };
-    reader.readAsDataURL(file);
+    if (cropFile?.previewUrl) {
+      revokeImagePreviewUrl(cropFile.previewUrl);
+    }
+    const previewUrl = createFastImagePreviewUrl(file);
+    if (!previewUrl) {
+      setUploadError("Could not read this image in your browser.");
+      return;
+    }
+    setCropFile({ file, previewUrl });
+    setIsCropOpen(true);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (disabled) return;
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (file) {
       processFile(file);
     }
@@ -144,118 +170,67 @@ export function ImageUploader({
     }
   };
 
-  // Execute upload to /api/manage/upload with XMLHttpRequest for live progress
-  const executeUpload = (fileBlob: Blob | File, filename: string) => {
+  // Execute upload to /api/manage/upload via shared helper with live progress
+  const executeUpload = async (fileBlob: Blob | File, filename: string, oldPreviewUrl?: string) => {
     if (disabled) return;
     setIsCropOpen(false);
+    setCropFile(null);
+    revokeImagePreviewUrl(oldPreviewUrl);
     setIsUploading(true);
+    setUploadPhase("uploading");
     setUploadProgress(0);
     setUploadError(null);
 
     const targetFolder = isCustomFolder && customFolder.trim() ? customFolder.trim() : selectedFolder;
-    const finalFilename = getSanitizedTargetName(filename);
+    const ext = fileBlob.type ? extensionForMime(fileBlob.type) : undefined;
+    const finalFilename = getSanitizedTargetName(filename, ext);
 
-    const formData = new FormData();
-    formData.append("file", fileBlob, finalFilename);
-    formData.append("folder", targetFolder);
-    formData.append("folder", targetFolder);
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/manage/upload");
-
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        const percent = Math.round((event.loaded / event.total) * 100);
-        setUploadProgress(percent);
-      }
-    };
-
-    xhr.onload = () => {
+    try {
+      const uploadedUrl = await uploadPreparedBlobWithProgress({
+        blob: fileBlob,
+        fileName: finalFilename,
+        folder: targetFolder,
+        onPhase: setUploadPhase,
+        onProgress: setUploadProgress,
+      });
+      setUploadProgress(100);
       setIsUploading(false);
-      try {
-        const response = JSON.parse(xhr.responseText);
-        if (xhr.status >= 200 && xhr.status < 300 && response.url) {
-          onChange(response.url);
-          setUploadProgress(100);
-        } else {
-          setUploadError(response.error || "Upload failed. Please check server configuration.");
-        }
-      } catch {
-        setUploadError("Unexpected server response. Please try again.");
-      }
-    };
-
-    xhr.onerror = () => {
+      onChange(uploadedUrl);
+    } catch (error) {
       setIsUploading(false);
-      setUploadError("Network connection failed during upload.");
-    };
-
-    xhr.send(formData);
+      setUploadError(error instanceof Error ? error.message : "Upload failed. Please try again.");
+    }
   };
 
   const handleConfirmCrop = (croppedBlob: Blob, croppedFileName: string) => {
-    executeUpload(croppedBlob, getSanitizedTargetName(croppedFileName, ".webp"));
+    const ext = extensionForMime(croppedBlob.type || "image/webp");
+    void executeUpload(croppedBlob, getSanitizedTargetName(croppedFileName, ext), cropFile?.previewUrl);
   };
 
   const handleSkipCrop = async () => {
     if (!cropFile) return;
+    const selected = cropFile;
 
-    // Vercel serverless functions have a 4.5MB request payload limit.
-    // Automatically downscale oversized uncropped photos on client canvas so uploads succeed reliably.
-    if (cropFile.file.size > 3.5 * 1024 * 1024) {
-      try {
-        const img = new Image();
-        img.src = cropFile.dataUrl;
-        await new Promise((resolve) => {
-          img.onload = resolve;
-          img.onerror = resolve;
-        });
+    // Close modal immediately and show live optimization state so upload never feels stalled
+    setIsCropOpen(false);
+    setCropFile(null);
+    setIsUploading(true);
+    setUploadPhase("preparing");
+    setUploadProgress(8);
+    setUploadError(null);
 
-        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-          const maxDim = 1920;
-          let w = img.naturalWidth;
-          let h = img.naturalHeight;
-          if (w > maxDim || h > maxDim) {
-            if (w > h) {
-              h = Math.round((maxDim * h) / w);
-              w = maxDim;
-            } else {
-              w = Math.round((maxDim * w) / h);
-              h = maxDim;
-            }
-          }
-
-          const canvas = document.createElement("canvas");
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            ctx.imageSmoothingQuality = "high";
-            ctx.drawImage(img, 0, 0, w, h);
-            canvas.toBlob(
-              (blob) => {
-                if (blob) {
-                  executeUpload(blob, getSanitizedTargetName(cropFile.file.name, ".webp"));
-                } else {
-                  executeUpload(cropFile.file, getSanitizedTargetName(cropFile.file.name));
-                }
-              },
-              "image/webp",
-              0.85,
-            );
-            return;
-          }
-        }
-      } catch {
-        // Fallback to original file
-      }
+    try {
+      const prepared = await prepareUncroppedImageForUpload(selected.file, selected.previewUrl);
+      const ext = extensionForMime(prepared.mimeType, undefined);
+      await executeUpload(prepared.blob, getSanitizedTargetName(prepared.fileName, ext), selected.previewUrl);
+    } catch {
+      await executeUpload(selected.file, getSanitizedTargetName(selected.file.name), selected.previewUrl);
     }
-
-    executeUpload(cropFile.file, getSanitizedTargetName(cropFile.file.name));
   };
 
   const handleCancelCrop = () => {
     setIsCropOpen(false);
+    revokeImagePreviewUrl(cropFile?.previewUrl);
     setCropFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -322,7 +297,7 @@ export function ImageUploader({
       {hint ? <p className="text-xs text-muted -mt-1">{hint}</p> : null}
 
       {/* Existing Uploaded Image / Document Display */}
-      {value ? (
+      {value && !isUploading ? (
         <div className="relative overflow-hidden rounded-2xl border border-line bg-wash/30 p-3.5 transition hover:border-line/80">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3.5">
             {/* Thumbnail or PDF Document Icon */}
@@ -422,7 +397,11 @@ export function ImageUploader({
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-navy flex items-center gap-1.5">
                   <RefreshCw size={13} className="animate-spin text-navy" />
-                  Uploading to RustFS...
+                  {uploadPhase === "preparing"
+                    ? "Optimizing photo..."
+                    : uploadPhase === "saving"
+                      ? "Saving to storage..."
+                      : "Uploading photograph..."}
                 </span>
                 <span className="font-mono text-muted">{uploadProgress}%</span>
               </div>
@@ -432,7 +411,9 @@ export function ImageUploader({
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
-              <p className="text-[11px] text-muted">Storing into &ldquo;{selectedFolder}&rdquo; bucket folder...</p>
+              <p className="text-[11px] text-muted">
+                Storing into &ldquo;{isCustomFolder && customFolder.trim() ? customFolder.trim() : selectedFolder}&rdquo; bucket folder...
+              </p>
             </div>
           ) : (
             /* Idle Dropzone Call to Action */
@@ -515,7 +496,7 @@ export function ImageUploader({
       {cropFile ? (
         <ImageCropModal
           isOpen={isCropOpen}
-          imageUrl={cropFile.dataUrl}
+          imageUrl={cropFile.previewUrl}
           fileName={getSanitizedTargetName(cropFile.file.name)}
           initialAspectRatio={aspectRatio}
           onConfirm={handleConfirmCrop}

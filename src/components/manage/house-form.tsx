@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Shield } from "lucide-react";
+import { FormAutoSave } from "@/components/manage/form-auto-save";
 import { ImageUploader } from "@/components/manage/image-uploader";
 import { deleteHouse, saveHouse, type ActionState } from "@/lib/manage/actions";
 import type { House, HouseColor } from "@/lib/types";
@@ -63,6 +64,7 @@ export function HouseForm({
   const [captainName, setCaptainName] = useState(house?.captainName ?? "");
   const [viceCaptainName, setViceCaptainName] = useState(house?.viceCaptainName ?? "");
   const [clientError, setClientError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const [inchargePhotoUrl, setInchargePhotoUrl] = useState<string>(
     house?.inchargePhotoUrl ?? ""
@@ -157,8 +159,39 @@ export function HouseForm({
       {/* Full Edit Form */}
       {isOpen && (
         <div className="p-5 sm:p-6 border-t border-line/60 bg-[#fdfdfc]/50">
-          <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-5">
+          <form ref={formRef} action={action} onSubmit={handleSubmit} noValidate className="grid gap-5">
             {house?.id && <input type="hidden" name="id" value={house.id} />}
+            <FormAutoSave
+              formRef={formRef}
+              draftKey={house?.id ? `house:${house.id}` : "house:new"}
+              serverAction={saveHouse}
+              recordId={house?.id ?? ""}
+              canAutoSaveServer={Boolean(house?.id && name.trim())}
+              externalSuccess={state?.ok}
+              externalError={state?.error}
+              compact
+              watchValue={{
+                name,
+                slug,
+                inchargeName,
+                captainName,
+                viceCaptainName,
+                inchargePhotoUrl,
+                captainPhotoUrl,
+                viceCaptainPhotoUrl,
+              }}
+              onRestoreDraft={(fields) => {
+                const first = (key: string) => fields[key]?.[0];
+                if (first("name") !== undefined) setName(first("name")!);
+                if (first("slug") !== undefined) setSlug(first("slug")!);
+                if (first("inchargeName") !== undefined) setInchargeName(first("inchargeName")!);
+                if (first("captainName") !== undefined) setCaptainName(first("captainName")!);
+                if (first("viceCaptainName") !== undefined) setViceCaptainName(first("viceCaptainName")!);
+                if (first("inchargePhotoUrl") !== undefined) setInchargePhotoUrl(first("inchargePhotoUrl")!);
+                if (first("captainPhotoUrl") !== undefined) setCaptainPhotoUrl(first("captainPhotoUrl")!);
+                if (first("viceCaptainPhotoUrl") !== undefined) setViceCaptainPhotoUrl(first("viceCaptainPhotoUrl")!);
+              }}
+            />
             <input type="hidden" name="inchargePhotoUrl" value={inchargePhotoUrl} />
             <input type="hidden" name="captainPhotoUrl" value={captainPhotoUrl} />
             <input type="hidden" name="viceCaptainPhotoUrl" value={viceCaptainPhotoUrl} />

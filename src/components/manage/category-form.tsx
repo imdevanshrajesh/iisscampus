@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { FileText, CheckCircle2, ExternalLink, Trash2 } from "lucide-react";
 import { saveCategory, type ActionState } from "@/lib/manage/actions";
+import { FormAutoSave } from "@/components/manage/form-auto-save";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
 import { ImageUploader } from "@/components/manage/image-uploader";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
@@ -25,6 +26,7 @@ export function CategoryForm({
   const [imageUrl, setImageUrl] = useState(category?.imageUrl ?? "");
   const [pdfUrl, setPdfUrl] = useState(category?.pdfUrl ?? "");
   const [clientError, setClientError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const image = classifyMediaUrl(imageUrl, mediaHosts);
 
   const missingFields: string[] = [];
@@ -44,8 +46,29 @@ export function CategoryForm({
   };
 
   return (
-    <form action={action} onSubmit={handleSubmit} noValidate className="grid max-w-xl gap-4 rounded-2xl border border-line bg-background p-5">
+    <form ref={formRef} action={action} onSubmit={handleSubmit} noValidate className="grid max-w-xl gap-4 rounded-2xl border border-line bg-background p-5">
       {category ? <input type="hidden" name="id" value={category.id} /> : null}
+      <FormAutoSave
+        formRef={formRef}
+        draftKey={category ? `category:${category.id}` : "category:new"}
+        serverAction={saveCategory}
+        recordId={category?.id ?? ""}
+        canAutoSaveServer={Boolean(category?.id && title.trim() && slug.trim())}
+        externalSuccess={state?.ok}
+        externalError={state?.error}
+        compact
+        watchValue={{ title, slug, imageUrl, pdfUrl }}
+        onRestoreDraft={(fields) => {
+          const first = (key: string) => fields[key]?.[0];
+          if (first("name") !== undefined) setTitle(first("name")!);
+          if (first("slug") !== undefined) {
+            setSlug(first("slug")!);
+            setSlugEdited(true);
+          }
+          if (first("imageUrl") !== undefined) setImageUrl(first("imageUrl")!);
+          if (first("pdfUrl") !== undefined) setPdfUrl(first("pdfUrl")!);
+        }}
+      />
       {clientError ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{clientError}</p> : null}
       {state.error ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{state.error}</p> : null}
       {state.ok ? <p className="text-sm text-accent font-medium">{state.ok}</p> : null}

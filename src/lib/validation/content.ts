@@ -391,7 +391,7 @@ export const categoryInputSchema = z.object({
 
 export type CategoryInput = z.infer<typeof categoryInputSchema>;
 
-const councilMemberSchema = z.object({
+export const councilMemberSchema = z.object({
   id: z.string().uuid().optional(),
   role: z.string().trim().min(2, "Member role must be at least 2 characters.").max(80, "Member role cannot exceed 80 characters."),
   name: z.string().trim().min(2, "Member name must be at least 2 characters.").max(80, "Member name cannot exceed 80 characters."),
@@ -403,14 +403,14 @@ const councilMemberSchema = z.object({
   board: z.enum(["main", "junior"]).default("main"),
 });
 
-const councilPhotoSchema = z.object({
+export const councilPhotoSchema = z.object({
   id: z.string().uuid().optional(),
   url: z.string().trim().min(1, "Photo URL is required.").max(2048, "Photo URL is too long."),
   alt: z.string().trim().min(1, "Alternative text is required for the photo.").max(200, "Photo alt text cannot exceed 200 characters."),
   caption: optionalText(240),
 });
 
-const councilPostSchema = z.object({
+export const councilPostSchema = z.object({
   id: z.string().uuid().optional(),
   title: z.string().trim().min(2, "Post title must be at least 2 characters.").max(140, "Post title cannot exceed 140 characters."),
   body: z.string().trim().min(10, "Post body must be at least 10 characters.").max(8000, "Post body cannot exceed 8000 characters."),
@@ -419,18 +419,25 @@ const councilPostSchema = z.object({
   imageAlt: optionalText(200),
 });
 
-export const councilInputSchema = z.object({
+export const councilYearMetaSchema = z.object({
   label: z.string().trim().min(2, "Council year label must be at least 2 characters.").max(40, "Label cannot exceed 40 characters."),
   slug: slugSchema,
   kind: z.enum(["current", "upcoming", "past"]),
   summary: z.string().trim().max(800).default(""),
   juniorHeading: z.string().trim().min(2).max(80).default("Junior Student Council"),
   sortOrder: z.coerce.number().int().min(0).max(999).default(0),
+});
+
+export const councilInputSchema = councilYearMetaSchema.extend({
   members: z.array(councilMemberSchema).max(120).default([]),
   photos: z.array(councilPhotoSchema).max(40).default([]),
   posts: z.array(councilPostSchema).max(40).default([]),
 });
 
+export type CouncilYearMetaInput = z.infer<typeof councilYearMetaSchema>;
+export type CouncilMemberInput = z.infer<typeof councilMemberSchema>;
+export type CouncilPhotoInput = z.infer<typeof councilPhotoSchema>;
+export type CouncilPostInput = z.infer<typeof councilPostSchema>;
 export type CouncilInput = z.infer<typeof councilInputSchema>;
 
 function indexed(formData: FormData, prefix: string) {
@@ -650,32 +657,54 @@ export const navItemInputSchema = z.object({
   sortOrder: z.number().int().min(0).max(500).default(0),
 });
 
+export function validateCouncilMemberMedia(member: CouncilMemberInput, allowedHosts: readonly string[]) {
+  if (!member.imageUrl) return null;
+  const classified = classifyMediaUrl(member.imageUrl, allowedHosts);
+  if (!classified.ok) return classified.message;
+  if (!member.imageAlt?.trim()) {
+    member.imageAlt = member.name ? `${member.name} - ${member.role}` : "Council member";
+  }
+  member.imageUrl = classified.url;
+  return null;
+}
+
+export function validateCouncilPhotoMedia(
+  photo: CouncilPhotoInput,
+  allowedHosts: readonly string[],
+  yearLabel?: string,
+) {
+  const classified = classifyMediaUrl(photo.url, allowedHosts);
+  if (!classified.ok) return classified.message;
+  if (!photo.alt?.trim()) {
+    photo.alt = yearLabel ? `${yearLabel} Student Council photograph` : "Council photograph";
+  }
+  photo.url = classified.url;
+  return null;
+}
+
+export function validateCouncilPostMedia(post: CouncilPostInput, allowedHosts: readonly string[]) {
+  if (!post.imageUrl) return null;
+  const classified = classifyMediaUrl(post.imageUrl, allowedHosts);
+  if (!classified.ok) return classified.message;
+  if (!post.imageAlt?.trim()) {
+    post.imageAlt = post.title || "Post photograph";
+  }
+  post.imageUrl = classified.url;
+  return null;
+}
+
 export function validateCouncilMedia(input: CouncilInput, allowedHosts: readonly string[]) {
   for (const member of input.members) {
-    if (!member.imageUrl) continue;
-    const classified = classifyMediaUrl(member.imageUrl, allowedHosts);
-    if (!classified.ok) return classified.message;
-    if (!member.imageAlt?.trim()) {
-      member.imageAlt = member.name ? `${member.name} - ${member.role}` : "Council member";
-    }
-    member.imageUrl = classified.url;
+    const err = validateCouncilMemberMedia(member, allowedHosts);
+    if (err) return err;
   }
   for (const photo of input.photos) {
-    const classified = classifyMediaUrl(photo.url, allowedHosts);
-    if (!classified.ok) return classified.message;
-    if (!photo.alt?.trim()) {
-      photo.alt = input.label ? `${input.label} Student Council photograph` : "Council photograph";
-    }
-    photo.url = classified.url;
+    const err = validateCouncilPhotoMedia(photo, allowedHosts, input.label);
+    if (err) return err;
   }
   for (const post of input.posts) {
-    if (!post.imageUrl) continue;
-    const classified = classifyMediaUrl(post.imageUrl, allowedHosts);
-    if (!classified.ok) return classified.message;
-    if (!post.imageAlt?.trim()) {
-      post.imageAlt = post.title || "Post photograph";
-    }
-    post.imageUrl = classified.url;
+    const err = validateCouncilPostMedia(post, allowedHosts);
+    if (err) return err;
   }
   return null;
 }

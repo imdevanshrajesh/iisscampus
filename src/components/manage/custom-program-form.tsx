@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { FormAutoSave } from "@/components/manage/form-auto-save";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
 import { ImageUploader } from "@/components/manage/image-uploader";
 import { deleteCustomProgram, saveCustomProgram, type ActionState } from "@/lib/manage/actions";
@@ -45,6 +46,7 @@ export function CustomProgramForm({
   const [links, setLinks] = useState<CustomProgramLink[]>(program?.links ?? []);
   const [pdfUrl, setPdfUrl] = useState<string>(program?.pdfUrl ?? "");
   const [clientError, setClientError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const isFormValid = title.trim().length >= 2;
 
@@ -124,8 +126,40 @@ export function CustomProgramForm({
 
       {isOpen && (
         <div className="p-4 sm:p-5 pt-3 bg-[#faf9f5]/50 border-t border-line/40 grid gap-4">
-          <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-3">
+          <form ref={formRef} action={action} onSubmit={handleSubmit} noValidate className="grid gap-3">
             {program ? <input type="hidden" name="id" value={program.id} /> : null}
+            <FormAutoSave
+              formRef={formRef}
+              draftKey={program ? `custom-program:${program.id}` : "custom-program:new"}
+              serverAction={saveCustomProgram}
+              recordId={program?.id ?? ""}
+              canAutoSaveServer={Boolean(program?.id && title.trim())}
+              externalSuccess={state?.ok}
+              externalError={state?.error}
+              compact
+              watchValue={{ title, photos, links, pdfUrl }}
+              onRestoreDraft={(fields) => {
+                const first = (key: string) => fields[key]?.[0];
+                if (first("title") !== undefined) setTitle(first("title")!);
+                if (first("pdfUrl") !== undefined) setPdfUrl(first("pdfUrl")!);
+                if (first("photos")) {
+                  try {
+                    const parsed = JSON.parse(first("photos")!);
+                    if (Array.isArray(parsed)) setPhotos(parsed as CustomProgramPhoto[]);
+                  } catch {
+                    // ignore invalid draft photos
+                  }
+                }
+                if (first("links")) {
+                  try {
+                    const parsed = JSON.parse(first("links")!);
+                    if (Array.isArray(parsed)) setLinks(parsed as CustomProgramLink[]);
+                  } catch {
+                    // ignore invalid draft links
+                  }
+                }
+              }}
+            />
             <input type="hidden" name="photos" value={JSON.stringify(photoPayload)} />
             <input type="hidden" name="links" value={JSON.stringify(linkPayload)} />
             <input type="hidden" name="pdfUrl" value={pdfUrl} />

@@ -25,6 +25,7 @@ import {
   CornerDownLeft,
 } from "lucide-react";
 import { ResourceRepeater } from "@/components/manage/resource-repeater";
+import { FormAutoSave } from "@/components/manage/form-auto-save";
 import { ImageUploader } from "@/components/manage/image-uploader";
 import { deleteAnnouncement, saveAnnouncement, type ActionState } from "@/lib/manage/actions";
 import { renderAnnouncementMessage, stripMarkdown } from "@/lib/announcements";
@@ -73,6 +74,7 @@ export function AnnouncementForm({
   const [resources, setResources] = useState<ContentResource[]>(announcement?.resources ?? []);
   const [coverImageUrl, setCoverImageUrl] = useState<string>(announcement?.coverImageUrl ?? "");
   const [clientError, setClientError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const isFormValid = title.trim().length >= 2;
 
@@ -283,8 +285,33 @@ export function AnnouncementForm({
       {/* Expanded Form Body */}
       {isOpen && (
         <div className="p-4 sm:p-5 pt-3 bg-[#faf9f5]/50 border-t border-line/40 grid gap-4">
-          <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-3">
+          <form ref={formRef} action={action} onSubmit={handleSubmit} noValidate className="grid gap-3">
             {announcement ? <input type="hidden" name="id" value={announcement.id} /> : null}
+            <FormAutoSave
+              formRef={formRef}
+              draftKey={announcement ? `announcement:${announcement.id}` : "announcement:new"}
+              serverAction={saveAnnouncement}
+              recordId={announcement?.id ?? ""}
+              canAutoSaveServer={Boolean(announcement?.id && title.trim() && body.trim())}
+              externalSuccess={state?.ok}
+              externalError={state?.error}
+              compact
+              watchValue={{ title, body, resources, coverImageUrl }}
+              onRestoreDraft={(fields) => {
+                const first = (key: string) => fields[key]?.[0];
+                if (first("title") !== undefined) setTitle(first("title")!);
+                if (first("body") !== undefined) setBody(first("body")!);
+                if (first("coverImageUrl") !== undefined) setCoverImageUrl(first("coverImageUrl")!);
+                if (first("resources")) {
+                  try {
+                    const parsed = JSON.parse(first("resources")!);
+                    if (Array.isArray(parsed)) setResources(parsed as ContentResource[]);
+                  } catch {
+                    // ignore malformed draft
+                  }
+                }
+              }}
+            />
             <input
               type="hidden"
               name="resources"

@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { saveAchievement, type ActionState } from "@/lib/manage/actions";
+import { FormAutoSave } from "@/components/manage/form-auto-save";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
 import { ImageUploader } from "@/components/manage/image-uploader";
 import { ResourceRepeater } from "@/components/manage/resource-repeater";
@@ -30,6 +31,9 @@ export function AchievementForm({
   const [imageUrl, setImageUrl] = useState(achievement?.imageUrl ?? "");
   const [resources, setResources] = useState<ContentResource[]>(achievement?.resources ?? []);
   const [clientError, setClientError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [createdId, setCreatedId] = useState<string>("");
+  const activeId = achievement?.id ?? createdId;
   const image = classifyMediaUrl(imageUrl, mediaHosts);
   const locked = role === "editor" && (achievement?.publicationStatus === "published" || achievement?.publicationStatus === "archived");
 
@@ -49,8 +53,40 @@ export function AchievementForm({
   };
 
   return (
-    <form action={action} onSubmit={handleSubmit} noValidate className="grid max-w-2xl gap-4">
-      {achievement ? <input type="hidden" name="id" value={achievement.id} /> : null}
+    <form ref={formRef} action={action} onSubmit={handleSubmit} noValidate className="grid max-w-2xl gap-4">
+      {activeId ? <input type="hidden" name="id" value={activeId} /> : null}
+      <FormAutoSave
+        formRef={formRef}
+        draftKey={activeId ? `achievement:${activeId}` : "achievement:new"}
+        serverAction={saveAchievement}
+        recordId={activeId}
+        canAutoSaveServer={isFormValid && !locked}
+        disabled={locked}
+        externalSuccess={state?.ok}
+        externalError={state?.error}
+        watchValue={{ title, competitionName, imageUrl, resources }}
+        onCreatedId={(newId) => {
+          setCreatedId(newId);
+          if (typeof window !== "undefined" && !achievement?.id) {
+            window.history.replaceState(null, "", `/manage/achievements/${newId}/edit`);
+          }
+        }}
+        onRestoreDraft={(fields) => {
+          const first = (key: string) => fields[key]?.[0];
+          if (first("title") !== undefined) setTitle(first("title")!);
+          if (first("competitionName") !== undefined) setCompetitionName(first("competitionName")!);
+          if (first("imageUrl") !== undefined) setImageUrl(first("imageUrl")!);
+          const rawRes = first("resources");
+          if (rawRes) {
+            try {
+              const parsed = JSON.parse(rawRes);
+              if (Array.isArray(parsed)) setResources(parsed as ContentResource[]);
+            } catch {
+              // ignore invalid draft resources
+            }
+          }
+        }}
+      />
       <input type="hidden" name="resources" value={JSON.stringify(resources.filter((item) => item.title.trim()))} />
       {clientError ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{clientError}</p> : null}
       {state.error ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{state.error}</p> : null}

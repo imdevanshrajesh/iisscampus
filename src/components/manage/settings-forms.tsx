@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
+import { FormAutoSave } from "@/components/manage/form-auto-save";
 import { ImageUploader } from "@/components/manage/image-uploader";
 import {
   grantRole,
@@ -18,8 +19,17 @@ const fieldClass = "w-full rounded-md border border-line bg-white px-3 py-2 text
 
 export function HostForm({ hosts }: { hosts: string[] }) {
   const [state, action, pending] = useActionState(saveSettings, {} as ActionState);
+  const formRef = useRef<HTMLFormElement>(null);
   return (
-    <form action={action} className="grid max-w-xl gap-3">
+    <form ref={formRef} action={action} className="grid max-w-xl gap-3">
+      <FormAutoSave
+        formRef={formRef}
+        draftKey="settings:hosts"
+        serverAction={saveSettings}
+        externalSuccess={state.ok}
+        externalError={state.error}
+        compact
+      />
       <label className="grid gap-1.5 text-sm">
         Approved image hosts
         <textarea
@@ -45,8 +55,21 @@ export function HostForm({ hosts }: { hosts: string[] }) {
 export function CouncilLogoForm({ logoUrl }: { logoUrl: string | null }) {
   const [state, action, pending] = useActionState(saveCouncilLogo, {} as ActionState);
   const [currentLogoUrl, setCurrentLogoUrl] = useState(logoUrl ?? "");
+  const formRef = useRef<HTMLFormElement>(null);
   return (
-    <form action={action} className="grid max-w-xl gap-3">
+    <form ref={formRef} action={action} className="grid max-w-xl gap-3">
+      <FormAutoSave
+        formRef={formRef}
+        draftKey="settings:council-logo"
+        serverAction={saveCouncilLogo}
+        externalSuccess={state.ok}
+        externalError={state.error}
+        compact
+        watchValue={currentLogoUrl}
+        onRestoreDraft={(fields) => {
+          if (fields.councilLogoUrl?.[0] !== undefined) setCurrentLogoUrl(fields.councilLogoUrl[0]);
+        }}
+      />
       <ImageUploader
         name="councilLogoUrl"
         value={currentLogoUrl}
@@ -80,8 +103,21 @@ export function NavBrandForm({
 }) {
   const [state, action, pending] = useActionState(saveNavBrand, {} as ActionState);
   const [currentNavLogo, setCurrentNavLogo] = useState(logoUrl ?? "");
+  const formRef = useRef<HTMLFormElement>(null);
   return (
-    <form action={action} className="grid max-w-xl gap-3">
+    <form ref={formRef} action={action} className="grid max-w-xl gap-3">
+      <FormAutoSave
+        formRef={formRef}
+        draftKey="settings:nav-brand"
+        serverAction={saveNavBrand}
+        externalSuccess={state.ok}
+        externalError={state.error}
+        compact
+        watchValue={currentNavLogo}
+        onRestoreDraft={(fields) => {
+          if (fields.navLogoUrl?.[0] !== undefined) setCurrentNavLogo(fields.navLogoUrl[0]);
+        }}
+      />
       <label className="grid gap-1.5 text-sm">
         Name
         <input name="navLabel" defaultValue={label} maxLength={40} className={fieldClass} />
@@ -114,8 +150,17 @@ export function NavBrandForm({
 
 export function ContactEmailForm({ contactEmail }: { contactEmail: string | null }) {
   const [state, action, pending] = useActionState(saveContactEmail, {} as ActionState);
+  const formRef = useRef<HTMLFormElement>(null);
   return (
-    <form action={action} className="grid max-w-xl gap-3">
+    <form ref={formRef} action={action} className="grid max-w-xl gap-3">
+      <FormAutoSave
+        formRef={formRef}
+        draftKey="settings:contact-email"
+        serverAction={saveContactEmail}
+        externalSuccess={state.ok}
+        externalError={state.error}
+        compact
+      />
       <label className="grid gap-1.5 text-sm">
         Contact email
         <input
@@ -238,8 +283,28 @@ function ExtraLinksEditor({
 export function SocialForm({ social }: { social: SocialLinks }) {
   const [state, action, pending] = useActionState(saveSocial, {} as ActionState);
   const [extraLinks, setExtraLinks] = useState(social.extraLinks);
+  const formRef = useRef<HTMLFormElement>(null);
   return (
-    <form action={action} className="grid max-w-xl gap-3">
+    <form ref={formRef} action={action} className="grid max-w-xl gap-3">
+      <FormAutoSave
+        formRef={formRef}
+        draftKey="settings:socials"
+        serverAction={saveSocial}
+        externalSuccess={state.ok}
+        externalError={state.error}
+        compact
+        watchValue={extraLinks}
+        onRestoreDraft={(fields) => {
+          const raw = fields.extraLinks?.[0];
+          if (!raw) return;
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) setExtraLinks(parsed as ExtraSiteLink[]);
+          } catch {
+            // ignore malformed draft
+          }
+        }}
+      />
       <LinkFields
         title="School website"
         hint="Shown with the school mark in the footer and on the about page."

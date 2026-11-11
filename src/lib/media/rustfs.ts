@@ -1,12 +1,31 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-export const RUSTFS_ENDPOINT = process.env.RUSTFS_ENDPOINT || "https://cdn.iissboys.com";
-export const RUSTFS_REGION = process.env.RUSTFS_REGION || "us-east-1";
-export const RUSTFS_BUCKET = process.env.RUSTFS_BUCKET || "iissimages";
+export function normalizeS3Endpoint(rawEndpoint: string | undefined, bucket: string): string {
+  const cleaned = (rawEndpoint || "https://cdn.iissboys.com").trim().replace(/\/+$/, "");
+  try {
+    const parsed = new URL(cleaned);
+    // Guard against configuring RUSTFS_ENDPOINT with the public bucket path appended (causes double-bucket 404/HTML)
+    if (bucket && parsed.pathname === `/${bucket}`) {
+      return parsed.origin;
+    }
+    return cleaned;
+  } catch {
+    return cleaned;
+  }
+}
+
+export const RUSTFS_BUCKET = (process.env.RUSTFS_BUCKET || "iissimages").trim();
+export const RUSTFS_ENDPOINT = normalizeS3Endpoint(
+  process.env.RUSTFS_S3_ENDPOINT || process.env.RUSTFS_ENDPOINT,
+  RUSTFS_BUCKET,
+);
+export const RUSTFS_REGION = (process.env.RUSTFS_REGION || "us-east-1").trim();
 export const RUSTFS_PUBLIC_BASE_URL = (
   process.env.RUSTFS_PUBLIC_BASE_URL || "https://cdn.iissboys.com/iissimages"
-).replace(/\/+$/, "");
+)
+  .trim()
+  .replace(/\/+$/, "");
 
 export const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
@@ -64,9 +83,83 @@ export function getS3Client(): S3Client {
       secretAccessKey: secretKey,
     },
     forcePathStyle: true,
+    // Disable default SDK v3.729+ CRC32 streaming checksums that cause RustFS / proxies to return HTML errors
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
+    maxAttempts: 2,
   });
 
   return s3ClientInstance;
+}
+
+type S3RawResponse = {
+  statusCode?: number;
+  headers?: Record<string, string | string[] | undefined>;
+  body?: unknown;
+};
+
+async function readResponseSnippet(body: unknown, limit = 400): Promise<string> {
+  if (!body) return "";
+  try {
+    if (typeof body === "string") return body.slice(0, limit);
+    if (body instanceof Uint8Array || Buffer.isBuffer(body)) {
+      return Buffer.from(body).toString("utf8").slice(0, limit);
+    }
+    if (typeof (body as AsyncIterable<unknown>)[Symbol.asyncIterator] === "function") {
+      const chunks: Buffer[] = [];
+      let total = 0;
+      for await (const chunk of body as AsyncIterable<unknown>) {
+        const buf = typeof chunk === "string" ? Buffer.from(chunk) : Buffer.from(chunk as Uint8Array);
+        chunks.push(buf);
+        total += buf.length;
+        if (total >= limit) break;
+      }
+      return Buffer.concat(chunks).toString("utf8").slice(0, limit);
+    }
+  } catch {
+    return "";
+  }
+  return "";
+}
+
+export async function describeS3Failure(error: unknown): Promise<string> {
+  const errObj = error as { message?: string; name?: string; $response?: S3RawResponse } | null;
+  const rawMessage = error instanceof Error ? error.message : String(error || "Storage upload failed.");
+  const res = errObj?.$response;
+
+  if (res) {
+    const status = res.statusCode ?? "unknown";
+    const contentType = String(res.headers?.["content-type"] ?? res.headers?.["Content-Type"] ?? "");
+    const server = String(res.headers?.server ?? res.headers?.Server ?? "");
+    const bodyText = await readResponseSnippet(res.body);
+    const titleMatch = bodyText.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const cleanSnippet = (titleMatch?.[1] || bodyText.replace(/<[^>]+>/g, " "))
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 180);
+
+    console.error("[RustFS S3 failure]", {
+      endpoint: RUSTFS_ENDPOINT,
+      bucket: RUSTFS_BUCKET,
+      status,
+      contentType,
+      server,
+      snippet: cleanSnippet,
+      rawMessage,
+    });
+
+    if (String(rawMessage).toLowerCase().includes("xml parse error") || contentType.includes("text/html")) {
+      return `Storage endpoint (${RUSTFS_ENDPOINT}) returned HTTP ${status} (${contentType || "non-XML"}${server ? ` via ${server}` : ""}${cleanSnippet ? `: ${cleanSnippet}` : ""}). Ensure RUSTFS_ENDPOINT (or RUSTFS_S3_ENDPOINT) points directly to the RustFS S3 API rather than an HTML/Cloudflare page.`;
+    }
+
+    if (cleanSnippet) {
+      return `Storage error (HTTP ${status}): ${cleanSnippet}`;
+    }
+    return `Storage request failed with HTTP ${status}: ${rawMessage}`;
+  }
+
+  console.error("[RustFS S3 error]", { endpoint: RUSTFS_ENDPOINT, rawMessage });
+  return rawMessage;
 }
 
 export function sanitizeFolderName(folder: string): string {
@@ -123,11 +216,18 @@ export async function uploadObjectToRustFS({
     Bucket: RUSTFS_BUCKET,
     Key: key,
     Body: buffer,
+    ContentLength: buffer.length,
     ContentType: mimeType,
     CacheControl: "public, max-age=31536000, immutable",
   });
 
-  await client.send(command);
+  try {
+    await client.send(command, {
+      abortSignal: AbortSignal.timeout(18000),
+    });
+  } catch (error) {
+    throw new Error(await describeS3Failure(error));
+  }
 
   return {
     ok: true,

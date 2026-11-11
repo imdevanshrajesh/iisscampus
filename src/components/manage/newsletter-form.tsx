@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { FileText, CheckCircle2, ExternalLink, Trash2 } from "lucide-react";
+import { FormAutoSave } from "@/components/manage/form-auto-save";
 import { ImageUploader } from "@/components/manage/image-uploader";
 import { saveNewsletter } from "@/lib/manage/actions";
 import type { Newsletter } from "@/lib/types";
@@ -15,6 +16,7 @@ export function NewsletterForm({ newsletter }: { newsletter: Newsletter | null }
   const [pdfUrl, setPdfUrl] = useState(newsletter?.pdfUrl ?? "");
   const [href, setHref] = useState(newsletter?.href ?? "");
   const [published, setPublished] = useState(newsletter?.published ?? false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const missingFields: string[] = [];
   if (title.trim().length < 2) missingFields.push("Title (at least 2 characters)");
@@ -31,7 +33,24 @@ export function NewsletterForm({ newsletter }: { newsletter: Newsletter | null }
   }
 
   return (
-    <form action={action} onSubmit={handleSubmit} className="max-w-xl space-y-5">
+    <form ref={formRef} action={action} onSubmit={handleSubmit} className="max-w-xl space-y-5">
+      <FormAutoSave
+        formRef={formRef}
+        draftKey="newsletter:singleton"
+        serverAction={saveNewsletter}
+        canAutoSaveServer={Boolean(title.trim() && (!published || pdfUrl.trim() || href.trim()))}
+        externalSuccess={state.ok}
+        externalError={state.error}
+        watchValue={{ title, imageUrl, pdfUrl, href, published }}
+        onRestoreDraft={(fields) => {
+          const first = (key: string) => fields[key]?.[0];
+          if (first("title") !== undefined) setTitle(first("title")!);
+          if (first("imageUrl") !== undefined) setImageUrl(first("imageUrl")!);
+          if (first("pdfUrl") !== undefined) setPdfUrl(first("pdfUrl")!);
+          if (first("href") !== undefined) setHref(first("href")!);
+          if ("published" in fields) setPublished(fields.published.length > 0);
+        }}
+      />
       <input type="hidden" name="imageUrl" value={imageUrl} />
 
       <label className="block text-sm font-medium text-ink">

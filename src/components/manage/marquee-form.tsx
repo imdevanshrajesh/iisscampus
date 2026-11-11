@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
+import { FormAutoSave } from "@/components/manage/form-auto-save";
 import { deleteMarquee, saveMarquee, type ActionState } from "@/lib/manage/actions";
 import type { CampusEvent, MarqueeMessage } from "@/lib/types";
 
@@ -17,6 +18,7 @@ export function MarqueeForm({
   const [deleteState, deleteAction, deleting] = useActionState(deleteMarquee, {} as ActionState);
   const [message, setMessage] = useState(item?.message ?? "");
   const [clientError, setClientError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const isFormValid = message.trim().length >= 2;
 
@@ -31,8 +33,22 @@ export function MarqueeForm({
 
   return (
     <div className="grid gap-4 rounded-xl border border-line p-4">
-      <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-3">
+      <form ref={formRef} action={action} onSubmit={handleSubmit} noValidate className="grid gap-3">
         {item ? <input type="hidden" name="id" value={item.id} /> : null}
+        <FormAutoSave
+          formRef={formRef}
+          draftKey={item ? `marquee:${item.id}` : "marquee:new"}
+          serverAction={saveMarquee}
+          recordId={item?.id ?? ""}
+          canAutoSaveServer={Boolean(item?.id && message.trim())}
+          externalSuccess={state?.ok}
+          externalError={state?.error}
+          compact
+          watchValue={{ message }}
+          onRestoreDraft={(fields) => {
+            if (fields.message?.[0] !== undefined) setMessage(fields.message[0]);
+          }}
+        />
         {clientError ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{clientError}</p> : null}
         <label className="grid gap-1.5 text-sm font-medium text-ink">
           <span>Message <span className="text-red-500 font-bold" title="Required">*</span></span>

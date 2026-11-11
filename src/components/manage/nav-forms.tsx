@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
+import { FormAutoSave } from "@/components/manage/form-auto-save";
 import { deleteNavGroup, deleteNavItem, saveNavGroup, saveNavItem, type ActionState } from "@/lib/manage/actions";
 import type { CampusEvent, NavGroup, NavItem } from "@/lib/types";
 
@@ -10,6 +11,7 @@ export function NavGroupForm({ group }: { group: NavGroup | null }) {
   const [state, action, pending] = useActionState(saveNavGroup, {} as ActionState);
   const [deleteState, deleteAction, deleting] = useActionState(deleteNavGroup, {} as ActionState);
   const [label, setLabel] = useState(group?.label ?? "");
+  const formRef = useRef<HTMLFormElement>(null);
 
   const isFormValid = label.trim().length >= 1;
 
@@ -22,8 +24,22 @@ export function NavGroupForm({ group }: { group: NavGroup | null }) {
 
   return (
     <div className="grid gap-4">
-      <form action={action} onSubmit={handleSubmit} className="grid gap-3">
+      <form ref={formRef} action={action} onSubmit={handleSubmit} className="grid gap-3">
         {group ? <input type="hidden" name="id" value={group.id} /> : null}
+        <FormAutoSave
+          formRef={formRef}
+          draftKey={group ? `nav-group:${group.id}` : "nav-group:new"}
+          serverAction={saveNavGroup}
+          recordId={group?.id ?? ""}
+          canAutoSaveServer={Boolean(group?.id && isFormValid)}
+          externalSuccess={state?.ok}
+          externalError={state?.error}
+          compact
+          watchValue={{ label }}
+          onRestoreDraft={(fields) => {
+            if (fields.label?.[0] !== undefined) setLabel(fields.label[0]);
+          }}
+        />
         <label className="grid gap-1.5 text-sm">
           <span>
             Label <span className="text-red-500 font-bold">*</span>
@@ -110,6 +126,7 @@ export function NavItemForm({
   const [eventId, setEventId] = useState(item?.eventId ?? "");
   const [title, setTitle] = useState(item?.title ?? "");
   const [href, setHref] = useState(item?.href ?? "");
+  const formRef = useRef<HTMLFormElement>(null);
 
   const missingFields: string[] = [];
   if (!eventId) {
@@ -127,9 +144,26 @@ export function NavItemForm({
 
   return (
     <div className="grid gap-3 rounded-lg border border-line bg-background p-3">
-      <form action={action} onSubmit={handleSubmit} className="grid gap-3">
+      <form ref={formRef} action={action} onSubmit={handleSubmit} className="grid gap-3">
         <input type="hidden" name="groupId" value={groupId} />
         {item ? <input type="hidden" name="id" value={item.id} /> : null}
+        <FormAutoSave
+          formRef={formRef}
+          draftKey={item ? `nav-item:${item.id}` : `nav-item:new:${groupId}`}
+          serverAction={saveNavItem}
+          recordId={item?.id ?? ""}
+          canAutoSaveServer={Boolean(item?.id && isFormValid)}
+          externalSuccess={state?.ok}
+          externalError={state?.error}
+          compact
+          watchValue={{ eventId, title, href }}
+          onRestoreDraft={(fields) => {
+            const first = (key: string) => fields[key]?.[0];
+            if (first("eventId") !== undefined) setEventId(first("eventId")!);
+            if (first("title") !== undefined) setTitle(first("title")!);
+            if (first("href") !== undefined) setHref(first("href")!);
+          }}
+        />
         <label className="grid gap-1.5 text-sm">
           Activity
           <select

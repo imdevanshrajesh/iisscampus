@@ -1,10 +1,12 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpRight, Bell, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
 import { saveEvent, type ActionState } from "@/lib/manage/actions";
+import { FormAutoSave } from "@/components/manage/form-auto-save";
 import { ImageUrlHint } from "@/components/manage/image-url-hint";
 import { ImageUploader } from "@/components/manage/image-uploader";
+import { MassImageUploader } from "@/components/manage/mass-image-uploader";
 import { ResourceRepeater } from "@/components/manage/resource-repeater";
 import { EventAiCopilot } from "@/components/manage/event-ai-copilot";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
@@ -107,6 +109,10 @@ export function EventForm({
   const [activities, setActivities] = useState(event?.activities ?? "");
   const [eventStatus, setEventStatus] = useState(event?.eventStatus ?? "");
   const [clientError, setClientError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [createdEventId, setCreatedEventId] = useState<string>("");
+  const activeEventId = event?.id ?? createdEventId;
+  const [pinBatchOnGallery, setPinBatchOnGallery] = useState<boolean>(false);
 
   const missingRequiredFields: string[] = [];
   if (!title.trim() || title.trim().length < 2) missingRequiredFields.push("Title (min 2 characters)");
@@ -218,8 +224,114 @@ export function EventForm({
   };
 
   return (
-    <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-5">
-      {event ? <input type="hidden" name="id" value={event.id} /> : null}
+    <form ref={formRef} action={action} onSubmit={handleSubmit} noValidate className="grid gap-5">
+      {activeEventId ? <input type="hidden" name="id" value={activeEventId} /> : null}
+      <FormAutoSave
+        formRef={formRef}
+        draftKey={activeEventId ? `event:${activeEventId}` : "event:new"}
+        serverAction={saveEvent}
+        recordId={activeEventId}
+        canAutoSaveServer={isFormValid && !locked}
+        disabled={locked}
+        externalSuccess={state?.ok}
+        externalError={state?.error}
+        className="sticky top-2 z-20 rounded-xl border border-line bg-surface/95 px-3.5 py-2 shadow-xs backdrop-blur-xs"
+        watchValue={{
+          title,
+          slug,
+          coverUrl,
+          coverAlt,
+          listing,
+          images,
+          schedule,
+          groups,
+          resources,
+          registrationEnabled,
+          pushToArigo,
+          registrationUrl,
+          registrationProvider,
+          registrationLimit,
+          registrationCount,
+          shortDescription,
+          fullDescription,
+          categoryId,
+          hostName,
+          locationName,
+          locationMapUrl,
+          eventDate,
+          endDate,
+          startTime,
+          endTime,
+          gradeFrom,
+          gradeTo,
+          feeAed,
+          capacity,
+          packingList,
+          purpose,
+          activities,
+          eventStatus,
+        }}
+        onCreatedId={(newId) => {
+          setCreatedEventId(newId);
+          if (typeof window !== "undefined" && !event?.id) {
+            window.history.replaceState(null, "", `/manage/events/${newId}/edit`);
+          }
+        }}
+        onRestoreDraft={(fields) => {
+          const first = (key: string) => fields[key]?.[0];
+          const parseArr = <T,>(raw: string | undefined): T[] | null => {
+            if (!raw) return null;
+            try {
+              const parsed = JSON.parse(raw);
+              return Array.isArray(parsed) ? (parsed as T[]) : null;
+            } catch {
+              return null;
+            }
+          };
+          if (first("title") !== undefined) setTitle(first("title")!);
+          if (first("slug") !== undefined) {
+            setSlug(first("slug")!);
+            setSlugEdited(true);
+          }
+          if (first("coverUrl") !== undefined) setCoverUrl(first("coverUrl")!);
+          if (first("coverAlt") !== undefined) {
+            setCoverAlt(first("coverAlt")!);
+            setCoverAltEdited(true);
+          }
+          if (first("listing") === "event" || first("listing") === "competition" || first("listing") === "external") {
+            setListing(first("listing") as typeof listing);
+          }
+          if (first("shortDescription") !== undefined) setShortDescription(first("shortDescription")!);
+          if (first("fullDescription") !== undefined) setFullDescription(first("fullDescription")!);
+          if (first("categoryId") !== undefined) setCategoryId(first("categoryId")!);
+          if (first("hostName") !== undefined) setHostName(first("hostName")!);
+          if (first("locationName") !== undefined) setLocationName(first("locationName")!);
+          if (first("locationMapUrl") !== undefined) setLocationMapUrl(first("locationMapUrl")!);
+          if (first("eventDate") !== undefined) setEventDate(first("eventDate")!);
+          if (first("endDate") !== undefined) setEndDate(first("endDate")!);
+          if (first("startTime") !== undefined) setStartTime(first("startTime")!);
+          if (first("endTime") !== undefined) setEndTime(first("endTime")!);
+          if (first("gradeFrom") !== undefined) setGradeFrom(first("gradeFrom")!);
+          if (first("gradeTo") !== undefined) setGradeTo(first("gradeTo")!);
+          if (first("feeAed") !== undefined) setFeeAed(first("feeAed")!);
+          if (first("capacity") !== undefined) setCapacity(first("capacity")!);
+          if (first("packingList") !== undefined) setPackingList(first("packingList")!);
+          if (first("purpose") !== undefined) setPurpose(first("purpose")!);
+          if (first("activities") !== undefined) setActivities(first("activities")!);
+          if (first("eventStatus") !== undefined) setEventStatus(first("eventStatus")!);
+          if (first("registrationUrl") !== undefined) setRegistrationUrl(first("registrationUrl")!);
+          if (first("registrationLimit") !== undefined) setRegistrationLimit(first("registrationLimit")!);
+          if (first("registrationCount") !== undefined) setRegistrationCount(first("registrationCount")!);
+          const restoredImages = parseArr<ImageDraft>(first("images"));
+          if (restoredImages) setImages(restoredImages);
+          const restoredSchedule = parseArr<ScheduleItem>(first("schedule"));
+          if (restoredSchedule) setSchedule(restoredSchedule);
+          const restoredGroups = parseArr<ParticipatingGroup>(first("groups"));
+          if (restoredGroups) setGroups(restoredGroups);
+          const restoredResources = parseArr<ContentResource>(first("resources"));
+          if (restoredResources) setResources(restoredResources);
+        }}
+      />
       <input
         type="hidden"
         name="images"
@@ -644,6 +756,36 @@ export function EventForm({
           isOpen={Boolean(openPanels.gallery)}
           onToggle={() => togglePanel("gallery")}
         >
+          <div className="grid gap-3">
+            <label className="flex items-center gap-2 text-xs text-ink select-none cursor-pointer">
+              <input
+                type="checkbox"
+                checked={pinBatchOnGallery}
+                onChange={(e) => setPinBatchOnGallery(e.target.checked)}
+                className="h-4 w-4 accent-navy"
+              />
+              <span>Pin mass-uploaded photographs to the public Gallery page</span>
+            </label>
+            <MassImageUploader
+              folder="Gallery"
+              disabled={locked}
+              title="Mass Upload Gallery Photos"
+              subtitle="Drop or select multiple photos at once — they automatically optimize, upload, and appear below."
+              onImageUploaded={({ url, alt }) => {
+                const resolvedAlt = title.trim() || alt || "Event photograph";
+                setImages((current) => [
+                  ...current,
+                  {
+                    url,
+                    alt: resolvedAlt,
+                    caption: "",
+                    attribution: "",
+                    pinned: pinBatchOnGallery,
+                  },
+                ]);
+              }}
+            />
+          </div>
           <div className="flex justify-end">
             <button
               type="button"
@@ -655,7 +797,7 @@ export function EventForm({
                 ])
               }
             >
-              <Plus size={16} aria-hidden="true" /> Add image
+              <Plus size={16} aria-hidden="true" /> Add single image
             </button>
           </div>
           {images.map((image, index) => {

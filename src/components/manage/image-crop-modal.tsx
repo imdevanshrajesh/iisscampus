@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Crop, ZoomIn, ZoomOut, Check, X, Eye, Maximize2 } from "lucide-react";
+import { Crop, ZoomIn, ZoomOut, Check, X, Eye, Maximize2, AlertCircle } from "lucide-react";
+import { computeFitDimensions, encodeCanvasWithinBudget, extensionForMime } from "@/lib/media/client-image";
 
 export type CropAspectRatio = "16:10" | "3:2" | "4:3" | "1:1" | "free";
 
@@ -32,10 +33,26 @@ export function ImageCropModal({
   onSkipCrop,
   onCancel,
 }: ImageCropModalProps) {
+  const modalKey = isOpen ? `${imageUrl}|${initialAspectRatio}` : "";
+  const [prevModalKey, setPrevModalKey] = useState<string>("");
   const [selectedRatio, setSelectedRatio] = useState<CropAspectRatio>(initialAspectRatio);
   const [zoom, setZoom] = useState<number>(1);
   const [showLivePreview, setShowLivePreview] = useState<boolean>(false);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [cropError, setCropError] = useState<string | null>(null);
   const [imageNaturalSize, setImageNaturalSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+
+  if (modalKey !== prevModalKey) {
+    setPrevModalKey(modalKey);
+    if (isOpen) {
+      setSelectedRatio(initialAspectRatio);
+      setZoom(1);
+      setShowLivePreview(false);
+      setCropError(null);
+      setIsProcessing(false);
+      setImageNaturalSize({ width: 0, height: 0 });
+    }
+  }
 
   // Crop box rectangle in percentage of image (0 to 100)
   const [cropRect, setCropRect] = useState<{ x: number; y: number; width: number; height: number }>({
@@ -98,12 +115,6 @@ export function ImageCropModal({
     },
     [],
   );
-
-  useEffect(() => {
-    if (imageNaturalSize.width && imageNaturalSize.height) {
-      applyAspectRatio(selectedRatio, imageNaturalSize.width, imageNaturalSize.height);
-    }
-  }, [selectedRatio, imageNaturalSize, applyAspectRatio]);
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
@@ -194,66 +205,59 @@ export function ImageCropModal({
   }, [cropRect]);
 
   // Execute Canvas Crop
-  const handleCropAndSave = () => {
-    if (!imageRef.current) return;
+  const handleCropAndSave = async () => {
     const img = imageRef.current;
-
-    const canvas = document.createElement("canvas");
-    const naturalWidth = img.naturalWidth;
-    const naturalHeight = img.naturalHeight;
-
-    const sourceX = (cropRect.x / 100) * naturalWidth;
-    const sourceY = (cropRect.y / 100) * naturalHeight;
-    const sourceWidth = (cropRect.width / 100) * naturalWidth;
-    const sourceHeight = (cropRect.height / 100) * naturalHeight;
-
-    // Limit maximum canvas dimensions for high quality without memory lag
-    const maxOutputDim = 1920;
-    let targetWidth = sourceWidth;
-    let targetHeight = sourceHeight;
-
-    if (targetWidth > maxOutputDim || targetHeight > maxOutputDim) {
-      if (targetWidth > targetHeight) {
-        targetHeight = Math.round((maxOutputDim * targetHeight) / targetWidth);
-        targetWidth = maxOutputDim;
-      } else {
-        targetWidth = Math.round((maxOutputDim * targetWidth) / targetHeight);
-        targetHeight = maxOutputDim;
-      }
+    if (!img || !img.naturalWidth || !img.naturalHeight) {
+      setCropError("The image is still loading. Wait a moment or choose Upload Full Image.");
+      return;
     }
 
-    canvas.width = Math.max(10, Math.round(targetWidth));
-    canvas.height = Math.max(10, Math.round(targetHeight));
+    setCropError(null);
+    setIsProcessing(true);
+    try {
+      const naturalWidth = img.naturalWidth;
+      const naturalHeight = img.naturalHeight;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+      const sourceX = Math.max(0, (cropRect.x / 100) * naturalWidth);
+      const sourceY = Math.max(0, (cropRect.y / 100) * naturalHeight);
+      const sourceWidth = Math.max(1, (cropRect.width / 100) * naturalWidth);
+      const sourceHeight = Math.max(1, (cropRect.height / 100) * naturalHeight);
 
-    ctx.imageSmoothingQuality = "high";
-    ctx.imageSmoothingEnabled = true;
+      const { width, height } = computeFitDimensions(sourceWidth, sourceHeight, 1920);
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
 
-    ctx.drawImage(
-      img,
-      sourceX,
-      sourceY,
-      sourceWidth,
-      sourceHeight,
-      0,
-      0,
-      canvas.width,
-      canvas.height,
-    );
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        setCropError("Unable to prepare image canvas. Try Upload Full Image instead.");
+        return;
+      }
 
-    // Prefer modern WebP format
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return;
-        const baseName = fileName.replace(/\.[^/.]+$/, "");
-        const croppedName = `${baseName}-framed.webp`;
-        onConfirm(blob, croppedName);
-      },
-      "image/webp",
-      0.85,
-    );
+      ctx.imageSmoothingQuality = "high";
+      ctx.imageSmoothingEnabled = true;
+
+      ctx.drawImage(
+        img,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
+
+      const { blob, mimeType } = await encodeCanvasWithinBudget(canvas);
+      const baseName = fileName.replace(/\.[^/.]+$/, "");
+      const croppedName = `${baseName}-framed${extensionForMime(mimeType)}`;
+      onConfirm(blob, croppedName);
+    } catch (error) {
+      setCropError(error instanceof Error ? error.message : "Could not crop this image. Try Upload Full Image.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -292,7 +296,12 @@ export function ImageCropModal({
               <button
                 key={ratio.id}
                 type="button"
-                onClick={() => setSelectedRatio(ratio.id)}
+                onClick={() => {
+                  setSelectedRatio(ratio.id);
+                  if (imageNaturalSize.width && imageNaturalSize.height) {
+                    applyAspectRatio(ratio.id, imageNaturalSize.width, imageNaturalSize.height);
+                  }
+                }}
                 title={ratio.hint}
                 className={`rounded-lg px-2.5 py-1 font-medium transition ${
                   selectedRatio === ratio.id
@@ -440,12 +449,21 @@ export function ImageCropModal({
           )}
         </div>
 
+        {/* Error banner */}
+        {cropError ? (
+          <div className="flex items-center gap-2 border-t border-red-200 bg-red-50 px-5 py-2.5 text-xs text-red-700">
+            <AlertCircle size={14} className="shrink-0 text-red-600" />
+            <span className="flex-1">{cropError}</span>
+          </div>
+        ) : null}
+
         {/* Footer Actions */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3.5 bg-wash/60">
           <button
             type="button"
+            disabled={isProcessing}
             onClick={onSkipCrop}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3.5 py-2 text-xs font-medium text-ink/80 hover:bg-white hover:text-ink transition"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3.5 py-2 text-xs font-medium text-ink/80 hover:bg-white hover:text-ink transition disabled:opacity-50"
           >
             <Maximize2 size={14} />
             Upload Full Image (No Crop)
@@ -454,18 +472,20 @@ export function ImageCropModal({
           <div className="flex items-center gap-2">
             <button
               type="button"
+              disabled={isProcessing}
               onClick={onCancel}
-              className="rounded-xl px-4 py-2 text-xs font-medium text-muted hover:text-ink transition"
+              className="rounded-xl px-4 py-2 text-xs font-medium text-muted hover:text-ink transition disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="button"
+              disabled={isProcessing}
               onClick={handleCropAndSave}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-navy px-4 py-2 text-xs font-medium text-white shadow-sm hover:opacity-95 transition"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-navy px-4 py-2 text-xs font-medium text-white shadow-sm hover:opacity-95 transition disabled:opacity-50"
             >
               <Check size={14} />
-              Save Framing & Upload
+              {isProcessing ? "Preparing & compressing..." : "Save Framing & Upload"}
             </button>
           </div>
         </div>

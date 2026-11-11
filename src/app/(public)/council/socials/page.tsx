@@ -33,7 +33,7 @@ export default async function CouncilSocialsPage() {
           href={social.scixcomInstagramUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="group relative flex items-center justify-between overflow-hidden rounded-2xl border border-white/10 bg-surface/80 p-5 shadow-lg backdrop-blur-xs transition duration-300 hover:-translate-y-1 hover:border-accent/60 hover:bg-wash"
+          className="group relative flex items-center justify-between overflow-hidden rounded-2xl border border-white/12 bg-[#0d3560]/90 p-5 shadow-lg transition duration-300 hover:-translate-y-1 hover:border-accent/60 hover:bg-[#113f70]"
         >
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white shadow-md transition group-hover:scale-105">
@@ -63,7 +63,7 @@ export default async function CouncilSocialsPage() {
           href={social.instagramUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="group relative flex items-center justify-between overflow-hidden rounded-2xl border border-white/10 bg-surface/80 p-5 shadow-lg backdrop-blur-xs transition duration-300 hover:-translate-y-1 hover:border-accent/60 hover:bg-wash"
+          className="group relative flex items-center justify-between overflow-hidden rounded-2xl border border-white/12 bg-[#0d3560]/90 p-5 shadow-lg transition duration-300 hover:-translate-y-1 hover:border-accent/60 hover:bg-[#113f70]"
         >
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white shadow-md transition group-hover:scale-105">
@@ -106,7 +106,7 @@ export default async function CouncilSocialsPage() {
             ))}
           </div>
         ) : (
-          <div className="mt-8 rounded-2xl border border-white/10 bg-surface/60 p-12 text-center shadow-lg backdrop-blur-xs">
+          <div className="mt-8 rounded-2xl border border-white/12 bg-[#0d3560]/80 p-12 text-center shadow-lg">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-wash text-muted">
               <InstagramMark size={28} />
             </div>

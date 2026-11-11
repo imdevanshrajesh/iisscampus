@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
+import { FormAutoSave } from "@/components/manage/form-auto-save";
 import { ImageUploader } from "@/components/manage/image-uploader";
 import { deleteWellnessItem, saveWellnessItem, type ActionState } from "@/lib/manage/actions";
 import { IMAGE_URL_EXAMPLE } from "@/lib/media/guide";
@@ -42,6 +43,7 @@ export function WellnessItemForm({
 
   const [title, setTitle] = useState(item?.title ?? "");
   const [categoryId, setCategoryId] = useState(defaultCategoryId);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const image = classifyMediaUrl(imageUrl, mediaHosts);
 
@@ -117,8 +119,33 @@ export function WellnessItemForm({
       ) : null}
 
       <div className={`p-4 sm:p-5 ${item && !isOpen ? "hidden" : "block"}`}>
-        <form action={action} onSubmit={handleSubmit} className="grid gap-3.5">
+        <form ref={formRef} action={action} onSubmit={handleSubmit} className="grid gap-3.5">
           {item ? <input type="hidden" name="id" value={item.id} /> : null}
+          <FormAutoSave
+            formRef={formRef}
+            draftKey={item ? `wellness-item:${item.id}` : "wellness-item:new"}
+            serverAction={saveWellnessItem}
+            recordId={item?.id ?? ""}
+            canAutoSaveServer={Boolean(item?.id && title.trim() && categoryId)}
+            externalSuccess={state?.ok}
+            externalError={state?.error}
+            compact
+            watchValue={{ title, categoryId, imageUrl, pdfUrl, orientation }}
+            onRestoreDraft={(fields) => {
+              const first = (key: string) => fields[key]?.[0];
+              if (first("title") !== undefined) setTitle(first("title")!);
+              if (first("categoryId") !== undefined) setCategoryId(first("categoryId")!);
+              if (first("imageUrl") !== undefined) setImageUrl(first("imageUrl")!);
+              if (first("pdfUrl") !== undefined) setPdfUrl(first("pdfUrl")!);
+              if (
+                first("imageOrientation") === "portrait" ||
+                first("imageOrientation") === "landscape" ||
+                first("imageOrientation") === "auto"
+              ) {
+                setOrientation(first("imageOrientation") as WellnessItem["imageOrientation"]);
+              }
+            }}
+          />
           <label className="grid gap-1.5 text-sm">
             <span className="font-medium">
               Category <span className="text-red-500 font-bold">*</span>

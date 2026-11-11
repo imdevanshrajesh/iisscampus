@@ -46,7 +46,7 @@ export function SocialPostCard({ post }: { post: SocialPost }) {
   }
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface/80 shadow-md backdrop-blur-xs transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-accent/50">
+    <article className="group flex flex-col overflow-hidden rounded-2xl border border-white/12 bg-[#0d3560]/90 shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-accent/50">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/10 p-4 bg-wash/40">
         <div className="flex items-center gap-3">
@@ -84,7 +84,7 @@ export function SocialPostCard({ post }: { post: SocialPost }) {
             src={post.imageUrl}
             alt={post.caption || "Instagram photograph"}
             fill
-            sizes="(max-width: 768px) 100vw, 400px"
+            sizes="(max-width: 768px) 100vw, 480px"
             className="object-cover transition duration-500 group-hover:scale-105"
           />
         ) : embedUrl ? (

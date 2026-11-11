@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import path from "node:path";
 import fs from "node:fs/promises";
-import { getCampusSession } from "@/lib/auth/session";
+import { getCampusSession, sessionActionError } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/config";
 import {
   isRustFSConfigured,
   uploadObjectToRustFS,
   createPresignedUploadUrl,
+  describeS3Failure,
   ALLOWED_MIME_TYPES,
   RUSTFS_BUCKET,
   RUSTFS_ENDPOINT,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/media/rustfs";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
 
@@ -25,8 +27,9 @@ async function authorizeRequest() {
     return { ok: true, role: "administrator" as const };
   }
   const session = await getCampusSession();
-  if (session.status !== "ok") {
-    return { ok: false, error: "Sign in is required to upload files." };
+  const denied = sessionActionError(session);
+  if (denied || session.status !== "ok") {
+    return { ok: false, error: denied || "Sign in is required to upload files." };
   }
   return { ok: true, role: session.actor.role };
 }
@@ -80,12 +83,18 @@ export async function POST(request: Request) {
       }
 
       if (isRustFSConfigured()) {
-        const presigned = await createPresignedUploadUrl({
-          filename,
-          mimeType,
-          folder: typeof folder === "string" ? folder : "General",
-        });
-        return NextResponse.json(presigned);
+        try {
+          const presigned = await createPresignedUploadUrl({
+            filename,
+            mimeType,
+            folder: typeof folder === "string" ? folder : "General",
+          });
+          return NextResponse.json(presigned);
+        } catch (presignError) {
+          const message = await describeS3Failure(presignError);
+          console.error("Presigned URL creation failed:", presignError);
+          return NextResponse.json({ error: message }, { status: 502 });
+        }
       }
 
       // If RustFS credentials aren't set yet, return local upload URL
@@ -147,6 +156,16 @@ export async function POST(request: Request) {
       }
 
       // Fallback: Store locally in public/uploads for local development
+      if (process.env.VERCEL) {
+        return NextResponse.json(
+          {
+            error:
+              "RustFS storage credentials (RUSTFS_ACCESS_KEY and RUSTFS_SECRET_KEY) are not configured on the deployment.",
+          },
+          { status: 503 },
+        );
+      }
+
       const cleanFolder = sanitizeFolderName(folder);
       const cleanFilename = sanitizeFileName(filename);
       const uploadDir = path.join(process.cwd(), "public", "uploads", cleanFolder);
@@ -167,7 +186,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("Upload error:", error);
-    const message = error instanceof Error ? error.message : "File upload failed.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const message = await describeS3Failure(error);
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 }

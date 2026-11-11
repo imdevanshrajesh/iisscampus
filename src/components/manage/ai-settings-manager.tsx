@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Key,
   RefreshCw,
@@ -39,7 +39,19 @@ export function AiSettingsManager({
   const [modelsFetched, setModelsFetched] = useState(false);
 
   const [saving, setSaving] = useState(false);
+  const [autoSaveNote, setAutoSaveNote] = useState<string>("");
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const readyRef = useRef(false);
+  const dirtyRef = useRef(false);
+  const lastSavedKeyRef = useRef(
+    JSON.stringify({
+      provider: initialProvider,
+      apiKey: initialApiKey.trim(),
+      model: initialModel.trim(),
+      baseUrl: (initialBaseUrl || PROVIDERS[initialProvider]?.defaultBaseUrl || "").trim(),
+    }),
+  );
 
   // Sync provider change with default base URL and default model if not custom
   const handleProviderChange = (newProvider: AiProvider) => {
@@ -136,6 +148,21 @@ export function AiSettingsManager({
       const data = await res.json();
 
       if (res.ok && data.ok) {
+        lastSavedKeyRef.current = JSON.stringify({
+          provider,
+          apiKey: apiKey.trim(),
+          model: model.trim(),
+          baseUrl: baseUrl.trim(),
+        });
+        dirtyRef.current = false;
+        try {
+          window.localStorage.removeItem("campus:manage-draft:v1:ai-settings");
+        } catch {
+          // ignore storage errors
+        }
+        setAutoSaveNote(
+          `Auto-saved at ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+        );
         setStatusMessage({
           type: "success",
           text: "AI configuration saved to database successfully. It will persist across all sessions.",
@@ -156,6 +183,103 @@ export function AiSettingsManager({
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    const initTimer = window.setTimeout(() => {
+      try {
+        const raw = window.localStorage.getItem("campus:manage-draft:v1:ai-settings");
+        if (raw) {
+          const parsed = JSON.parse(raw) as {
+            provider?: AiProvider;
+            model?: string;
+            baseUrl?: string;
+          };
+          if (parsed.provider && parsed.provider in PROVIDERS && !initialApiKey) {
+            setProvider(parsed.provider);
+          }
+          if (parsed.model && parsed.model !== initialModel) setModel(parsed.model);
+          if (parsed.baseUrl && parsed.baseUrl !== initialBaseUrl) setBaseUrl(parsed.baseUrl);
+        }
+      } catch {
+        // ignore invalid cached draft
+      }
+      readyRef.current = true;
+    }, 80);
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (dirtyRef.current) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.clearTimeout(initTimer);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [initialApiKey, initialBaseUrl, initialModel]);
+
+  useEffect(() => {
+    if (!readyRef.current) return;
+    const signature = JSON.stringify({
+      provider,
+      apiKey: apiKey.trim(),
+      model: model.trim(),
+      baseUrl: baseUrl.trim(),
+    });
+    if (signature === lastSavedKeyRef.current) {
+      dirtyRef.current = false;
+      return;
+    }
+
+    dirtyRef.current = true;
+    try {
+      window.localStorage.setItem(
+        "campus:manage-draft:v1:ai-settings",
+        JSON.stringify({ provider, model: model.trim(), baseUrl: baseUrl.trim() }),
+      );
+    } catch {
+      // ignore storage quota errors
+    }
+
+    if (!model.trim()) return;
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await fetch("/api/manage-ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "save-settings",
+            provider,
+            apiKey: apiKey.trim() || null,
+            model: model.trim(),
+            baseUrl: baseUrl.trim() || null,
+          }),
+        });
+        const data = await res.json().catch(() => null);
+        if (res.ok && data?.ok) {
+          lastSavedKeyRef.current = signature;
+          dirtyRef.current = false;
+          try {
+            window.localStorage.removeItem("campus:manage-draft:v1:ai-settings");
+          } catch {
+            // ignore storage errors
+          }
+          setAutoSaveNote(
+            `Auto-saved at ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`,
+          );
+          if (onSaved) {
+            onSaved({ provider, apiKey, model, baseUrl });
+          }
+        }
+      } catch {
+        // leave dirtyRef true so user can save manually
+      }
+    }, 1500);
+
+    return () => window.clearTimeout(timer);
+  }, [apiKey, baseUrl, model, onSaved, provider]);
 
   return (
     <div className="rounded-2xl border border-gray-200/90 bg-white p-5 shadow-xs space-y-5">
@@ -320,10 +444,15 @@ export function AiSettingsManager({
         </div>
       )}
 
-      <div className="flex items-center justify-between border-t border-gray-100 pt-4">
-        <p className="text-xs text-muted">
-          Settings persist in the database and power both the manage copilot and public chat.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-4">
+        <div className="space-y-0.5">
+          <p className="text-xs text-muted">
+            Settings persist in the database and power both the manage copilot and public chat.
+          </p>
+          {autoSaveNote ? (
+            <p className="text-[11px] font-medium text-emerald-700">{autoSaveNote}</p>
+          ) : null}
+        </div>
         <button
           type="button"
           onClick={handleSaveSettings}

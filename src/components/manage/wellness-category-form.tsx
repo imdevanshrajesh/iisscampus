@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
+import { FormAutoSave } from "@/components/manage/form-auto-save";
 import { deleteWellnessCategory, saveWellnessCategory, type ActionState } from "@/lib/manage/actions";
 import type { WellnessCategory } from "@/lib/types";
 import { ChevronDown, Layers, Trash2 } from "lucide-react";
@@ -12,6 +13,7 @@ export function WellnessCategoryForm({ category }: { category: WellnessCategory 
   const [deleteState, deleteAction, deleting] = useActionState(deleteWellnessCategory, {} as ActionState);
   const [isOpen, setIsOpen] = useState(!category); // Collapsed by default for existing categories
   const [name, setName] = useState(category?.name ?? "");
+  const formRef = useRef<HTMLFormElement>(null);
 
   const isFormValid = name.trim().length >= 2;
 
@@ -61,8 +63,23 @@ export function WellnessCategoryForm({ category }: { category: WellnessCategory 
       ) : null}
 
       <div className={`p-4 ${category && !isOpen ? "hidden" : "block"}`}>
-        <form action={action} onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-[1fr_6rem_auto] sm:items-end">
+        <form ref={formRef} action={action} onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-[1fr_6rem_auto] sm:items-end">
           {category ? <input type="hidden" name="id" value={category.id} /> : null}
+          <FormAutoSave
+            formRef={formRef}
+            draftKey={category ? `wellness-category:${category.id}` : "wellness-category:new"}
+            serverAction={saveWellnessCategory}
+            recordId={category?.id ?? ""}
+            canAutoSaveServer={Boolean(category?.id && name.trim())}
+            externalSuccess={state?.ok}
+            externalError={state?.error}
+            compact
+            className="sm:col-span-3"
+            watchValue={{ name }}
+            onRestoreDraft={(fields) => {
+              if (fields.name?.[0] !== undefined) setName(fields.name[0]);
+            }}
+          />
           <label className="grid gap-1.5 text-sm">
             <span>
               Category name <span className="text-red-500 font-bold">*</span>

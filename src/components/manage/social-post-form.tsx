@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { deleteSocialPost, saveSocialPost, type ActionState } from "@/lib/manage/actions";
+import { FormAutoSave } from "@/components/manage/form-auto-save";
 import type { SocialPost } from "@/lib/types";
 import { ChevronDown, ExternalLink, Pin, Trash2 } from "lucide-react";
 import { InstagramMark } from "@/components/brand/instagram-mark";
@@ -16,6 +17,7 @@ export function SocialPostForm({ post }: { post: SocialPost | null }) {
   const [imageUrl, setImageUrl] = useState(post?.imageUrl ?? "");
   const [clientError, setClientError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(!post); // Collapsed by default for existing posts
+  const formRef = useRef<HTMLFormElement>(null);
 
   const isFormValid = url.trim().length >= 5 && (url.includes("instagram.com") || url.includes("instagr.am"));
 
@@ -85,8 +87,24 @@ export function SocialPostForm({ post }: { post: SocialPost | null }) {
 
       {/* Expanded Form Content */}
       <div className={`p-4 sm:p-5 ${post && !isOpen ? "hidden" : "block"}`}>
-        <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-3.5">
+        <form ref={formRef} action={action} onSubmit={handleSubmit} noValidate className="grid gap-3.5">
           {post ? <input type="hidden" name="id" value={post.id} /> : null}
+          <FormAutoSave
+            formRef={formRef}
+            draftKey={post ? `social-post:${post.id}` : "social-post:new"}
+            serverAction={saveSocialPost}
+            recordId={post?.id ?? ""}
+            canAutoSaveServer={Boolean(post?.id && url.trim())}
+            externalSuccess={state?.ok}
+            externalError={state?.error}
+            compact
+            watchValue={{ url, imageUrl }}
+            onRestoreDraft={(fields) => {
+              const first = (key: string) => fields[key]?.[0];
+              if (first("instagramUrl") !== undefined) setUrl(first("instagramUrl")!);
+              if (first("imageUrl") !== undefined) setImageUrl(first("imageUrl")!);
+            }}
+          />
 
           {clientError ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{clientError}</p> : null}
 

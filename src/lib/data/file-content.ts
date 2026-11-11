@@ -12,6 +12,8 @@ import type {
   CampusEvent,
   Category,
   CouncilMember,
+  CouncilPhoto,
+  CouncilPost,
   CouncilYear,
   Faq,
   HeadTier,
@@ -29,7 +31,15 @@ import type {
   WellnessPageSettings,
 } from "@/lib/types";
 import { suggestionWithinLimits, type StoredSuggestion } from "@/lib/suggestions";
-import type { AchievementInput, CouncilInput, EventInput } from "@/lib/validation/content";
+import type {
+  AchievementInput,
+  CouncilInput,
+  CouncilMemberInput,
+  CouncilPhotoInput,
+  CouncilPostInput,
+  CouncilYearMetaInput,
+  EventInput,
+} from "@/lib/validation/content";
 
 type Store = {
   events: CampusEvent[];
@@ -583,6 +593,43 @@ export function rememberEventRegistrationUrl(id: string, registrationUrl: string
   return writeContentStore(store);
 }
 
+export function appendEventGalleryImageInStore(
+  actor: Actor,
+  input: {
+    eventId: string;
+    url: string;
+    alt: string;
+    caption?: string | null;
+    attribution?: string | null;
+    pinned?: boolean;
+  },
+) {
+  const store = readContentStore();
+  const event = store.events.find((item) => item.id === input.eventId);
+  if (!event) return { error: "That event could not be found." };
+  if (!canEditPublication(actor, event.publicationStatus)) {
+    return { error: "You do not have permission to edit images on that event." };
+  }
+
+  const maxSortOrder = event.images.reduce((max, item) => Math.max(max, item.sortOrder ?? 0), -1);
+  const image = {
+    id: crypto.randomUUID(),
+    url: input.url,
+    alt: input.alt.trim() || event.title || "Event photograph",
+    caption: input.caption?.trim() || null,
+    attribution: input.attribution?.trim() || null,
+    pinned: Boolean(input.pinned),
+    sortOrder: maxSortOrder + 1,
+  };
+
+  event.images = [...event.images, image];
+  event.updatedAt = new Date().toISOString();
+  if (!writeContentStore(store)) {
+    return { error: "The image could not be saved to the event gallery." };
+  }
+  return { ok: true as const, image, slug: event.slug };
+}
+
 export function saveAchievementToStore(actor: Actor, input: AchievementInput, intent: string, id: string) {
   const store = readContentStore();
   const now = new Date().toISOString();
@@ -635,7 +682,7 @@ export function saveAchievementToStore(actor: Actor, input: AchievementInput, in
     ? store.achievements.map((item) => (item.id === existing.id ? record : item))
     : [record, ...store.achievements];
   if (!writeContentStore(store)) return { error: "The achievement could not be saved." };
-  return { ok: true };
+  return { ok: true, id: record.id };
 }
 
 function nextPublication(
@@ -742,6 +789,281 @@ export function saveCouncilToStore(actor: Actor, input: CouncilInput, intent: st
     : [record, ...store.councilYears];
   if (!writeContentStore(store)) return { error: "The council year could not be saved." };
   return { id: record.id, slug: record.slug, status: record.publicationStatus };
+}
+
+function getEditableCouncilYearFromStore(
+  actor: Actor,
+  store: Store,
+  yearId: string,
+): { error: string } | { existing: CouncilYear } {
+  const existing = store.councilYears.find((year) => year.id === yearId);
+  if (!existing) return { error: "That council year could not be found." };
+  if (!canEditPublication(actor, existing.publicationStatus)) {
+    return { error: "You do not have permission to do that." };
+  }
+  return { existing };
+}
+
+export function saveCouncilYearMetaInStore(
+  actor: Actor,
+  meta: CouncilYearMetaInput,
+  id?: string,
+): { error: string } | { id: string; slug: string; status: PublicationStatus } {
+  const store = readContentStore();
+  const now = new Date().toISOString();
+  const existing = id ? store.councilYears.find((year) => year.id === id) : undefined;
+  if (id && !existing) return { error: "That council year could not be found." };
+
+  if (existing && !canEditPublication(actor, existing.publicationStatus)) {
+    return { error: "You do not have permission to do that." };
+  }
+  if (!existing && !canEditPublication(actor, "draft")) {
+    return { error: "You do not have permission to do that." };
+  }
+
+  if (store.councilYears.some((year) => year.slug === meta.slug && year.id !== id)) {
+    return { error: "That address is already in use." };
+  }
+
+  const record: CouncilYear = {
+    id: existing?.id ?? crypto.randomUUID(),
+    label: meta.label,
+    slug: meta.slug,
+    kind: meta.kind,
+    summary: meta.summary,
+    juniorHeading: meta.juniorHeading?.trim() || "Junior Student Council",
+    publicationStatus: existing?.publicationStatus ?? "draft",
+    sortOrder: meta.sortOrder,
+    isSample: existing?.isSample ?? false,
+    members: existing?.members ?? [],
+    photos: existing?.photos ?? [],
+    posts: existing?.posts ?? [],
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+    publishedAt: existing?.publishedAt ?? null,
+  };
+
+  store.councilYears = existing
+    ? store.councilYears.map((year) => (year.id === existing.id ? record : year))
+    : [record, ...store.councilYears];
+  if (!writeContentStore(store)) return { error: "The council year could not be saved." };
+  return { id: record.id, slug: record.slug, status: record.publicationStatus };
+}
+
+export function saveCouncilMemberInStore(
+  actor: Actor,
+  yearId: string,
+  member: CouncilMemberInput,
+  sortOrder: number,
+): { error: string } | { id: string; slug: string; yearSlug: string } {
+  const store = readContentStore();
+  const found = getEditableCouncilYearFromStore(actor, store, yearId);
+  if ("error" in found) return found;
+
+  const targetId = member.id ?? crypto.randomUUID();
+  const existingIndex = found.existing.members.findIndex((item) => item.id === targetId);
+  const nextMembers: CouncilMember[] = found.existing.members.slice();
+  const nextEntry: CouncilMember = {
+    id: targetId,
+    role: member.role,
+    name: member.name,
+    imageUrl: member.imageUrl,
+    imageAlt: member.imageAlt,
+    quote: member.quote,
+    about: member.about,
+    work: member.work,
+    slug: existingIndex >= 0 ? nextMembers[existingIndex].slug : "",
+    board: member.board === "junior" ? "junior" : "main",
+    sortOrder,
+  };
+
+  if (existingIndex >= 0) {
+    nextMembers[existingIndex] = nextEntry;
+  } else {
+    nextMembers.push(nextEntry);
+  }
+  nextMembers.sort((a, b) => a.sortOrder - b.sortOrder);
+  const normalized = normalizeCouncilMembers(nextMembers).map((item, idx) => ({
+    ...item,
+    sortOrder: idx,
+  }));
+  const savedMember = normalized.find((item) => item.id === targetId);
+
+  const updatedYear: CouncilYear = {
+    ...found.existing,
+    members: normalized,
+    updatedAt: new Date().toISOString(),
+  };
+  store.councilYears = store.councilYears.map((y) => (y.id === yearId ? updatedYear : y));
+  if (!writeContentStore(store)) return { error: "The council post could not be saved." };
+  return {
+    id: targetId,
+    slug: savedMember?.slug ?? "",
+    yearSlug: updatedYear.slug,
+  };
+}
+
+export function deleteCouncilMemberInStore(
+  actor: Actor,
+  yearId: string,
+  memberId: string,
+): { error: string } | { ok: true; yearSlug: string } {
+  const store = readContentStore();
+  const found = getEditableCouncilYearFromStore(actor, store, yearId);
+  if ("error" in found) return found;
+
+  const updatedYear: CouncilYear = {
+    ...found.existing,
+    members: found.existing.members
+      .filter((item) => item.id !== memberId)
+      .map((item, idx) => ({ ...item, sortOrder: idx })),
+    updatedAt: new Date().toISOString(),
+  };
+  store.councilYears = store.councilYears.map((y) => (y.id === yearId ? updatedYear : y));
+  if (!writeContentStore(store)) return { error: "The council post could not be removed." };
+  return { ok: true, yearSlug: updatedYear.slug };
+}
+
+export function saveCouncilPhotoInStore(
+  actor: Actor,
+  yearId: string,
+  photo: CouncilPhotoInput,
+  sortOrder: number,
+): { error: string } | { id: string; yearSlug: string } {
+  const store = readContentStore();
+  const found = getEditableCouncilYearFromStore(actor, store, yearId);
+  if ("error" in found) return found;
+
+  const targetId = photo.id ?? crypto.randomUUID();
+  const nextPhotos: CouncilPhoto[] = found.existing.photos.slice();
+  const existingIndex = nextPhotos.findIndex((item) => item.id === targetId);
+  const entry: CouncilPhoto = {
+    id: targetId,
+    url: photo.url,
+    alt: photo.alt,
+    caption: photo.caption,
+    sortOrder,
+  };
+  if (existingIndex >= 0) nextPhotos[existingIndex] = entry;
+  else nextPhotos.push(entry);
+  nextPhotos.sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const updatedYear: CouncilYear = {
+    ...found.existing,
+    photos: nextPhotos.map((item, idx) => ({ ...item, sortOrder: idx })),
+    updatedAt: new Date().toISOString(),
+  };
+  store.councilYears = store.councilYears.map((y) => (y.id === yearId ? updatedYear : y));
+  if (!writeContentStore(store)) return { error: "The photograph could not be saved." };
+  return { id: targetId, yearSlug: updatedYear.slug };
+}
+
+export function deleteCouncilPhotoInStore(
+  actor: Actor,
+  yearId: string,
+  photoId: string,
+): { error: string } | { ok: true; yearSlug: string } {
+  const store = readContentStore();
+  const found = getEditableCouncilYearFromStore(actor, store, yearId);
+  if ("error" in found) return found;
+
+  const updatedYear: CouncilYear = {
+    ...found.existing,
+    photos: found.existing.photos
+      .filter((item) => item.id !== photoId)
+      .map((item, idx) => ({ ...item, sortOrder: idx })),
+    updatedAt: new Date().toISOString(),
+  };
+  store.councilYears = store.councilYears.map((y) => (y.id === yearId ? updatedYear : y));
+  if (!writeContentStore(store)) return { error: "The photograph could not be removed." };
+  return { ok: true, yearSlug: updatedYear.slug };
+}
+
+export function saveCouncilPostInStore(
+  actor: Actor,
+  yearId: string,
+  post: CouncilPostInput,
+  sortOrder: number,
+): { error: string } | { id: string; yearSlug: string } {
+  const store = readContentStore();
+  const found = getEditableCouncilYearFromStore(actor, store, yearId);
+  if ("error" in found) return found;
+
+  const targetId = post.id ?? crypto.randomUUID();
+  const nextPosts: CouncilPost[] = found.existing.posts.slice();
+  const existingIndex = nextPosts.findIndex((item) => item.id === targetId);
+  const entry: CouncilPost = {
+    id: targetId,
+    title: post.title,
+    body: post.body,
+    publishedOn: post.publishedOn,
+    imageUrl: post.imageUrl,
+    imageAlt: post.imageAlt,
+    sortOrder,
+  };
+  if (existingIndex >= 0) nextPosts[existingIndex] = entry;
+  else nextPosts.push(entry);
+  nextPosts.sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const updatedYear: CouncilYear = {
+    ...found.existing,
+    posts: nextPosts.map((item, idx) => ({ ...item, sortOrder: idx })),
+    updatedAt: new Date().toISOString(),
+  };
+  store.councilYears = store.councilYears.map((y) => (y.id === yearId ? updatedYear : y));
+  if (!writeContentStore(store)) return { error: "The post could not be saved." };
+  return { id: targetId, yearSlug: updatedYear.slug };
+}
+
+export function deleteCouncilPostInStore(
+  actor: Actor,
+  yearId: string,
+  postId: string,
+): { error: string } | { ok: true; yearSlug: string } {
+  const store = readContentStore();
+  const found = getEditableCouncilYearFromStore(actor, store, yearId);
+  if ("error" in found) return found;
+
+  const updatedYear: CouncilYear = {
+    ...found.existing,
+    posts: found.existing.posts
+      .filter((item) => item.id !== postId)
+      .map((item, idx) => ({ ...item, sortOrder: idx })),
+    updatedAt: new Date().toISOString(),
+  };
+  store.councilYears = store.councilYears.map((y) => (y.id === yearId ? updatedYear : y));
+  if (!writeContentStore(store)) return { error: "The post could not be removed." };
+  return { ok: true, yearSlug: updatedYear.slug };
+}
+
+export function reorderCouncilChildrenInStore(
+  actor: Actor,
+  yearId: string,
+  order: { memberIds?: string[]; photoIds?: string[]; postIds?: string[] },
+): { error: string } | { ok: true; yearSlug: string } {
+  const store = readContentStore();
+  const found = getEditableCouncilYearFromStore(actor, store, yearId);
+  if ("error" in found) return found;
+
+  const applyOrder = <T extends { id: string; sortOrder: number }>(items: T[], orderedIds?: string[]) => {
+    if (!orderedIds?.length) return items;
+    const rank = new Map(orderedIds.map((id, idx) => [id, idx]));
+    return items
+      .slice()
+      .sort((a, b) => (rank.get(a.id) ?? 9999) - (rank.get(b.id) ?? 9999) || a.sortOrder - b.sortOrder)
+      .map((item, idx) => ({ ...item, sortOrder: idx }));
+  };
+
+  const updatedYear: CouncilYear = {
+    ...found.existing,
+    members: applyOrder(found.existing.members, order.memberIds),
+    photos: applyOrder(found.existing.photos, order.photoIds),
+    posts: applyOrder(found.existing.posts, order.postIds),
+    updatedAt: new Date().toISOString(),
+  };
+  store.councilYears = store.councilYears.map((y) => (y.id === yearId ? updatedYear : y));
+  if (!writeContentStore(store)) return { error: "The order could not be saved." };
+  return { ok: true, yearSlug: updatedYear.slug };
 }
 
 export function deleteFromStore(actor: Actor, kind: "events" | "achievements" | "council", id: string) {

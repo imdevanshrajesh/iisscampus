@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { FormAutoSave } from "@/components/manage/form-auto-save";
 import { deleteFaq, saveFaq, type ActionState } from "@/lib/manage/actions";
 import type { Faq } from "@/lib/types";
 
@@ -25,6 +26,7 @@ export function FaqForm({
   const [question, setQuestion] = useState(faq?.question ?? "");
   const [answer, setAnswer] = useState(faq?.answer ?? "");
   const [clientError, setClientError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const missingFields: string[] = [];
   if (!question.trim() || question.trim().length < 2) missingFields.push("Question (min 2 chars)");
@@ -97,8 +99,24 @@ export function FaqForm({
 
       {isOpen && (
         <div className="p-4 sm:p-5 pt-3 bg-[#faf9f5]/50 border-t border-line/40 grid gap-4">
-          <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-3">
+          <form ref={formRef} action={action} onSubmit={handleSubmit} noValidate className="grid gap-3">
             {faq ? <input type="hidden" name="id" value={faq.id} /> : null}
+            <FormAutoSave
+              formRef={formRef}
+              draftKey={faq ? `faq:${faq.id}` : "faq:new"}
+              serverAction={saveFaq}
+              recordId={faq?.id ?? ""}
+              canAutoSaveServer={Boolean(faq?.id && question.trim() && answer.trim())}
+              externalSuccess={state?.ok}
+              externalError={state?.error}
+              compact
+              watchValue={{ question, answer }}
+              onRestoreDraft={(fields) => {
+                const first = (key: string) => fields[key]?.[0];
+                if (first("question") !== undefined) setQuestion(first("question")!);
+                if (first("answer") !== undefined) setAnswer(first("answer")!);
+              }}
+            />
             {clientError ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{clientError}</p> : null}
             <label className="grid gap-1.5 text-sm font-medium text-ink">
               <span>Question <span className="text-red-500 font-bold" title="Required">*</span></span>

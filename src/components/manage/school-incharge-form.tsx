@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, GraduationCap, Plus, Mail } from "lucide-react";
+import { FormAutoSave } from "@/components/manage/form-auto-save";
 import { ImageUploader } from "@/components/manage/image-uploader";
 import { deleteSchoolIncharge, saveSchoolIncharge, type ActionState } from "@/lib/manage/actions";
 import type { SchoolIncharge } from "@/lib/types";
@@ -27,6 +28,7 @@ export function SchoolInchargeForm({
   const [role, setRole] = useState(incharge?.role ?? "");
   const [photoUrl, setPhotoUrl] = useState<string>(incharge?.photoUrl ?? "");
   const [clientError, setClientError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const missingFields: string[] = [];
   if (!name.trim() || name.trim().length < 2) missingFields.push("Full Name (min 2 chars)");
@@ -118,8 +120,25 @@ export function SchoolInchargeForm({
       {/* Expanded Form */}
       {isOpen && (
         <div className="p-4 sm:p-5 pt-3 bg-[#faf9f5]/50 border-t border-line/40 grid gap-5">
-          <form action={action} onSubmit={handleSubmit} noValidate className="grid gap-4">
+          <form ref={formRef} action={action} onSubmit={handleSubmit} noValidate className="grid gap-4">
             {incharge ? <input type="hidden" name="id" value={incharge.id} /> : null}
+            <FormAutoSave
+              formRef={formRef}
+              draftKey={incharge ? `incharge:${incharge.id}` : "incharge:new"}
+              serverAction={saveSchoolIncharge}
+              recordId={incharge?.id ?? ""}
+              canAutoSaveServer={Boolean(incharge?.id && name.trim() && role.trim())}
+              externalSuccess={state?.ok}
+              externalError={state?.error}
+              compact
+              watchValue={{ name, role, photoUrl }}
+              onRestoreDraft={(fields) => {
+                const first = (key: string) => fields[key]?.[0];
+                if (first("name") !== undefined) setName(first("name")!);
+                if (first("role") !== undefined) setRole(first("role")!);
+                if (first("photoUrl") !== undefined) setPhotoUrl(first("photoUrl")!);
+              }}
+            />
             <input type="hidden" name="photoUrl" value={photoUrl} />
 
             {clientError ? <p className="rounded-xl border border-red-300 bg-red-50 text-red-900 px-4 py-3 text-sm font-medium">{clientError}</p> : null}

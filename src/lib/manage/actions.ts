@@ -12,10 +12,19 @@ import { defaultSocialLinks, isSupabaseConfigured, normalizeContactEmail } from 
 import { councilMemberSlugs } from "@/lib/data/catalog";
 import { contentMode } from "@/lib/data/content-mode";
 import {
+  appendEventGalleryImageInStore,
+  deleteCouncilMemberInStore,
+  deleteCouncilPhotoInStore,
+  deleteCouncilPostInStore,
   deleteFromStore,
+  reorderCouncilChildrenInStore,
   saveAchievementToStore,
   saveCategoryToStore,
+  saveCouncilMemberInStore,
+  saveCouncilPhotoInStore,
+  saveCouncilPostInStore,
   saveCouncilToStore,
+  saveCouncilYearMetaInStore,
   rememberEventRegistrationUrl,
   saveEventToStore,
   saveNewsletterToStore,
@@ -31,18 +40,26 @@ import {
   achievementInputSchema,
   categoryInputSchema,
   councilInputFromForm,
+  councilMemberSchema,
+  councilPhotoSchema,
+  councilPostSchema,
+  councilYearMetaSchema,
   eventInputSchema,
   validateCouncilMedia,
+  validateCouncilMemberMedia,
+  validateCouncilPhotoMedia,
+  validateCouncilPostMedia,
   validateEventMedia,
   type AchievementInput,
   type CouncilInput,
   type EventInput,
 } from "@/lib/validation/content";
-import type { PublicationStatus } from "@/lib/types";
+import type { CouncilKind, PublicationStatus } from "@/lib/types";
 
 export type ActionState = {
   error?: string;
   ok?: string;
+  createdId?: string;
 };
 
 const genericDenial = "You do not have permission to do that.";
@@ -613,8 +630,13 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
     revalidatePath("/manage");
     revalidatePath("/manage/events");
     if (syncError) return { error: syncError };
-    if (!formData.get("id")) redirect(`/manage/events/${savedId}/edit`);
-    return { ok: saved.status === "published" ? "Published." : "Draft saved." };
+    if (!formData.get("id") && formData.get("_autosave") !== "1") {
+      redirect(`/manage/events/${savedId}/edit`);
+    }
+    return {
+      ok: saved.status === "published" ? "Published." : "Draft saved.",
+      createdId: savedId,
+    };
   }
 
   const context = await staffContext();
@@ -802,8 +824,8 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
   revalidatePath("/manage/events");
 
   if (syncError) return { error: syncError };
-  if (!id) redirect(`/manage/events/${eventId}/edit`);
-  return { ok: status === "published" ? "Published." : "Saved." };
+  if (!id && formData.get("_autosave") !== "1") redirect(`/manage/events/${eventId}/edit`);
+  return { ok: status === "published" ? "Published." : "Saved.", createdId: eventId };
 }
 
 function readAchievementInput(formData: FormData) {
@@ -842,7 +864,7 @@ export async function saveAchievement(_state: ActionState, formData: FormData): 
     if ("error" in saved) return { error: saved.error };
     revalidatePath("/achievements");
     revalidatePath("/manage/achievements");
-    return { ok: "Draft saved." };
+    return { ok: "Draft saved.", createdId: "id" in saved ? saved.id : undefined };
   }
 
   const context = await staffContext();
@@ -911,8 +933,8 @@ export async function saveAchievement(_state: ActionState, formData: FormData): 
   };
 
   const saved = id
-    ? await context.supabase.from("campus_achievements").update(record).eq("id", id)
-    : await context.supabase.from("campus_achievements").insert(record);
+    ? await context.supabase.from("campus_achievements").update(record).eq("id", id).select("id").maybeSingle()
+    : await context.supabase.from("campus_achievements").insert(record).select("id").maybeSingle();
   if (saved.error) {
     const missing = (saved.error.message ?? "").toLowerCase().includes("resources");
     return {
@@ -922,9 +944,10 @@ export async function saveAchievement(_state: ActionState, formData: FormData): 
     };
   }
 
+  const savedId = id || (saved.data?.id ? String(saved.data.id) : undefined);
   revalidatePath("/achievements");
   revalidatePath("/manage/achievements");
-  return { ok: "Saved." };
+  return { ok: "Saved.", createdId: savedId };
 }
 
 export async function saveCategory(_state: ActionState, formData: FormData): Promise<ActionState> {
@@ -1257,6 +1280,7 @@ async function replaceCouncilChildren(
   if (input.members.length) {
     const slugs = councilMemberSlugs(input.members);
     const rows = input.members.map((member, index) => ({
+      ...(member.id ? { id: member.id } : {}),
       year_id: yearId,
       role: member.role,
       name: member.name,
@@ -1319,6 +1343,7 @@ async function replaceCouncilChildren(
   if (input.photos.length) {
     const inserted = await supabase.from("campus_council_photos").insert(
       input.photos.map((photo, index) => ({
+        ...(photo.id ? { id: photo.id } : {}),
         year_id: yearId,
         url: photo.url,
         alt: photo.alt,
@@ -1338,6 +1363,7 @@ async function replaceCouncilChildren(
   if (input.posts.length) {
     const inserted = await supabase.from("campus_council_posts").insert(
       input.posts.map((post, index) => ({
+        ...(post.id ? { id: post.id } : {}),
         year_id: yearId,
         title: post.title,
         body: post.body,
@@ -1429,7 +1455,9 @@ export async function saveCouncilYear(_state: ActionState, formData: FormData): 
     ? await context.supabase.from("campus_council_years").update(record).eq("id", id).select("id").maybeSingle()
     : await context.supabase.from("campus_council_years").insert(record).select("id").maybeSingle();
   if (saved.error && (saved.error.message ?? "").toLowerCase().includes("junior_heading")) {
-    const { junior_heading: _juniorHeading, ...withoutHeading } = record;
+    const withoutHeading = Object.fromEntries(
+      Object.entries(record).filter(([key]) => key !== "junior_heading"),
+    ) as Omit<typeof record, "junior_heading">;
     saved = id
       ? await context.supabase.from("campus_council_years").update(withoutHeading).eq("id", id).select("id").maybeSingle()
       : await context.supabase.from("campus_council_years").insert(withoutHeading).select("id").maybeSingle();
@@ -1477,6 +1505,624 @@ export async function saveCouncilYear(_state: ActionState, formData: FormData): 
   revalidateCouncil(parsed.data.slug, councilMemberSlugs(parsed.data.members));
   if (!id) redirect(`/manage/council/${yearId}/edit`);
   return { ok: status === "published" ? "Published." : "Saved." };
+}
+
+async function editableCouncilContext(yearId: string): Promise<
+  | { error: string }
+  | {
+      supabase: NonNullable<Awaited<ReturnType<typeof createStaffClient>>>;
+      actor: NonNullable<Awaited<ReturnType<typeof getCampusActor>>>;
+      year: {
+        id: string;
+        slug: string;
+        label: string;
+        status: PublicationStatus;
+      };
+    }
+> {
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_council")) return { error: genericDenial };
+
+  const probe = await context.supabase.from("campus_council_years").select("id").limit(1);
+  if (probe.error && isMissingTableError(probe.error)) {
+    return { error: missingCouncilTablesMessage() };
+  }
+
+  const existing = await context.supabase
+    .from("campus_council_years")
+    .select("id, slug, label, publication_status")
+    .eq("id", yearId)
+    .maybeSingle();
+  if (existing.error) {
+    return { error: databaseError(existing.error, "That council year could not be found.") };
+  }
+  if (!existing.data) return { error: "That council year could not be found." };
+
+  const status = existing.data.publication_status as PublicationStatus;
+  if (!canEditPublication(context.actor, status)) return { error: genericDenial };
+
+  return {
+    supabase: context.supabase,
+    actor: context.actor,
+    year: {
+      id: String(existing.data.id),
+      slug: String(existing.data.slug),
+      label: String(existing.data.label),
+      status,
+    },
+  };
+}
+
+async function allowedMediaHostsForContext(
+  supabase: NonNullable<Awaited<ReturnType<typeof createStaffClient>>>,
+) {
+  const settings = await supabase.from("campus_settings").select("media_hosts").eq("id", true).maybeSingle();
+  return Array.isArray(settings.data?.media_hosts) ? settings.data.media_hosts.map(String) : [];
+}
+
+export async function saveCouncilYearMetaAction(input: {
+  id?: string;
+  label: string;
+  slug: string;
+  kind: CouncilKind;
+  summary: string;
+  juniorHeading: string;
+  sortOrder: number;
+}): Promise<{ ok: true; id: string; slug: string; status: PublicationStatus } | { error: string }> {
+  const parsed = councilYearMetaSchema.safeParse(input);
+  if (!parsed.success) return { error: issueMessage(parsed.error) };
+  const id = input.id?.trim() || undefined;
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_council"));
+    if ("error" in access) return access;
+    const saved = saveCouncilYearMetaInStore(access.actor, parsed.data, id);
+    if ("error" in saved) return { error: saved.error };
+    revalidateCouncil(saved.slug);
+    return { ok: true, id: saved.id, slug: saved.slug, status: saved.status };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_council")) return { error: genericDenial };
+
+  const probe = await context.supabase.from("campus_council_years").select("id").limit(1);
+  if (probe.error && isMissingTableError(probe.error)) {
+    return { error: missingCouncilTablesMessage() };
+  }
+
+  let status: PublicationStatus = "draft";
+  let publishedAt: string | null = null;
+  if (id) {
+    const existing = await context.supabase
+      .from("campus_council_years")
+      .select("publication_status, published_at")
+      .eq("id", id)
+      .maybeSingle();
+    if (existing.error) {
+      return { error: databaseError(existing.error, "That council year could not be found.") };
+    }
+    if (!existing.data) return { error: "That council year could not be found." };
+    status = existing.data.publication_status as PublicationStatus;
+    publishedAt = existing.data.published_at ? String(existing.data.published_at) : null;
+    if (!canEditPublication(context.actor, status)) return { error: genericDenial };
+  }
+
+  const record = {
+    label: parsed.data.label,
+    slug: parsed.data.slug,
+    kind: parsed.data.kind,
+    summary: parsed.data.summary,
+    junior_heading: parsed.data.juniorHeading?.trim() || "Junior Student Council",
+    sort_order: parsed.data.sortOrder,
+    publication_status: status,
+    published_at: publishedAt,
+    is_sample: false,
+  };
+
+  let saved = id
+    ? await context.supabase.from("campus_council_years").update(record).eq("id", id).select("id").maybeSingle()
+    : await context.supabase.from("campus_council_years").insert(record).select("id").maybeSingle();
+  if (saved.error && (saved.error.message ?? "").toLowerCase().includes("junior_heading")) {
+    const withoutHeading = Object.fromEntries(
+      Object.entries(record).filter(([key]) => key !== "junior_heading"),
+    ) as Omit<typeof record, "junior_heading">;
+    saved = id
+      ? await context.supabase.from("campus_council_years").update(withoutHeading).eq("id", id).select("id").maybeSingle()
+      : await context.supabase.from("campus_council_years").insert(withoutHeading).select("id").maybeSingle();
+    if (!saved.error) {
+      return {
+        error: "Run supabase/JUNIOR_COUNCIL_AND_ACTIVITIES.sql in the database, then save again to store the junior heading.",
+      };
+    }
+  }
+  if (saved.error) {
+    return { error: databaseError(saved.error, "The council year could not be saved.") };
+  }
+
+  let yearId = saved.data?.id ? String(saved.data.id) : null;
+  if (!yearId) {
+    const lookup = id
+      ? await context.supabase.from("campus_council_years").select("id").eq("id", id).maybeSingle()
+      : await context.supabase
+          .from("campus_council_years")
+          .select("id")
+          .eq("slug", parsed.data.slug)
+          .maybeSingle();
+    if (lookup.error) {
+      return { error: databaseError(lookup.error, "The council year could not be saved.") };
+    }
+    yearId = lookup.data?.id ? String(lookup.data.id) : null;
+  }
+  if (!yearId) return { error: writeDenied };
+
+  revalidateCouncil(parsed.data.slug);
+  return { ok: true, id: yearId, slug: parsed.data.slug, status };
+}
+
+export async function saveCouncilMemberAction(input: {
+  yearId: string;
+  member: {
+    id?: string;
+    role: string;
+    name: string;
+    imageUrl: string;
+    imageAlt: string;
+    quote: string;
+    about: string;
+    work: string;
+    board: "main" | "junior";
+  };
+  sortOrder: number;
+}): Promise<{ ok: true; id: string; slug: string } | { error: string }> {
+  const parsed = councilMemberSchema.safeParse({
+    ...input.member,
+    id: input.member.id && /^[0-9a-f-]{36}$/i.test(input.member.id) ? input.member.id : undefined,
+  });
+  if (!parsed.success) return { error: issueMessage(parsed.error) };
+
+  const sortOrder = Number.isFinite(input.sortOrder) ? Math.max(0, Math.round(input.sortOrder)) : 0;
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_council"));
+    if ("error" in access) return access;
+    const mediaError = validateCouncilMemberMedia(parsed.data, []);
+    if (mediaError) return { error: mediaError };
+    const saved = saveCouncilMemberInStore(access.actor, input.yearId, parsed.data, sortOrder);
+    if ("error" in saved) return { error: saved.error };
+    revalidateCouncil(saved.yearSlug, saved.slug ? [saved.slug] : []);
+    return { ok: true, id: saved.id, slug: saved.slug };
+  }
+
+  const ctx = await editableCouncilContext(input.yearId);
+  if ("error" in ctx) return { error: ctx.error };
+
+  const allowedHosts = await allowedMediaHostsForContext(ctx.supabase);
+  const mediaError = validateCouncilMemberMedia(parsed.data, allowedHosts);
+  if (mediaError) return { error: mediaError };
+
+  const existingMembersRes = await ctx.supabase
+    .from("campus_council_members")
+    .select("id, role, name, slug, sort_order")
+    .eq("year_id", ctx.year.id)
+    .order("sort_order");
+  if (existingMembersRes.error) {
+    return { error: databaseError(existingMembersRes.error, "The council post could not be saved.") };
+  }
+
+  const existingMembers = (existingMembersRes.data ?? []).map((row) => ({
+    id: String(row.id),
+    role: String(row.role ?? ""),
+    name: String(row.name ?? ""),
+    slug: row.slug ? String(row.slug) : "",
+  }));
+  const targetId = parsed.data.id;
+  const existingMatch = targetId ? existingMembers.find((item) => item.id === targetId) : undefined;
+
+  if (targetId && !existingMatch) {
+    const conflict = await ctx.supabase
+      .from("campus_council_members")
+      .select("id, year_id")
+      .eq("id", targetId)
+      .maybeSingle();
+    if (conflict.error) {
+      return { error: databaseError(conflict.error, "The council post could not be saved.") };
+    }
+    if (conflict.data && String(conflict.data.year_id) !== ctx.year.id) {
+      return { error: writeDenied };
+    }
+  }
+
+  const otherMembers = existingMembers.filter((item) => item.id !== targetId);
+  const slugList = councilMemberSlugs([
+    ...otherMembers,
+    { role: parsed.data.role, name: parsed.data.name, slug: existingMatch?.slug ?? null },
+  ]);
+  const assignedSlug = slugList[slugList.length - 1] ?? "";
+
+  const row = {
+    year_id: ctx.year.id,
+    role: parsed.data.role,
+    name: parsed.data.name,
+    image_url: parsed.data.imageUrl,
+    image_alt: parsed.data.imageAlt,
+    quote: parsed.data.quote,
+    about: parsed.data.about,
+    work: parsed.data.work,
+    slug: assignedSlug,
+    board: parsed.data.board === "junior" ? "junior" : "main",
+    sort_order: sortOrder,
+  };
+
+  const res = existingMatch
+    ? await ctx.supabase
+        .from("campus_council_members")
+        .update(row)
+        .eq("id", existingMatch.id)
+        .eq("year_id", ctx.year.id)
+        .select("id")
+        .maybeSingle()
+    : await ctx.supabase
+        .from("campus_council_members")
+        .insert({ ...(targetId ? { id: targetId } : {}), ...row })
+        .select("id")
+        .maybeSingle();
+
+  if (res.error && missingMemberProfileColumn(res.error.message ?? "")) {
+    const legacyRow = {
+      year_id: row.year_id,
+      role: row.role,
+      name: row.name,
+      image_url: row.image_url,
+      image_alt: row.image_alt,
+      quote: row.quote,
+      board: row.board,
+      sort_order: row.sort_order,
+    };
+    const fallback = existingMatch
+      ? await ctx.supabase
+          .from("campus_council_members")
+          .update(legacyRow)
+          .eq("id", existingMatch.id)
+          .eq("year_id", ctx.year.id)
+          .select("id")
+          .maybeSingle()
+      : await ctx.supabase
+          .from("campus_council_members")
+          .insert({ ...(targetId ? { id: targetId } : {}), ...legacyRow })
+          .select("id")
+          .maybeSingle();
+    if (fallback.error) {
+      const missingQuote = (fallback.error.message ?? "").toLowerCase().includes("quote");
+      return {
+        error: missingQuote
+          ? "Run supabase/QUOTES_AND_SOCIAL.sql in the database, then save again."
+          : databaseError(fallback.error, "The council post could not be saved."),
+      };
+    }
+    return { error: "Run supabase/MEMBER_PROFILES.sql in the database, then save again." };
+  }
+
+  if (res.error) {
+    const message = (res.error.message ?? "").toLowerCase();
+    if (message.includes("board")) {
+      return { error: "Run supabase/JUNIOR_COUNCIL_AND_ACTIVITIES.sql in the database, then save again." };
+    }
+    const missingQuote = message.includes("quote");
+    return {
+      error: missingQuote
+        ? "Run supabase/QUOTES_AND_SOCIAL.sql in the database, then save again."
+        : databaseError(res.error, "The council post could not be saved."),
+    };
+  }
+
+  const savedId = res.data?.id ? String(res.data.id) : targetId;
+  if (!savedId) return { error: writeDenied };
+
+  revalidateCouncil(ctx.year.slug, assignedSlug ? [assignedSlug] : []);
+  return { ok: true, id: savedId, slug: assignedSlug };
+}
+
+export async function deleteCouncilMemberAction(input: {
+  yearId: string;
+  memberId: string;
+}): Promise<{ ok: true } | { error: string }> {
+  if (!/^[0-9a-f-]{36}$/i.test(input.memberId)) return { ok: true };
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_council"));
+    if ("error" in access) return access;
+    const removed = deleteCouncilMemberInStore(access.actor, input.yearId, input.memberId);
+    if ("error" in removed) return { error: removed.error };
+    revalidateCouncil(removed.yearSlug);
+    return { ok: true };
+  }
+
+  const ctx = await editableCouncilContext(input.yearId);
+  if ("error" in ctx) return { error: ctx.error };
+
+  const removed = await ctx.supabase
+    .from("campus_council_members")
+    .delete()
+    .eq("id", input.memberId)
+    .eq("year_id", ctx.year.id);
+  if (removed.error) {
+    return { error: databaseError(removed.error, "The council post could not be removed.") };
+  }
+
+  revalidateCouncil(ctx.year.slug);
+  return { ok: true };
+}
+
+export async function saveCouncilPhotoAction(input: {
+  yearId: string;
+  photo: { id?: string; url: string; alt: string; caption: string };
+  sortOrder: number;
+  yearLabel?: string;
+}): Promise<{ ok: true; id: string } | { error: string }> {
+  const preparedAlt =
+    input.photo.alt.trim() || (input.yearLabel?.trim() ? `${input.yearLabel.trim()} Student Council photograph` : "Council photograph");
+  const parsed = councilPhotoSchema.safeParse({
+    ...input.photo,
+    alt: preparedAlt,
+    id: input.photo.id && /^[0-9a-f-]{36}$/i.test(input.photo.id) ? input.photo.id : undefined,
+  });
+  if (!parsed.success) return { error: issueMessage(parsed.error) };
+
+  const sortOrder = Number.isFinite(input.sortOrder) ? Math.max(0, Math.round(input.sortOrder)) : 0;
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_council"));
+    if ("error" in access) return access;
+    const mediaError = validateCouncilPhotoMedia(parsed.data, [], input.yearLabel);
+    if (mediaError) return { error: mediaError };
+    const saved = saveCouncilPhotoInStore(access.actor, input.yearId, parsed.data, sortOrder);
+    if ("error" in saved) return { error: saved.error };
+    revalidateCouncil(saved.yearSlug);
+    return { ok: true, id: saved.id };
+  }
+
+  const ctx = await editableCouncilContext(input.yearId);
+  if ("error" in ctx) return { error: ctx.error };
+
+  const allowedHosts = await allowedMediaHostsForContext(ctx.supabase);
+  const mediaError = validateCouncilPhotoMedia(parsed.data, allowedHosts, ctx.year.label);
+  if (mediaError) return { error: mediaError };
+
+  const targetId = parsed.data.id;
+  let existsInYear = false;
+  if (targetId) {
+    const found = await ctx.supabase
+      .from("campus_council_photos")
+      .select("id, year_id")
+      .eq("id", targetId)
+      .maybeSingle();
+    if (found.error) return { error: databaseError(found.error, "The photograph could not be saved.") };
+    if (found.data) {
+      if (String(found.data.year_id) !== ctx.year.id) return { error: writeDenied };
+      existsInYear = true;
+    }
+  }
+
+  const row = {
+    year_id: ctx.year.id,
+    url: parsed.data.url,
+    alt: parsed.data.alt,
+    caption: parsed.data.caption,
+    sort_order: sortOrder,
+  };
+
+  const res = existsInYear && targetId
+    ? await ctx.supabase
+        .from("campus_council_photos")
+        .update(row)
+        .eq("id", targetId)
+        .eq("year_id", ctx.year.id)
+        .select("id")
+        .maybeSingle()
+    : await ctx.supabase
+        .from("campus_council_photos")
+        .insert({ ...(targetId ? { id: targetId } : {}), ...row })
+        .select("id")
+        .maybeSingle();
+
+  if (res.error) return { error: databaseError(res.error, "The photograph could not be saved.") };
+  const savedId = res.data?.id ? String(res.data.id) : targetId;
+  if (!savedId) return { error: writeDenied };
+
+  revalidateCouncil(ctx.year.slug);
+  return { ok: true, id: savedId };
+}
+
+export async function deleteCouncilPhotoAction(input: {
+  yearId: string;
+  photoId: string;
+}): Promise<{ ok: true } | { error: string }> {
+  if (!/^[0-9a-f-]{36}$/i.test(input.photoId)) return { ok: true };
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_council"));
+    if ("error" in access) return access;
+    const removed = deleteCouncilPhotoInStore(access.actor, input.yearId, input.photoId);
+    if ("error" in removed) return { error: removed.error };
+    revalidateCouncil(removed.yearSlug);
+    return { ok: true };
+  }
+
+  const ctx = await editableCouncilContext(input.yearId);
+  if ("error" in ctx) return { error: ctx.error };
+
+  const removed = await ctx.supabase
+    .from("campus_council_photos")
+    .delete()
+    .eq("id", input.photoId)
+    .eq("year_id", ctx.year.id);
+  if (removed.error) {
+    return { error: databaseError(removed.error, "The photograph could not be removed.") };
+  }
+
+  revalidateCouncil(ctx.year.slug);
+  return { ok: true };
+}
+
+export async function saveCouncilPostAction(input: {
+  yearId: string;
+  post: {
+    id?: string;
+    title: string;
+    body: string;
+    publishedOn: string;
+    imageUrl: string;
+    imageAlt: string;
+  };
+  sortOrder: number;
+}): Promise<{ ok: true; id: string } | { error: string }> {
+  const parsed = councilPostSchema.safeParse({
+    ...input.post,
+    id: input.post.id && /^[0-9a-f-]{36}$/i.test(input.post.id) ? input.post.id : undefined,
+  });
+  if (!parsed.success) return { error: issueMessage(parsed.error) };
+
+  const sortOrder = Number.isFinite(input.sortOrder) ? Math.max(0, Math.round(input.sortOrder)) : 0;
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_council"));
+    if ("error" in access) return access;
+    const mediaError = validateCouncilPostMedia(parsed.data, []);
+    if (mediaError) return { error: mediaError };
+    const saved = saveCouncilPostInStore(access.actor, input.yearId, parsed.data, sortOrder);
+    if ("error" in saved) return { error: saved.error };
+    revalidateCouncil(saved.yearSlug);
+    return { ok: true, id: saved.id };
+  }
+
+  const ctx = await editableCouncilContext(input.yearId);
+  if ("error" in ctx) return { error: ctx.error };
+
+  const allowedHosts = await allowedMediaHostsForContext(ctx.supabase);
+  const mediaError = validateCouncilPostMedia(parsed.data, allowedHosts);
+  if (mediaError) return { error: mediaError };
+
+  const targetId = parsed.data.id;
+  let existsInYear = false;
+  if (targetId) {
+    const found = await ctx.supabase
+      .from("campus_council_posts")
+      .select("id, year_id")
+      .eq("id", targetId)
+      .maybeSingle();
+    if (found.error) return { error: databaseError(found.error, "The post could not be saved.") };
+    if (found.data) {
+      if (String(found.data.year_id) !== ctx.year.id) return { error: writeDenied };
+      existsInYear = true;
+    }
+  }
+
+  const row = {
+    year_id: ctx.year.id,
+    title: parsed.data.title,
+    body: parsed.data.body,
+    published_on: parsed.data.publishedOn,
+    image_url: parsed.data.imageUrl,
+    image_alt: parsed.data.imageAlt,
+    sort_order: sortOrder,
+  };
+
+  const res = existsInYear && targetId
+    ? await ctx.supabase
+        .from("campus_council_posts")
+        .update(row)
+        .eq("id", targetId)
+        .eq("year_id", ctx.year.id)
+        .select("id")
+        .maybeSingle()
+    : await ctx.supabase
+        .from("campus_council_posts")
+        .insert({ ...(targetId ? { id: targetId } : {}), ...row })
+        .select("id")
+        .maybeSingle();
+
+  if (res.error) return { error: databaseError(res.error, "The post could not be saved.") };
+  const savedId = res.data?.id ? String(res.data.id) : targetId;
+  if (!savedId) return { error: writeDenied };
+
+  revalidateCouncil(ctx.year.slug);
+  return { ok: true, id: savedId };
+}
+
+export async function deleteCouncilPostAction(input: {
+  yearId: string;
+  postId: string;
+}): Promise<{ ok: true } | { error: string }> {
+  if (!/^[0-9a-f-]{36}$/i.test(input.postId)) return { ok: true };
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_council"));
+    if ("error" in access) return access;
+    const removed = deleteCouncilPostInStore(access.actor, input.yearId, input.postId);
+    if ("error" in removed) return { error: removed.error };
+    revalidateCouncil(removed.yearSlug);
+    return { ok: true };
+  }
+
+  const ctx = await editableCouncilContext(input.yearId);
+  if ("error" in ctx) return { error: ctx.error };
+
+  const removed = await ctx.supabase
+    .from("campus_council_posts")
+    .delete()
+    .eq("id", input.postId)
+    .eq("year_id", ctx.year.id);
+  if (removed.error) {
+    return { error: databaseError(removed.error, "The post could not be removed.") };
+  }
+
+  revalidateCouncil(ctx.year.slug);
+  return { ok: true };
+}
+
+export async function reorderCouncilItemsAction(input: {
+  yearId: string;
+  memberIds?: string[];
+  photoIds?: string[];
+  postIds?: string[];
+}): Promise<{ ok: true } | { error: string }> {
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_council"));
+    if ("error" in access) return access;
+    const reordered = reorderCouncilChildrenInStore(access.actor, input.yearId, input);
+    if ("error" in reordered) return { error: reordered.error };
+    revalidateCouncil(reordered.yearSlug);
+    return { ok: true };
+  }
+
+  const ctx = await editableCouncilContext(input.yearId);
+  if ("error" in ctx) return { error: ctx.error };
+
+  const updateOrder = async (table: "campus_council_members" | "campus_council_photos" | "campus_council_posts", ids?: string[]) => {
+    if (!ids?.length) return null;
+    for (let idx = 0; idx < ids.length; idx += 1) {
+      const id = ids[idx];
+      if (!/^[0-9a-f-]{36}$/i.test(id)) continue;
+      const res = await ctx.supabase
+        .from(table)
+        .update({ sort_order: idx })
+        .eq("id", id)
+        .eq("year_id", ctx.year.id);
+      if (res.error) return res.error;
+    }
+    return null;
+  };
+
+  const err =
+    (await updateOrder("campus_council_members", input.memberIds)) ||
+    (await updateOrder("campus_council_photos", input.photoIds)) ||
+    (await updateOrder("campus_council_posts", input.postIds));
+  if (err) return { error: databaseError(err, "The order could not be saved.") };
+
+  revalidateCouncil(ctx.year.slug);
+  return { ok: true };
 }
 
 export async function deleteCouncilYear(_state: ActionState, formData: FormData): Promise<ActionState> {
@@ -3079,4 +3725,177 @@ export async function deleteHouse(_state: ActionState, formData: FormData): Prom
   revalidatePath("/school/house-points");
   revalidatePath("/manage/houses");
   return { ok: "House removed." };
+}
+
+export async function appendEventGalleryImageAction(input: {
+  eventId: string;
+  url: string;
+  alt: string;
+  caption?: string | null;
+  attribution?: string | null;
+  pinned?: boolean;
+}): Promise<{
+  ok?: true;
+  error?: string;
+  image?: {
+    id: string;
+    url: string;
+    alt: string;
+    caption: string | null;
+    attribution: string | null;
+    pinned: boolean;
+    sortOrder: number;
+  };
+}> {
+  if (!input.eventId.trim()) {
+    return { error: "Select an event first." };
+  }
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "create_draft"));
+    if ("error" in access) return { error: access.error };
+
+    const classified = classifyMediaUrl(input.url, []);
+    if (!classified.ok) return { error: classified.message };
+
+    const saved = appendEventGalleryImageInStore(access.actor, {
+      eventId: input.eventId,
+      url: classified.url,
+      alt: input.alt,
+      caption: input.caption,
+      attribution: input.attribution,
+      pinned: input.pinned,
+    });
+    if ("error" in saved && saved.error) return { error: saved.error };
+
+    revalidatePath("/");
+    revalidatePath("/gallery");
+    revalidatePath("/events");
+    if ("slug" in saved && saved.slug) revalidatePath(`/events/${saved.slug}`);
+    revalidatePath("/manage/gallery");
+    revalidatePath(`/manage/events/${input.eventId}/edit`);
+    return { ok: true, image: "image" in saved ? saved.image : undefined };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "create_draft")) return { error: genericDenial };
+
+  const eventLookup = await context.supabase
+    .from("campus_events")
+    .select("id, slug, title, publication_status")
+    .eq("id", input.eventId)
+    .maybeSingle();
+  if (eventLookup.error || !eventLookup.data) {
+    return { error: "That event could not be found." };
+  }
+
+  const currentStatus = eventLookup.data.publication_status as PublicationStatus;
+  if (!canEditPublication(context.actor, currentStatus)) {
+    return { error: genericDenial };
+  }
+
+  const settings = await context.supabase
+    .from("campus_settings")
+    .select("media_hosts")
+    .eq("id", true)
+    .maybeSingle();
+  if (settings.error) return { error: "Image settings could not be loaded." };
+  const allowedHosts = Array.isArray(settings.data?.media_hosts)
+    ? settings.data.media_hosts.map(String)
+    : [];
+
+  const classified = classifyMediaUrl(input.url, allowedHosts);
+  if (!classified.ok) return { error: classified.message };
+
+  const latestSort = await context.supabase
+    .from("campus_event_images")
+    .select("sort_order")
+    .eq("event_id", input.eventId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const nextSortOrder =
+    typeof latestSort.data?.sort_order === "number" ? latestSort.data.sort_order + 1 : 0;
+
+  const altText = input.alt.trim() || String(eventLookup.data.title ?? "") || "Event photograph";
+  const captionText = input.caption?.trim() || null;
+  const attributionText = input.attribution?.trim() || null;
+  const pinnedValue = Boolean(input.pinned);
+
+  const row = {
+    event_id: input.eventId,
+    url: classified.url,
+    alt: altText,
+    caption: captionText,
+    attribution: attributionText,
+    pinned: pinnedValue,
+    sort_order: nextSortOrder,
+  };
+
+  let inserted = await context.supabase
+    .from("campus_event_images")
+    .insert(row)
+    .select("id, url, alt, caption, attribution, pinned, sort_order")
+    .maybeSingle();
+
+  if (inserted.error) {
+    const missingPinned = (inserted.error.message ?? "").toLowerCase().includes("pinned");
+    if (missingPinned) {
+      if (pinnedValue) {
+        return {
+          error: "Run supabase/GALLERY_PINNED.sql in the database, then upload again to pin photographs.",
+        };
+      }
+      const { pinned: _omitted, ...rowWithoutPinned } = row;
+      void _omitted;
+      const fallbackInsert = await context.supabase
+        .from("campus_event_images")
+        .insert(rowWithoutPinned)
+        .select("id, url, alt, caption, attribution, sort_order")
+        .maybeSingle();
+      if (fallbackInsert.error || !fallbackInsert.data) {
+        return {
+          error: databaseError(fallbackInsert.error, "The gallery image could not be saved."),
+        };
+      }
+      inserted = {
+        ...fallbackInsert,
+        data: { ...fallbackInsert.data, pinned: false },
+      };
+    } else {
+      return { error: databaseError(inserted.error, "The gallery image could not be saved.") };
+    }
+  }
+
+  revalidatePath("/");
+  revalidatePath("/gallery");
+  revalidatePath("/events");
+  revalidatePath(`/events/${eventLookup.data.slug}`);
+  revalidatePath("/manage/gallery");
+  revalidatePath(`/manage/events/${input.eventId}/edit`);
+
+  const savedRow = inserted.data;
+  return {
+    ok: true,
+    image: savedRow
+      ? {
+          id: String(savedRow.id),
+          url: String(savedRow.url),
+          alt: String(savedRow.alt ?? altText),
+          caption: savedRow.caption ? String(savedRow.caption) : null,
+          attribution: savedRow.attribution ? String(savedRow.attribution) : null,
+          pinned: Boolean(savedRow.pinned),
+          sortOrder: typeof savedRow.sort_order === "number" ? savedRow.sort_order : nextSortOrder,
+        }
+      : {
+          id: crypto.randomUUID(),
+          url: classified.url,
+          alt: altText,
+          caption: captionText,
+          attribution: attributionText,
+          pinned: pinnedValue,
+          sortOrder: nextSortOrder,
+        },
+  };
 }
