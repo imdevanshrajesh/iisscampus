@@ -196,6 +196,17 @@ describe("client image budget and upload formatting", () => {
     assert.match(summary, /403/);
     assert.match(summary, /Cloud WAF blocked PUT/);
     assert.doesNotMatch(summary, /inspect the hidden field/i);
+
+    const originUnreachableErr = Object.assign(new Error("XML parse error: unexpected content."), {
+      $response: {
+        statusCode: 523,
+        headers: { "content-type": "text/plain; charset=UTF-8", server: "cloudflare" },
+        body: Buffer.from("error code: 523"),
+      },
+    });
+    const cfSummary = await describeS3Failure(originUnreachableErr);
+    assert.match(cfSummary, /Cloudflare cannot reach/i);
+    assert.match(cfSummary, /523/);
   });
 });
 

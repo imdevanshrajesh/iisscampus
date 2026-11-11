@@ -148,6 +148,10 @@ export async function describeS3Failure(error: unknown): Promise<string> {
       rawMessage,
     });
 
+    if (status === 523 || status === 521 || status === 522 || status === 520 || status === 524) {
+      return `Cloudflare cannot reach the RustFS origin server at ${RUSTFS_ENDPOINT} (HTTP ${status}${cleanSnippet ? `: ${cleanSnippet}` : ""}). Check that your storage server / Cloudflare Tunnel is running and reachable, or set RUSTFS_S3_ENDPOINT to a direct reachable RustFS S3 URL.`;
+    }
+
     if (String(rawMessage).toLowerCase().includes("xml parse error") || contentType.includes("text/html")) {
       return `Storage endpoint (${RUSTFS_ENDPOINT}) returned HTTP ${status} (${contentType || "non-XML"}${server ? ` via ${server}` : ""}${cleanSnippet ? `: ${cleanSnippet}` : ""}). Ensure RUSTFS_ENDPOINT (or RUSTFS_S3_ENDPOINT) points directly to the RustFS S3 API rather than an HTML/Cloudflare page.`;
     }
