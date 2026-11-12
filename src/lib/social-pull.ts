@@ -2,10 +2,13 @@ import {
   canonicalInstagramPostUrl,
   extractInstagramShortcode,
   extractYouTubeHandle,
+  normalizeExternalFeedUrl,
   normalizeYouTubeChannelUrl,
   type ConfiguredInstagramAccount,
 } from "./social.ts";
 import type { SocialPost } from "./types.ts";
+
+export type SocialPullSource = "graph_api" | "feed" | "public_profile";
 
 export type PulledInstagramItem = {
   code: string;
@@ -22,10 +25,13 @@ export type InstagramFetchResult =
       ok: true;
       items: PulledInstagramItem[];
       profileFound: boolean;
+      source: SocialPullSource;
     }
   | {
       ok: false;
       reason: string;
+      source: SocialPullSource;
+      blockedByAuthOrRateLimit?: boolean;
     };
 
 export type SocialPullAccountInput = {
@@ -51,6 +57,7 @@ export type SocialPullAccountSummary = {
   label: string;
   username: string | null;
   councilTag: ConfiguredInstagramAccount["councilTag"];
+  source?: SocialPullSource;
   ok: boolean;
   error?: string;
   fetchedCount: number;
@@ -302,118 +309,394 @@ export function parseInstagramWebProfileJson(
   return { items, isPrivate };
 }
 
-export async function fetchInstagramProfilePosts(username: string): Promise<InstagramFetchResult> {
+function parseIsoDate(raw: unknown): string | null {
+  if (typeof raw !== "string" || !raw.trim()) return null;
+  const parsed = Date.parse(raw.trim());
+  if (Number.isNaN(parsed)) return null;
+  return new Date(parsed).toISOString();
+}
+
+function stripHtmlTags(raw: string): string {
+  return decodeXmlEntities(raw.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1"))
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+export function parseInstagramGraphApiJson(json: unknown, fallbackUsername: string): PulledInstagramItem[] {
+  if (!isRecord(json) || !Array.isArray(json.data)) return [];
+  const items: PulledInstagramItem[] = [];
+  const seenCodes = new Set<string>();
+
+  for (const entry of json.data) {
+    if (!isRecord(entry)) continue;
+    const permalink = typeof entry.permalink === "string" ? entry.permalink.trim() : "";
+    const code = extractInstagramShortcode(permalink);
+    if (!code || seenCodes.has(code)) continue;
+    seenCodes.add(code);
+
+    const productType = typeof entry.media_product_type === "string" ? entry.media_product_type.toUpperCase() : "";
+    const kind: "post" | "reel" =
+      productType === "REELS" || /\/(?:reel|reels)\//i.test(permalink) ? "reel" : "post";
+
+    const rawThumb =
+      typeof entry.thumbnail_url === "string" && entry.thumbnail_url.startsWith("https://")
+        ? entry.thumbnail_url
+        : typeof entry.media_url === "string" && entry.media_url.startsWith("https://")
+          ? entry.media_url
+          : null;
+
+    items.push({
+      code,
+      kind,
+      instagramUrl: canonicalInstagramPostUrl(code, kind),
+      caption: cleanCaption(entry.caption),
+      thumbnailUrl: rawThumb,
+      publishedOn: parseIsoDate(entry.timestamp),
+      username: fallbackUsername,
+    });
+  }
+
+  return items;
+}
+
+function extractBeholdThumbnail(entry: Record<string, unknown>): string | null {
+  if (isRecord(entry.sizes)) {
+    for (const key of ["large", "medium", "full", "small"]) {
+      const size = entry.sizes[key];
+      if (isRecord(size) && typeof size.mediaUrl === "string" && size.mediaUrl.startsWith("https://")) {
+        return size.mediaUrl;
+      }
+    }
+  }
+  for (const field of ["thumbnailUrl", "mediaUrl", "image", "image_url"]) {
+    const val = entry[field];
+    if (typeof val === "string" && val.startsWith("https://")) return val;
+  }
+  if (Array.isArray(entry.attachments)) {
+    for (const att of entry.attachments) {
+      if (isRecord(att) && typeof att.url === "string" && att.url.startsWith("https://")) {
+        return att.url;
+      }
+    }
+  }
+  return null;
+}
+
+export function parseExternalSocialFeed(rawBody: string, fallbackUsername: string): PulledInstagramItem[] {
+  const trimmed = rawBody.trim();
+  if (!trimmed) return [];
+  const items: PulledInstagramItem[] = [];
+  const seenCodes = new Set<string>();
+
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      const parsed: unknown = JSON.parse(trimmed);
+      const list = Array.isArray(parsed)
+        ? parsed
+        : isRecord(parsed) && Array.isArray(parsed.posts)
+          ? parsed.posts
+          : isRecord(parsed) && Array.isArray(parsed.items)
+            ? parsed.items
+            : isRecord(parsed) && Array.isArray(parsed.data)
+              ? parsed.data
+              : [];
+
+      for (const entry of list) {
+        if (!isRecord(entry)) continue;
+        const candidateUrl =
+          typeof entry.permalink === "string"
+            ? entry.permalink
+            : typeof entry.url === "string"
+              ? entry.url
+              : typeof entry.external_url === "string"
+                ? entry.external_url
+                : typeof entry.link === "string"
+                  ? entry.link
+                  : "";
+        const code = extractInstagramShortcode(candidateUrl);
+        if (!code || seenCodes.has(code)) continue;
+        seenCodes.add(code);
+
+        const isReel =
+          entry.isReel === true ||
+          String(entry.mediaProductType ?? entry.media_product_type ?? "").toUpperCase() === "REELS" ||
+          /\/(?:reel|reels)\//i.test(candidateUrl);
+        const kind: "post" | "reel" = isReel ? "reel" : "post";
+
+        const rawCaption =
+          entry.prunedCaption ??
+          entry.caption ??
+          entry.content_text ??
+          entry.summary ??
+          (typeof entry.content_html === "string" ? stripHtmlTags(entry.content_html) : null) ??
+          entry.title;
+
+        items.push({
+          code,
+          kind,
+          instagramUrl: canonicalInstagramPostUrl(code, kind),
+          caption: cleanCaption(rawCaption),
+          thumbnailUrl: extractBeholdThumbnail(entry),
+          publishedOn: parseIsoDate(entry.timestamp ?? entry.date_published ?? entry.publishedAt ?? entry.pubDate),
+          username: fallbackUsername,
+        });
+      }
+      return items;
+    } catch {
+      return [];
+    }
+  }
+
+  // XML RSS 2.0 / Atom fallback
+  const blockRegex = /<(?:item|entry)\b[^>]*>([\s\S]*?)<\/(?:item|entry)>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = blockRegex.exec(trimmed)) !== null) {
+    const block = match[1];
+    const linkMatch =
+      /<link[^>]+href="([^"]+)"/i.exec(block)?.[1] ??
+      /<link[^>]*>([\s\S]*?)<\/link>/i.exec(block)?.[1] ??
+      /<guid[^>]*>([\s\S]*?)<\/guid>/i.exec(block)?.[1] ??
+      "";
+    const candidateUrl = stripHtmlTags(linkMatch);
+    const code = extractInstagramShortcode(candidateUrl);
+    if (!code || seenCodes.has(code)) continue;
+    seenCodes.add(code);
+
+    const kind: "post" | "reel" = /\/(?:reel|reels)\//i.test(candidateUrl) ? "reel" : "post";
+    const rawDesc =
+      /<content:encoded[^>]*>([\s\S]*?)<\/content:encoded>/i.exec(block)?.[1] ??
+      /<description[^>]*>([\s\S]*?)<\/description>/i.exec(block)?.[1] ??
+      /<summary[^>]*>([\s\S]*?)<\/summary>/i.exec(block)?.[1] ??
+      /<title[^>]*>([\s\S]*?)<\/title>/i.exec(block)?.[1] ??
+      "";
+    const cleanedDesc = cleanCaption(stripHtmlTags(rawDesc));
+
+    const thumbMatch =
+      /<media:thumbnail[^>]+url="([^"]+)"/i.exec(block)?.[1] ??
+      /<media:content[^>]+url="([^"]+)"/i.exec(block)?.[1] ??
+      /<enclosure[^>]+type="image\/[^"]*"[^>]+url="([^"]+)"/i.exec(block)?.[1] ??
+      /<enclosure[^>]+url="([^"]+)"[^>]+type="image\/[^"]*"/i.exec(block)?.[1] ??
+      /<img[^>]+src=["']([^"']+)["']/i.exec(decodeXmlEntities(rawDesc))?.[1] ??
+      null;
+
+    const pubRaw =
+      /<pubDate[^>]*>([\s\S]*?)<\/pubDate>/i.exec(block)?.[1] ??
+      /<published[^>]*>([\s\S]*?)<\/published>/i.exec(block)?.[1] ??
+      /<updated[^>]*>([\s\S]*?)<\/updated>/i.exec(block)?.[1] ??
+      "";
+
+    items.push({
+      code,
+      kind,
+      instagramUrl: canonicalInstagramPostUrl(code, kind),
+      caption: cleanedDesc,
+      thumbnailUrl: thumbMatch && thumbMatch.startsWith("https://") ? decodeXmlEntities(thumbMatch) : null,
+      publishedOn: parseIsoDate(stripHtmlTags(pubRaw)),
+      username: fallbackUsername,
+    });
+  }
+
+  return items;
+}
+
+async function fetchInstagramGraphMedia(accessToken: string, username: string): Promise<InstagramFetchResult> {
+  try {
+    const endpoint =
+      "https://graph.instagram.com/v21.0/me/media?fields=id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp&limit=25";
+    const response = await fetch(endpoint, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!response.ok) {
+      return {
+        ok: false,
+        source: "graph_api",
+        reason: `Instagram Graph API returned HTTP ${response.status} for @${username}. Verify the access token hasn't expired.`,
+      };
+    }
+    const json: unknown = await response.json();
+    const items = parseInstagramGraphApiJson(json, username);
+    return { ok: true, items, profileFound: true, source: "graph_api" };
+  } catch {
+    return {
+      ok: false,
+      source: "graph_api",
+      reason: `Could not reach Instagram Graph API for @${username}.`,
+    };
+  }
+}
+
+async function fetchExternalSocialFeed(feedUrl: string, username: string): Promise<InstagramFetchResult> {
+  const safeUrl = normalizeExternalFeedUrl(feedUrl);
+  if (!safeUrl) {
+    return {
+      ok: false,
+      source: "feed",
+      reason: `Invalid Feed URL for @${username}. Use a public https:// JSON or RSS feed link.`,
+    };
+  }
+
+  try {
+    const response = await fetch(safeUrl, {
+      headers: {
+        "User-Agent": "iisscampus/1.0 (+https://iissboys.com)",
+        Accept: "application/json, application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9",
+      },
+      redirect: "follow",
+      cache: "no-store",
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!response.ok) {
+      return {
+        ok: false,
+        source: "feed",
+        reason: `Feed URL for @${username} returned HTTP ${response.status}. Check the feed link in Auto-pull Feed setup.`,
+      };
+    }
+    const body = await response.text();
+    const items = parseExternalSocialFeed(body, username);
+    if (items.length === 0) {
+      return {
+        ok: false,
+        source: "feed",
+        reason: `Feed for @${username} returned no Instagram posts or reels. Verify it is an active Instagram JSON (e.g. Behold) or RSS feed.`,
+      };
+    }
+    return { ok: true, items, profileFound: true, source: "feed" };
+  } catch {
+    return {
+      ok: false,
+      source: "feed",
+      reason: `Could not fetch the configured feed URL for @${username}.`,
+    };
+  }
+}
+
+export async function fetchInstagramProfilePosts(
+  username: string,
+  options?: { accessToken?: string | null; feedUrl?: string | null },
+): Promise<InstagramFetchResult> {
   const cleanUser = username.trim().replace(/^@/, "");
   if (!cleanUser) {
-    return { ok: false, reason: "Invalid Instagram account handle." };
+    return { ok: false, source: "public_profile", reason: "Invalid Instagram account handle." };
+  }
+
+  const token = options?.accessToken?.trim();
+  if (token) {
+    return fetchInstagramGraphMedia(token, cleanUser);
+  }
+
+  const feedUrl = options?.feedUrl?.trim();
+  if (feedUrl) {
+    return fetchExternalSocialFeed(feedUrl, cleanUser);
   }
 
   const profileUrl = `https://www.instagram.com/${encodeURIComponent(cleanUser)}/`;
-  const headerStrategies: Array<Record<string, string>> = [
-    {
-      "User-Agent": "curl/8.7.1",
-      Accept: "text/html,application/xhtml+xml,*/*",
-      "Accept-Language": "en-US,en;q=0.9",
-    },
-    {
-      "User-Agent": "facebookexternalhit/1.1",
-      Accept: "text/html,application/xhtml+xml,*/*",
-      "Accept-Language": "en-US,en;q=0.9",
-    },
-  ];
 
-  let sawRateLimit = false;
-  let sawErrorPage = false;
-  let sawPrivate = false;
-  let sawLogin = false;
-
-  for (const headers of headerStrategies) {
-    try {
-      const response = await fetch(profileUrl, {
-        headers,
-        cache: "no-store",
-        signal: AbortSignal.timeout(12000),
-      });
-      if (response.status === 429) {
-        sawRateLimit = true;
-        continue;
-      }
-      if (response.status === 404) {
-        sawErrorPage = true;
-        continue;
-      }
-      if (!response.ok) continue;
-
-      const html = await response.text();
-      const parsed = parseInstagramProfileHtml(html, cleanUser);
-      if (parsed.items.length > 0) {
-        return { ok: true, items: parsed.items, profileFound: true };
-      }
-      if (parsed.isPrivate) sawPrivate = true;
-      if (parsed.hasErrorPage) sawErrorPage = true;
-      if (parsed.requiresLogin) sawLogin = true;
-      if (parsed.hasProfilePayload && !parsed.isPrivate && !parsed.hasErrorPage) {
-        return { ok: true, items: [], profileFound: true };
-      }
-    } catch {
-      // Try next strategy
-    }
-  }
-
-  // Fallback JSON endpoint
   try {
-    const apiRes = await fetch(
-      `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(cleanUser)}`,
-      {
-        headers: {
-          "x-ig-app-id": "936619743392459",
-          "User-Agent":
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-          Accept: "application/json",
-          Referer: profileUrl,
-        },
-        cache: "no-store",
-        signal: AbortSignal.timeout(10000),
+    const response = await fetch(profileUrl, {
+      headers: {
+        "User-Agent": "iisscampus/1.0 (+https://iissboys.com)",
+        Accept: "text/html,application/xhtml+xml,*/*",
+        "Accept-Language": "en-US,en;q=0.9",
       },
-    );
-    if (apiRes.status === 429) {
-      sawRateLimit = true;
-    } else if (apiRes.status === 404) {
-      sawErrorPage = true;
-    } else if (apiRes.ok) {
-      const contentType = apiRes.headers.get("content-type") ?? "";
-      if (contentType.includes("json")) {
-        const json = await apiRes.json();
-        const parsed = parseInstagramWebProfileJson(json, cleanUser);
-        if (parsed.items.length > 0) {
-          return { ok: true, items: parsed.items, profileFound: true };
-        }
-        if (parsed.isPrivate) sawPrivate = true;
-        else return { ok: true, items: [], profileFound: true };
-      }
+      redirect: "manual",
+      cache: "no-store",
+      signal: AbortSignal.timeout(12000),
+    });
+
+    if (response.status === 429) {
+      return {
+        ok: false,
+        source: "public_profile",
+        blockedByAuthOrRateLimit: true,
+        reason: `Instagram rate-limited unauthenticated requests for @${cleanUser}. Connect a Feed URL (e.g. Behold JSON / RSS) or Instagram Graph API token in Feed setup for reliable 1-click sync.`,
+      };
+    }
+
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location") ?? "";
+      const isLoginGate = location.includes("/accounts/login") || location.includes("/challenge");
+      return {
+        ok: false,
+        source: "public_profile",
+        blockedByAuthOrRateLimit: true,
+        reason: isLoginGate
+          ? `Instagram requires login to view @${cleanUser} from this server. Connect a Feed URL (e.g. Behold JSON / RSS) or Graph API token below.`
+          : `Instagram redirected @${cleanUser} (HTTP ${response.status}). Connect a Feed URL or Graph API token below.`,
+      };
+    }
+
+    if (response.status === 404) {
+      return {
+        ok: false,
+        source: "public_profile",
+        reason: `@${cleanUser} could not be found on Instagram. Check the handle in Settings.`,
+      };
+    }
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        source: "public_profile",
+        blockedByAuthOrRateLimit: true,
+        reason: `Instagram returned HTTP ${response.status} for @${cleanUser}. Connect a Feed URL or Graph API token below.`,
+      };
+    }
+
+    const html = await response.text();
+    const parsed = parseInstagramProfileHtml(html, cleanUser);
+    if (parsed.items.length > 0) {
+      return { ok: true, items: parsed.items, profileFound: true, source: "public_profile" };
+    }
+    if (parsed.isPrivate) {
+      return {
+        ok: false,
+        source: "public_profile",
+        blockedByAuthOrRateLimit: true,
+        reason: `@${cleanUser} is private. Connect a Feed URL or official Graph API token below to import its posts.`,
+      };
+    }
+    if (parsed.hasProfilePayload && !parsed.hasErrorPage) {
+      return { ok: true, items: [], profileFound: true, source: "public_profile" };
+    }
+    if (parsed.requiresLogin) {
+      return {
+        ok: false,
+        source: "public_profile",
+        blockedByAuthOrRateLimit: true,
+        reason: `Instagram requested login for @${cleanUser}. Connect a Feed URL (e.g. Behold JSON / RSS) or Graph API token below.`,
+      };
+    }
+    if (parsed.hasErrorPage) {
+      return {
+        ok: false,
+        source: "public_profile",
+        blockedByAuthOrRateLimit: true,
+        reason: `@${cleanUser} is not accessible to logged-out requests on Instagram. Connect a Feed URL (e.g. Behold JSON / RSS) or Graph API token below, or verify the handle in Settings.`,
+      };
     }
   } catch {
-    // Fall through to error message
+    return {
+      ok: false,
+      source: "public_profile",
+      reason: `Could not reach Instagram for @${cleanUser} right now.`,
+    };
   }
 
-  if (sawPrivate) {
-    return { ok: false, reason: `@${cleanUser} is a private Instagram account.` };
-  }
-  if (sawErrorPage) {
-    return {
-      ok: false,
-      reason: `@${cleanUser} could not be found or is unavailable on Instagram. Check the handle in Settings.`,
-    };
-  }
-  if (sawRateLimit || sawLogin) {
-    return {
-      ok: false,
-      reason: `Instagram temporarily limited automated access for @${cleanUser}. Try again in a minute.`,
-    };
-  }
   return {
     ok: false,
-    reason: `Could not pull posts from @${cleanUser} right now.`,
+    source: "public_profile",
+    blockedByAuthOrRateLimit: true,
+    reason: `Instagram did not return public posts for @${cleanUser}. Connect a Feed URL (e.g. Behold JSON / RSS) or Graph API token below.`,
   };
 }
 
@@ -464,6 +747,7 @@ export function planSocialPullDrafts({
         label: account.label,
         username: account.username,
         councilTag: account.councilTag,
+        source: result.source,
         ok: false,
         error: result.reason,
         fetchedCount: 0,
@@ -510,6 +794,7 @@ export function planSocialPullDrafts({
       label: account.label,
       username: account.username,
       councilTag: account.councilTag,
+      source: result.source,
       ok: true,
       fetchedCount: result.items.length,
       addedCount,
@@ -524,33 +809,17 @@ export function planSocialPullDrafts({
   };
 }
 
-function isAllowedInstagramImageHost(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "https:") return false;
-    const host = parsed.hostname.toLowerCase();
-    return (
-      host.endsWith(".cdninstagram.com") ||
-      host === "cdninstagram.com" ||
-      host.endsWith(".fbcdn.net") ||
-      host === "instagram.com" ||
-      host.endsWith(".instagram.com")
-    );
-  } catch {
-    return false;
-  }
-}
-
 export async function mirrorInstagramThumbnail(
   thumbnailUrl: string | null,
   code: string,
 ): Promise<string | null> {
-  if (!thumbnailUrl || !isAllowedInstagramImageHost(thumbnailUrl)) return null;
+  const safeImageUrl = normalizeExternalFeedUrl(thumbnailUrl);
+  if (!safeImageUrl) return null;
 
   try {
-    const response = await fetch(thumbnailUrl, {
+    const response = await fetch(safeImageUrl, {
       headers: {
-        "User-Agent": "curl/8.7.1",
+        "User-Agent": "iisscampus/1.0 (+https://iissboys.com)",
         Accept: "image/*",
       },
       cache: "no-store",

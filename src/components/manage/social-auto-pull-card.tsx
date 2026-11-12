@@ -1,21 +1,46 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, RefreshCw, Sparkles, AlertTriangle } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  Link2,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
 import { InstagramMark } from "@/components/brand/instagram-mark";
-import { autoPullSocialPosts, type AutoPullActionState } from "@/lib/manage/actions";
-import type { ConfiguredInstagramAccount } from "@/lib/social";
+import {
+  autoPullSocialPosts,
+  saveSocialPullFeeds,
+  type ActionState,
+  type AutoPullActionState,
+} from "@/lib/manage/actions";
+import type { ConfiguredInstagramAccount, SocialFeedConfig } from "@/lib/social";
+
+const fieldClass = "w-full rounded-md border border-line bg-background px-3 py-2 text-sm";
 
 export function SocialAutoPullCard({
   accounts,
+  feeds,
+  hasTokenByKey,
+  hasEnvFeedByKey,
 }: {
   accounts: ConfiguredInstagramAccount[];
+  feeds: SocialFeedConfig;
+  hasTokenByKey: Record<ConfiguredInstagramAccount["key"], boolean>;
+  hasEnvFeedByKey: Record<ConfiguredInstagramAccount["key"], boolean>;
 }) {
   const router = useRouter();
   const [state, action, pending] = useActionState(autoPullSocialPosts, {} as AutoPullActionState);
+  const [feedState, feedAction, savingFeeds] = useActionState(saveSocialPullFeeds, {} as ActionState);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [scixcomFeedUrl, setScixcomFeedUrl] = useState(feeds.scixcomFeedUrl ?? "");
+  const [instagramFeedUrl, setInstagramFeedUrl] = useState(feeds.instagramFeedUrl ?? "");
   const lastRefreshedPullRef = useRef<string | undefined>(undefined);
+  const lastSavedFeedRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (state.pulledAt && state.pulledAt !== lastRefreshedPullRef.current) {
@@ -23,6 +48,23 @@ export function SocialAutoPullCard({
       router.refresh();
     }
   }, [state.pulledAt, router]);
+
+  useEffect(() => {
+    if (feedState.ok && feedState.ok !== lastSavedFeedRef.current) {
+      lastSavedFeedRef.current = feedState.ok;
+      router.refresh();
+    }
+  }, [feedState.ok, router]);
+
+  const hasAccountFailure = Boolean(state.error || state.accountSummaries?.some((item) => !item.ok));
+  const showSetup = setupOpen || hasAccountFailure || Boolean(feedState.error);
+
+  const sourceLabelFor = (accountKey: ConfiguredInstagramAccount["key"]) => {
+    if (hasTokenByKey[accountKey]) return "Graph API token";
+    const uiFeed = accountKey === "scixcom" ? feeds.scixcomFeedUrl : feeds.instagramFeedUrl;
+    if (uiFeed || hasEnvFeedByKey[accountKey]) return "Connected feed URL";
+    return "Public profile (no feed connected)";
+  };
 
   return (
     <section
@@ -44,16 +86,29 @@ export function SocialAutoPullCard({
           </p>
         </div>
 
-        <form action={action} className="shrink-0">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
-            type="submit"
-            disabled={pending}
-            className="inline-flex items-center gap-2 rounded-lg bg-navy px-4 py-2.5 text-sm font-medium text-white shadow-xs transition hover:bg-navy/90 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            type="button"
+            onClick={() => setSetupOpen((prev) => !prev)}
+            aria-expanded={showSetup}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-3.5 py-2.5 text-sm font-medium text-ink shadow-xs hover:bg-wash cursor-pointer"
           >
-            <RefreshCw size={15} className={pending ? "animate-spin" : ""} />
-            <span>{pending ? "Pulling new posts..." : "Auto-pull new posts & reels"}</span>
+            <Link2 size={14} />
+            <span>Feed setup</span>
+            <ChevronDown size={14} className={`transition-transform ${showSetup ? "rotate-180" : ""}`} />
           </button>
-        </form>
+
+          <form action={action}>
+            <button
+              type="submit"
+              disabled={pending}
+              className="inline-flex items-center gap-2 rounded-lg bg-navy px-4 py-2.5 text-sm font-medium text-white shadow-xs transition hover:bg-navy/90 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <RefreshCw size={15} className={pending ? "animate-spin" : ""} />
+              <span>{pending ? "Pulling new posts..." : "Auto-pull new posts & reels"}</span>
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* Configured Accounts Strip */}
@@ -77,7 +132,7 @@ export function SocialAutoPullCard({
                     </span>
                   </div>
                   <p className="truncate text-xs text-muted">
-                    {account.username ? `@${account.username}` : "Handle missing — update in Settings"}
+                    {account.username ? `@${account.username}` : "Handle missing"} · {sourceLabelFor(account.key)}
                   </p>
                 </div>
               </div>
@@ -92,7 +147,7 @@ export function SocialAutoPullCard({
                   </div>
                 ) : (
                   <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800 border border-amber-200">
-                    Unavailable
+                    Needs feed / auth
                   </span>
                 )
               ) : (
@@ -124,7 +179,70 @@ export function SocialAutoPullCard({
           className="mt-4 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
         >
           <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-700" />
-          <span>{state.ok}</span>
+          <div className="space-y-1">
+            <p>{state.ok}</p>
+          </div>
+        </div>
+      ) : null}
+
+      {showSetup ? (
+        <div className="mt-5 rounded-xl border border-line bg-wash/30 p-4 sm:p-5">
+          <div className="max-w-3xl">
+            <h3 className="text-sm font-semibold text-ink">
+              Connect Instagram Feed URLs (Recommended for Vercel &amp; Login-Gated Accounts)
+            </h3>
+            <p className="mt-1 text-xs leading-5 text-muted">
+              Instagram blocks unauthenticated server scraping from cloud hosts and restricts some accounts when logged out. Paste a public{" "}
+              <strong className="font-medium text-ink">Behold.so</strong> JSON feed URL or{" "}
+              <strong className="font-medium text-ink">RSS / JSON feed</strong> URL for each account below so 1-click Auto-Pull never hits rate limits. Alternatively, set official Meta Graph API tokens in server environment variables (
+              <code className="font-mono">INSTAGRAM_SCIXCOM_ACCESS_TOKEN</code> and{" "}
+              <code className="font-mono">INSTAGRAM_CAMPUS_ACCESS_TOKEN</code>).
+            </p>
+          </div>
+
+          <form action={feedAction} className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-1 text-xs">
+              <span className="font-medium text-ink">
+                12th / SciXcom Feed URL ({accounts[0]?.label || "SciXcom"})
+              </span>
+              <input
+                name="scixcomFeedUrl"
+                type="url"
+                value={scixcomFeedUrl}
+                onChange={(e) => setScixcomFeedUrl(e.target.value)}
+                placeholder="https://feeds.behold.so/..."
+                className={fieldClass}
+              />
+            </label>
+
+            <label className="grid gap-1 text-xs">
+              <span className="font-medium text-ink">
+                11th / Campus Feed URL ({accounts[1]?.label || "Instagram"})
+              </span>
+              <input
+                name="instagramFeedUrl"
+                type="url"
+                value={instagramFeedUrl}
+                onChange={(e) => setInstagramFeedUrl(e.target.value)}
+                placeholder="https://feeds.behold.so/..."
+                className={fieldClass}
+              />
+            </label>
+
+            <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-3 pt-1">
+              <div>
+                {feedState.error ? <p className="text-xs font-medium text-red-600">{feedState.error}</p> : null}
+                {feedState.ok ? <p className="text-xs font-medium text-emerald-700">{feedState.ok}</p> : null}
+              </div>
+              <button
+                type="submit"
+                disabled={savingFeeds}
+                className="rounded-md border border-line bg-white px-3.5 py-1.5 text-xs font-medium text-ink shadow-xs hover:bg-wash cursor-pointer disabled:opacity-50"
+              >
+                {savingFeeds ? "Saving feed URLs..." : "Save feed URLs"}
+              </button>
+            </div>
+          </form>
         </div>
       ) : null}
     </section>

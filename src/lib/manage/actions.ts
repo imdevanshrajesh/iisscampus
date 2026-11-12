@@ -36,10 +36,14 @@ import { expandMapUrl } from "@/lib/media/map";
 import { googleFormUrl } from "@/lib/registration";
 import { classifyMediaUrl, classifyNavigationUrl, parseMediaHostList } from "@/lib/media/url";
 import {
+  normalizeSocialFeedConfig,
   normalizeSocialLinks,
+  parseSocialFeedConfigInput,
   parseSocialInput,
   parseYouTubeSettingsInput,
   resolveConfiguredInstagramAccounts,
+  type ConfiguredInstagramAccount,
+  type SocialFeedConfig,
 } from "@/lib/social";
 import {
   fetchInstagramProfilePosts,
@@ -2417,10 +2421,25 @@ export async function saveSocial(_state: ActionState, formData: FormData): Promi
   if ("error" in context) return { error: context.error };
   if (!can(context.actor, "manage_settings")) return { error: genericDenial };
 
+  const currentSiteLinksRow = await context.supabase
+    .from("campus_settings")
+    .select("site_links")
+    .eq("id", true)
+    .maybeSingle();
+  const preservedFeeds = !currentSiteLinksRow.error
+    ? normalizeSocialFeedConfig(currentSiteLinksRow.data?.site_links)
+    : { scixcomFeedUrl: null, instagramFeedUrl: null };
+
+  const siteLinksPayload = {
+    ...links,
+    ...(preservedFeeds.scixcomFeedUrl ? { scixcomFeedUrl: preservedFeeds.scixcomFeedUrl } : {}),
+    ...(preservedFeeds.instagramFeedUrl ? { instagramFeedUrl: preservedFeeds.instagramFeedUrl } : {}),
+  };
+
   const saved = await context.supabase
     .from("campus_settings")
     .update({
-      site_links: links,
+      site_links: siteLinksPayload,
       instagram_url: links.instagramUrl,
       scixcom_instagram_url: links.scixcomInstagramUrl,
     })
@@ -2509,9 +2528,12 @@ export async function saveYouTubeSettings(_state: ActionState, formData: FormDat
     scixcomInstagramUrl: stored.scixcomInstagramUrl || currentRow.data?.scixcom_instagram_url,
   });
 
+  const feedFields = normalizeSocialFeedConfig(stored);
   const updatedLinks = {
     ...currentLinks,
     ...parsed,
+    ...(feedFields.scixcomFeedUrl ? { scixcomFeedUrl: feedFields.scixcomFeedUrl } : {}),
+    ...(feedFields.instagramFeedUrl ? { instagramFeedUrl: feedFields.instagramFeedUrl } : {}),
   };
 
   const saved = await context.supabase
@@ -2530,6 +2552,68 @@ export async function saveYouTubeSettings(_state: ActionState, formData: FormDat
   revalidatePath("/manage/socials");
   revalidatePath("/manage/settings");
   return { ok: "YouTube channel settings saved." };
+}
+
+export async function saveSocialPullFeeds(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = parseSocialFeedConfigInput(formData);
+  if ("error" in parsed) return { error: parsed.error };
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { saveSocialFeedsToStore } = await import("@/lib/data/file-content");
+    if (!saveSocialFeedsToStore(parsed.feeds)) {
+      return { error: "Feed URLs could not be saved." };
+    }
+    revalidatePath("/manage/socials");
+    return { ok: "Instagram feed URLs saved." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const currentRow = await context.supabase
+    .from("campus_settings")
+    .select("site_links, instagram_url, scixcom_instagram_url")
+    .eq("id", true)
+    .maybeSingle();
+
+  if (currentRow.error && (currentRow.error.message ?? "").toLowerCase().includes("site_links")) {
+    return { error: "Run supabase/SYNC_LIVE.sql in the database first to enable saving site_links settings." };
+  }
+
+  const stored =
+    currentRow.data?.site_links &&
+    typeof currentRow.data.site_links === "object" &&
+    !Array.isArray(currentRow.data.site_links)
+      ? (currentRow.data.site_links as Record<string, unknown>)
+      : {};
+
+  const currentLinks = normalizeSocialLinks({
+    ...stored,
+    instagramUrl: stored.instagramUrl || currentRow.data?.instagram_url,
+    scixcomInstagramUrl: stored.scixcomInstagramUrl || currentRow.data?.scixcom_instagram_url,
+  });
+
+  const updatedPayload = {
+    ...currentLinks,
+    scixcomFeedUrl: parsed.feeds.scixcomFeedUrl,
+    instagramFeedUrl: parsed.feeds.instagramFeedUrl,
+  };
+
+  const saved = await context.supabase
+    .from("campus_settings")
+    .update({ site_links: updatedPayload })
+    .eq("id", true);
+
+  if (saved.error) {
+    return { error: databaseError(saved.error, "Feed URLs could not be saved.") };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, "update_social_feeds", "campus_settings", null);
+  revalidatePath("/manage/socials");
+  return { ok: "Instagram feed URLs saved." };
 }
 
 export async function saveCouncilLogo(_state: ActionState, formData: FormData): Promise<ActionState> {
@@ -3747,6 +3831,7 @@ export async function autoPullSocialPosts(
   void _formData;
   const mode = await contentMode();
   let socialLinks = defaultSocialLinks;
+  let feedConfig: SocialFeedConfig = { scixcomFeedUrl: null, instagramFeedUrl: null };
   let activeTermLabel: string | null = null;
   let existingPosts: Array<{ instagramUrl: string }> = [];
   let staffCtx: Extract<Awaited<ReturnType<typeof staffContext>>, { supabase: unknown }> | null = null;
@@ -3754,8 +3839,9 @@ export async function autoPullSocialPosts(
   if (mode === "file") {
     const access = await fileActor((actor) => can(actor, "manage_settings"));
     if ("error" in access) return { error: access.error };
-    const { readAcademicTerm, readSocial, readSocialPostsFromStore } = await import("@/lib/data/file-content");
+    const { readAcademicTerm, readSocial, readSocialFeeds, readSocialPostsFromStore } = await import("@/lib/data/file-content");
     socialLinks = normalizeSocialLinks(readSocial());
+    feedConfig = normalizeSocialFeedConfig(readSocialFeeds());
     activeTermLabel = readAcademicTerm().label;
     existingPosts = readSocialPostsFromStore().map((item) => ({ instagramUrl: item.instagramUrl }));
   } else {
@@ -3797,6 +3883,7 @@ export async function autoPullSocialPosts(
       instagramUrl: stored.instagramUrl || rowData?.instagram_url,
       scixcomInstagramUrl: stored.scixcomInstagramUrl || rowData?.scixcom_instagram_url,
     });
+    feedConfig = normalizeSocialFeedConfig(stored);
     activeTermLabel =
       typeof rowData?.active_term_label === "string" && rowData.active_term_label.trim()
         ? rowData.active_term_label.trim()
@@ -3815,28 +3902,80 @@ export async function autoPullSocialPosts(
     }));
   }
 
-  const accounts = resolveConfiguredInstagramAccounts(socialLinks);
-  const fetchPromises = new Map<string, Promise<InstagramFetchResult>>();
-  for (const account of accounts) {
-    if (!account.username) continue;
-    const key = account.username.toLowerCase();
-    if (!fetchPromises.has(key)) {
-      fetchPromises.set(key, fetchInstagramProfilePosts(account.username));
-    }
-  }
+  const envTokenFor = (key: ConfiguredInstagramAccount["key"]) =>
+    key === "scixcom"
+      ? process.env.INSTAGRAM_SCIXCOM_ACCESS_TOKEN || process.env.INSTAGRAM_12TH_ACCESS_TOKEN || null
+      : process.env.INSTAGRAM_CAMPUS_ACCESS_TOKEN || process.env.INSTAGRAM_11TH_ACCESS_TOKEN || null;
 
-  const accountsResults: SocialPullAccountInput[] = await Promise.all(
-    accounts.map(async (account) => {
+  const feedUrlFor = (key: ConfiguredInstagramAccount["key"]) =>
+    key === "scixcom"
+      ? feedConfig.scixcomFeedUrl || process.env.INSTAGRAM_SCIXCOM_FEED_URL || process.env.INSTAGRAM_12TH_FEED_URL || null
+      : feedConfig.instagramFeedUrl || process.env.INSTAGRAM_CAMPUS_FEED_URL || process.env.INSTAGRAM_11TH_FEED_URL || null;
+
+  const accounts = resolveConfiguredInstagramAccounts(socialLinks);
+  const fetchCache = new Map<string, InstagramFetchResult>();
+  const publicFallbackCount = accounts.filter(
+    (account) => account.username && !envTokenFor(account.key) && !feedUrlFor(account.key),
+  ).length;
+
+  let accountsResults: SocialPullAccountInput[];
+  if (publicFallbackCount > 1) {
+    // Sequence public profile fetches gently when no feed/token is configured.
+    accountsResults = [];
+    for (let i = 0; i < accounts.length; i += 1) {
+      const account = accounts[i];
       if (!account.username) {
-        return {
+        accountsResults.push({
           account,
-          result: { ok: false, reason: "Invalid Instagram URL configured in Settings." },
-        };
+          result: { ok: false, source: "public_profile", reason: "Invalid Instagram URL configured in Settings." },
+        });
+        continue;
       }
-      const result = await fetchPromises.get(account.username.toLowerCase())!;
-      return { account, result };
-    }),
-  );
+      const accessToken = envTokenFor(account.key);
+      const feedUrl = feedUrlFor(account.key);
+      const cacheKey = `${account.username.toLowerCase()}::${accessToken ? "token" : "no"}::${feedUrl ?? ""}`;
+      let result = fetchCache.get(cacheKey);
+      if (!result) {
+        if (i > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 350));
+        }
+        result = await fetchInstagramProfilePosts(account.username, { accessToken, feedUrl });
+        fetchCache.set(cacheKey, result);
+      }
+      accountsResults.push({ account, result });
+    }
+  } else {
+    const fetchPromises = new Map<string, Promise<InstagramFetchResult>>();
+    for (const account of accounts) {
+      if (!account.username) continue;
+      const accessToken = envTokenFor(account.key);
+      const feedUrl = feedUrlFor(account.key);
+      const cacheKey = `${account.username.toLowerCase()}::${accessToken ? "token" : "no"}::${feedUrl ?? ""}`;
+      if (!fetchPromises.has(cacheKey)) {
+        fetchPromises.set(cacheKey, fetchInstagramProfilePosts(account.username, { accessToken, feedUrl }));
+      }
+    }
+
+    accountsResults = await Promise.all(
+      accounts.map(async (account) => {
+        if (!account.username) {
+          return {
+            account,
+            result: {
+              ok: false,
+              source: "public_profile" as const,
+              reason: "Invalid Instagram URL configured in Settings.",
+            },
+          };
+        }
+        const accessToken = envTokenFor(account.key);
+        const feedUrl = feedUrlFor(account.key);
+        const cacheKey = `${account.username.toLowerCase()}::${accessToken ? "token" : "no"}::${feedUrl ?? ""}`;
+        const result = await fetchPromises.get(cacheKey)!;
+        return { account, result };
+      }),
+    );
+  }
 
   const plan = planSocialPullDrafts({
     existingPosts,

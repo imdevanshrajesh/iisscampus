@@ -5,15 +5,19 @@ import {
   extractInstagramUsername,
   extractYouTubeHandle,
   linkHostIsInstagram,
+  normalizeExternalFeedUrl,
   normalizeSocialLinks,
   normalizeYouTubeChannelUrl,
+  parseSocialFeedConfigInput,
   parseSocialInput,
   parseYouTubeSettingsInput,
   resolveConfiguredInstagramAccounts,
   youtubeSubscribeUrl,
 } from "../src/lib/social.ts";
 import {
+  parseExternalSocialFeed,
   parseInstagramDateFromAccessibility,
+  parseInstagramGraphApiJson,
   parseInstagramProfileHtml,
   parseInstagramWebProfileJson,
   parseYouTubeChannelHtml,
@@ -229,6 +233,7 @@ describe("social auto-pull & YouTube parsers", () => {
           result: {
             ok: true,
             profileFound: true,
+            source: "public_profile",
             items: [
               {
                 code: "EXISTING1",
@@ -256,6 +261,7 @@ describe("social auto-pull & YouTube parsers", () => {
           result: {
             ok: true,
             profileFound: true,
+            source: "public_profile",
             items: [
               {
                 code: "FRESH100",
@@ -302,6 +308,7 @@ describe("social auto-pull & YouTube parsers", () => {
           result: {
             ok: true,
             profileFound: true,
+            source: "public_profile",
             items: [
               {
                 code: "SOLO1",
@@ -317,7 +324,7 @@ describe("social auto-pull & YouTube parsers", () => {
         },
         {
           account: accounts[1]!,
-          result: { ok: false, reason: "@iisscampus is unavailable." },
+          result: { ok: false, source: "public_profile", reason: "@iisscampus is unavailable." },
         },
       ],
       activeTermLabel: null,
@@ -359,5 +366,88 @@ describe("social auto-pull & YouTube parsers", () => {
     assert.equal(videos.length, 1);
     assert.equal(videos[0]?.title, "Annual Day & Council Investiture");
     assert.equal(videos[0]?.url, "https://www.youtube.com/watch?v=vid12345");
+  });
+
+  it("validates feed URLs and parses Instagram Graph API, Behold JSON, and RSS feeds", () => {
+    assert.equal(normalizeExternalFeedUrl("https://feeds.behold.so/abc123"), "https://feeds.behold.so/abc123");
+    assert.equal(normalizeExternalFeedUrl("http://feeds.behold.so/abc123"), null);
+    assert.equal(normalizeExternalFeedUrl("https://127.0.0.1/feed.json"), null);
+    assert.equal(normalizeExternalFeedUrl("/local/feed.json"), null);
+
+    const feedForm = new FormData();
+    feedForm.set("scixcomFeedUrl", "https://feeds.behold.so/scix123");
+    feedForm.set("instagramFeedUrl", "");
+    const parsedFeeds = parseSocialFeedConfigInput(feedForm);
+    assert.equal("error" in parsedFeeds, false);
+    if (!("error" in parsedFeeds)) {
+      assert.equal(parsedFeeds.feeds.scixcomFeedUrl, "https://feeds.behold.so/scix123");
+      assert.equal(parsedFeeds.feeds.instagramFeedUrl, null);
+    }
+
+    const badFeedForm = new FormData();
+    badFeedForm.set("instagramFeedUrl", "https://localhost:3000/bad");
+    assert.equal("error" in parseSocialFeedConfigInput(badFeedForm), true);
+
+    const graphItems = parseInstagramGraphApiJson(
+      {
+        data: [
+          {
+            id: "1001",
+            caption: "Graph API Reel",
+            media_type: "VIDEO",
+            media_product_type: "REELS",
+            thumbnail_url: "https://scontent.cdninstagram.com/reel-thumb.jpg",
+            permalink: "https://www.instagram.com/reel/GRREEL123/",
+            timestamp: "2026-11-01T10:00:00+0000",
+          },
+          {
+            id: "1002",
+            caption: "Graph API Post",
+            media_type: "IMAGE",
+            media_url: "https://scontent.cdninstagram.com/photo.jpg",
+            permalink: "https://www.instagram.com/p/GRPOST456/",
+            timestamp: "2026-10-25T10:00:00+0000",
+          },
+        ],
+      },
+      "unmuted.sc",
+    );
+    assert.equal(graphItems.length, 2);
+    assert.equal(graphItems[0]?.kind, "reel");
+    assert.equal(graphItems[0]?.instagramUrl, "https://www.instagram.com/reel/GRREEL123/");
+    assert.equal(graphItems[1]?.kind, "post");
+
+    const beholdItems = parseExternalSocialFeed(
+      JSON.stringify({
+        posts: [
+          {
+            permalink: "https://www.instagram.com/reel/BH999/",
+            prunedCaption: "Behold Council Reel",
+            isReel: true,
+            sizes: { large: { mediaUrl: "https://cdn2.behold.pictures/large.jpg" } },
+            timestamp: "2026-11-02T12:00:00Z",
+          },
+        ],
+      }),
+      "scixcom.27",
+    );
+    assert.equal(beholdItems.length, 1);
+    assert.equal(beholdItems[0]?.kind, "reel");
+    assert.equal(beholdItems[0]?.thumbnailUrl, "https://cdn2.behold.pictures/large.jpg");
+
+    const rssItems = parseExternalSocialFeed(
+      `<rss><channel>
+        <item>
+          <link>https://www.instagram.com/p/RSS888/?utm_source=rss</link>
+          <description><![CDATA[<p>Hello <b>IISS</b></p><img src="https://cdn.example.com/thumb.jpg" />]]></description>
+          <pubDate>Wed, 04 Nov 2026 09:00:00 GMT</pubDate>
+        </item>
+      </channel></rss>`,
+      "unmuted.sc",
+    );
+    assert.equal(rssItems.length, 1);
+    assert.equal(rssItems[0]?.code, "RSS888");
+    assert.equal(rssItems[0]?.caption, "Hello IISS");
+    assert.equal(rssItems[0]?.thumbnailUrl, "https://cdn.example.com/thumb.jpg");
   });
 });

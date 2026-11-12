@@ -4,7 +4,7 @@ import { SocialPostForm } from "@/components/manage/social-post-form";
 import { SocialPostsManager } from "@/components/manage/social-posts-manager";
 import { ManageUnavailable } from "@/components/manage/unavailable";
 import { YouTubeChannelForm } from "@/components/manage/youtube-channel-form";
-import { getEditableSocialPosts, getPublicSocial } from "@/lib/data/queries";
+import { getEditableSocialFeeds, getEditableSocialPosts, getPublicSocial } from "@/lib/data/queries";
 import { requireAdministrator } from "@/lib/manage/access";
 import { resolveConfiguredInstagramAccounts } from "@/lib/social";
 import { fetchYouTubeChannelOverview } from "@/lib/social-pull";
@@ -15,14 +15,23 @@ export default async function ManageSocialsPage() {
   const access = await requireAdministrator();
   if (!access.ready) return <ManageUnavailable />;
 
-  const [posts, social] = await Promise.all([
+  const [posts, social, feeds] = await Promise.all([
     getEditableSocialPosts(),
     getPublicSocial(),
+    getEditableSocialFeeds(),
   ]);
   const [accounts, youtubeOverview] = await Promise.all([
     Promise.resolve(resolveConfiguredInstagramAccounts(social)),
     social.youtubeUrl ? fetchYouTubeChannelOverview(social.youtubeUrl) : Promise.resolve(null),
   ]);
+  const hasTokenByKey = {
+    scixcom: Boolean(process.env.INSTAGRAM_SCIXCOM_ACCESS_TOKEN || process.env.INSTAGRAM_12TH_ACCESS_TOKEN),
+    campus: Boolean(process.env.INSTAGRAM_CAMPUS_ACCESS_TOKEN || process.env.INSTAGRAM_11TH_ACCESS_TOKEN),
+  };
+  const hasEnvFeedByKey = {
+    scixcom: Boolean(process.env.INSTAGRAM_SCIXCOM_FEED_URL || process.env.INSTAGRAM_12TH_FEED_URL),
+    campus: Boolean(process.env.INSTAGRAM_CAMPUS_FEED_URL || process.env.INSTAGRAM_11TH_FEED_URL),
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-12 md:px-8">
@@ -56,7 +65,12 @@ export default async function ManageSocialsPage() {
         </div>
       </div>
 
-      <SocialAutoPullCard accounts={accounts} />
+      <SocialAutoPullCard
+        accounts={accounts}
+        feeds={feeds}
+        hasTokenByKey={hasTokenByKey}
+        hasEnvFeedByKey={hasEnvFeedByKey}
+      />
 
       <div className="mt-8 grid gap-8 lg:grid-cols-12">
         <div className="lg:col-span-5">

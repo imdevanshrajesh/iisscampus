@@ -9,12 +9,13 @@ import {
   readContentStore,
   readNewsletter,
   readSocial,
+  readSocialFeeds,
   readSocialPostsFromStore,
   readWellnessPageSettings,
   type StoredAiConfig,
 } from "@/lib/data/file-content";
 import { cleanTermLabel, cleanTermStartDate, EMPTY_ACADEMIC_TERM } from "@/lib/terms";
-import { normalizeSocialLinks } from "@/lib/social";
+import { normalizeSocialFeedConfig, normalizeSocialLinks, type SocialFeedConfig } from "@/lib/social";
 import {
   groupCouncilRows,
   mapAchievement,
@@ -1050,4 +1051,26 @@ export async function getEditableSocialPosts(): Promise<SocialPost[]> {
   return readSocialPostsFromStore()
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder || new Date(b.publishedOn).getTime() - new Date(a.publishedOn).getTime());
+}
+
+export async function getEditableSocialFeeds(): Promise<SocialFeedConfig> {
+  try {
+    if ((await contentMode()) === "supabase") {
+      const supabase = await createStaffClient();
+      if (supabase) {
+        const row = await supabase
+          .from("campus_settings")
+          .select("site_links")
+          .eq("id", true)
+          .maybeSingle();
+        if (!row.error) {
+          return normalizeSocialFeedConfig(row.data?.site_links);
+        }
+        logPostgrestUnlessMissing(row.error);
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return normalizeSocialFeedConfig(readSocialFeeds());
 }

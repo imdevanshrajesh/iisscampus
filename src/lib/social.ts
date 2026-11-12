@@ -363,3 +363,53 @@ export function parseSocialInput(formData: FormData): { links: SocialLinks } | {
     },
   };
 }
+
+export type SocialFeedConfig = {
+  scixcomFeedUrl: string | null;
+  instagramFeedUrl: string | null;
+};
+
+export function normalizeExternalFeedUrl(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const classified = classifyNavigationUrl(trimmed);
+  if (!classified.ok || classified.host === "local") return null;
+  return classified.url;
+}
+
+export function normalizeSocialFeedConfig(input: unknown): SocialFeedConfig {
+  const record = isRecord(input) ? input : {};
+  return {
+    scixcomFeedUrl: normalizeExternalFeedUrl(record.scixcomFeedUrl),
+    instagramFeedUrl: normalizeExternalFeedUrl(record.instagramFeedUrl),
+  };
+}
+
+export function parseSocialFeedConfigInput(
+  formData: FormData,
+): { feeds: SocialFeedConfig } | { error: string } {
+  const rawScixcom = String(formData.get("scixcomFeedUrl") ?? "").trim();
+  const rawInstagram = String(formData.get("instagramFeedUrl") ?? "").trim();
+
+  const scixcomFeedUrl = rawScixcom ? normalizeExternalFeedUrl(rawScixcom) : null;
+  if (rawScixcom && !scixcomFeedUrl) {
+    return {
+      error: "SciXcom feed URL must be a valid public https:// JSON or RSS feed address.",
+    };
+  }
+
+  const instagramFeedUrl = rawInstagram ? normalizeExternalFeedUrl(rawInstagram) : null;
+  if (rawInstagram && !instagramFeedUrl) {
+    return {
+      error: "Campus account feed URL must be a valid public https:// JSON or RSS feed address.",
+    };
+  }
+
+  return {
+    feeds: {
+      scixcomFeedUrl,
+      instagramFeedUrl,
+    },
+  };
+}

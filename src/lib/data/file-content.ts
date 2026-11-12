@@ -4,6 +4,7 @@ import { canDelete, canEditPublication, canTransition, type Actor } from "@/lib/
 import { defaultNavGroups, isNavIncludeListing } from "@/lib/nav";
 import { councilMemberSlugs } from "@/lib/data/catalog";
 import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "@/lib/data/seed";
+import type { SocialFeedConfig } from "@/lib/social";
 import type {
   AcademicTermConfig,
   Achievement,
@@ -51,6 +52,7 @@ type Store = {
   councilYears: CouncilYear[];
   newsletter?: Newsletter | null;
   social?: SocialLinks | null;
+  socialFeeds?: SocialFeedConfig | null;
   councilLogoUrl?: string | null;
   contactEmail?: string | null;
   navLogoUrl?: string | null;
@@ -396,6 +398,7 @@ export function readContentStore(): Store {
         : seedCouncilYears,
       newsletter: parsed.newsletter ?? null,
       social: parsed.social ?? null,
+      socialFeeds: parsed.socialFeeds ?? null,
       councilLogoUrl: parsed.councilLogoUrl ?? null,
       contactEmail: parsed.contactEmail ?? null,
       navLogoUrl: parsed.navLogoUrl ?? null,
@@ -1154,6 +1157,16 @@ export function readSocial(): SocialLinks | null {
 export function saveSocialToStore(social: SocialLinks) {
   const store = readContentStore();
   store.social = social;
+  return writeContentStore(store);
+}
+
+export function readSocialFeeds(): SocialFeedConfig | null {
+  return readContentStore().socialFeeds ?? null;
+}
+
+export function saveSocialFeedsToStore(feeds: SocialFeedConfig) {
+  const store = readContentStore();
+  store.socialFeeds = feeds;
   return writeContentStore(store);
 }
 
