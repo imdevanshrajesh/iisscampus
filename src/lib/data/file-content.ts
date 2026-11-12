@@ -15,6 +15,8 @@ import type {
   CouncilPhoto,
   CouncilPost,
   CouncilYear,
+  FacultyMember,
+  FacultyTier,
   Faq,
   HeadTier,
   House,
@@ -55,6 +57,7 @@ type Store = {
   navLabel?: string | null;
   announcements?: Announcement[];
   schoolIncharges?: SchoolIncharge[];
+  faculty?: FacultyMember[];
   houses?: House[];
   marquee?: MarqueeMessage[];
   navGroups?: NavGroup[];
@@ -368,6 +371,7 @@ function initialStore(): Store {
     achievements: seedAchievements,
     categories: seedCategories,
     councilYears: seedCouncilYears,
+    faculty: [],
   };
 }
 
@@ -400,6 +404,7 @@ export function readContentStore(): Store {
       schoolIncharges: Array.isArray(parsed.schoolIncharges)
         ? parsed.schoolIncharges
         : seedSchoolIncharges,
+      faculty: Array.isArray(parsed.faculty) ? parsed.faculty : [],
       houses: Array.isArray(parsed.houses) ? parsed.houses : seedHouses,
       marquee: Array.isArray(parsed.marquee)
         ? parsed.marquee.map((item) => normalizeMarquee(item as MarqueeMessage))
@@ -1261,6 +1266,48 @@ export function deleteSchoolInchargeFromStore(id: string) {
   const store = readContentStore();
   const list = store.schoolIncharges ?? seedSchoolIncharges;
   store.schoolIncharges = list.filter((item) => item.id !== id);
+  return writeContentStore(store);
+}
+
+export function saveFacultyMemberToStore(input: {
+  id?: string;
+  name: string;
+  role: string;
+  tier?: FacultyTier;
+  department?: string | null;
+  photoUrl?: string | null;
+  message?: string;
+  email?: string | null;
+  sortOrder?: number;
+  published?: boolean;
+}) {
+  const store = readContentStore();
+  const list = store.faculty ?? [];
+  const existing = input.id ? list.find((item) => item.id === input.id) : undefined;
+  const record: FacultyMember = {
+    id: existing?.id ?? crypto.randomUUID(),
+    name: input.name,
+    role: input.role,
+    tier: input.tier ?? existing?.tier ?? "supervisor",
+    department: input.department ?? null,
+    photoUrl: input.photoUrl ?? null,
+    message: input.message ?? existing?.message ?? "",
+    email: input.email ?? null,
+    sortOrder: input.sortOrder ?? existing?.sortOrder ?? 0,
+    published: input.published ?? existing?.published ?? true,
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  store.faculty = existing
+    ? list.map((item) => (item.id === existing.id ? record : item))
+    : [...list, record];
+  return writeContentStore(store);
+}
+
+export function deleteFacultyMemberFromStore(id: string) {
+  const store = readContentStore();
+  const list = store.faculty ?? [];
+  store.faculty = list.filter((item) => item.id !== id);
   return writeContentStore(store);
 }
 

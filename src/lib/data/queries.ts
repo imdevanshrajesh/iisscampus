@@ -21,6 +21,7 @@ import {
   mapNavGroup,
   mapCategory,
   mapEvent,
+  mapFacultyMember,
   mapCustomProgram,
   mapFaq,
   mapImage,
@@ -45,6 +46,7 @@ import type {
   CampusEvent,
   Category,
   CouncilYear,
+  FacultyMember,
   Faq,
   House,
   NavGroup,
@@ -668,6 +670,80 @@ export async function getEditableSchoolIncharges(): Promise<SchoolIncharge[]> {
 
 export const getPublicSchoolHeads = getPublicSchoolIncharges;
 export const getEditableSchoolHeads = getEditableSchoolIncharges;
+
+export type FacultyQueryResult = {
+  items: FacultyMember[];
+  tableMissing: boolean;
+  source: "supabase" | "file";
+  error?: string;
+};
+
+async function loadFaculty(publishedOnly: boolean): Promise<FacultyQueryResult> {
+  if ((await contentMode()) === "supabase") {
+    try {
+      const supabase = publishedOnly ? createPublicClient() : await createStaffClient();
+      if (!supabase) {
+        return { items: [], tableMissing: false, source: "supabase" };
+      }
+      let query = supabase
+        .from("campus_faculty")
+        .select("*")
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (publishedOnly) {
+        query = query.eq("published", true);
+      }
+      const result = await query;
+      if (!result.error && result.data) {
+        return {
+          items: result.data.map((row) => mapFacultyMember(row as Record<string, unknown>)),
+          tableMissing: false,
+          source: "supabase",
+        };
+      }
+      if (result.error) {
+        if (isMissingTableError(result.error)) {
+          return { items: [], tableMissing: true, source: "supabase" };
+        }
+        console.error(result.error);
+        return {
+          items: [],
+          tableMissing: false,
+          source: "supabase",
+          error: result.error.message,
+        };
+      }
+    } catch (error) {
+      console.error(error);
+      return {
+        items: [],
+        tableMissing: false,
+        source: "supabase",
+        error: error instanceof Error ? error.message : "Could not load faculty.",
+      };
+    }
+    return { items: [], tableMissing: false, source: "supabase" };
+  }
+
+  const store = readContentStore();
+  const list = store.faculty ?? [];
+  return {
+    items: list
+      .filter((item) => (publishedOnly ? item.published : true))
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder),
+    tableMissing: false,
+    source: "file",
+  };
+}
+
+export async function getPublicFaculty(): Promise<FacultyQueryResult> {
+  return loadFaculty(true);
+}
+
+export async function getEditableFaculty(): Promise<FacultyQueryResult> {
+  return loadFaculty(false);
+}
 
 async function loadHouses(publishedOnly: boolean): Promise<House[]> {
   try {

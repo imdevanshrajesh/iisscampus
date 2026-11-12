@@ -545,6 +545,18 @@ export const schoolInchargeInputSchema = z.object({
 
 export const schoolHeadInputSchema = schoolInchargeInputSchema;
 
+export const facultyMemberInputSchema = z.object({
+  name: z.string().trim().min(2, "Name must be at least 2 characters.").max(120),
+  role: z.string().trim().min(2, "Role / Designation is required.").max(120),
+  tier: z.enum(["principal", "vice_principal", "head", "supervisor"]).default("supervisor"),
+  department: optionalText(120),
+  photoUrl: optionalText(2048),
+  message: z.string().trim().max(4000).default(""),
+  email: optionalText(160),
+  sortOrder: z.coerce.number().int().min(-9999).max(9999).default(0),
+  published: z.boolean().default(true),
+});
+
 export const houseInputSchema = z.object({
   name: z.string().trim().min(2, "House name is required.").max(80),
   slug: z.string().trim().min(2).max(40),

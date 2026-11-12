@@ -3899,3 +3899,143 @@ export async function appendEventGalleryImageAction(input: {
         },
   };
 }
+
+const MISSING_FACULTY_TABLE_MESSAGE =
+  "The faculty table has not been created yet. Run supabase/migrations/20261112120000_campus_faculty.sql in the Supabase SQL Editor.";
+
+function revalidateFacultyRoutes() {
+  revalidatePath("/school/faculty");
+  revalidatePath("/faculty");
+  revalidatePath("/manage/faculty");
+  revalidatePath("/");
+}
+
+export async function saveFacultyMember(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  const rawEmail = String(formData.get("email") ?? "").trim();
+  const normalizedEmail = rawEmail ? normalizeContactEmail(rawEmail) : null;
+  if (rawEmail && !normalizedEmail) {
+    return { error: "Enter a valid email address." };
+  }
+
+  const { facultyMemberInputSchema } = await import("@/lib/validation/content");
+  const parsed = facultyMemberInputSchema.safeParse({
+    name: formData.get("name"),
+    role: formData.get("role"),
+    tier: formData.get("tier") || "supervisor",
+    department: formData.get("department") || null,
+    photoUrl: formData.get("photoUrl") || null,
+    message: formData.get("message") ?? "",
+    email: normalizedEmail,
+    sortOrder: formData.get("sortOrder") ?? 0,
+    published: formData.get("published") === "on" || formData.get("published") === "true",
+  });
+
+  if (!parsed.success) {
+    return { error: issueMessage(parsed.error) };
+  }
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_council"));
+    if ("error" in access) return access;
+
+    let cleanPhotoUrl: string | null = null;
+    if (parsed.data.photoUrl) {
+      const classified = classifyMediaUrl(parsed.data.photoUrl, []);
+      if (!classified.ok) return { error: classified.message };
+      cleanPhotoUrl = classified.url;
+    }
+
+    const { saveFacultyMemberToStore } = await import("@/lib/data/file-content");
+    if (!saveFacultyMemberToStore({ id: id || undefined, ...parsed.data, photoUrl: cleanPhotoUrl })) {
+      return { error: "The faculty member could not be saved." };
+    }
+    revalidateFacultyRoutes();
+    return { ok: `${parsed.data.name} saved successfully.` };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_council")) return { error: genericDenial };
+
+  let cleanPhotoUrl: string | null = null;
+  if (parsed.data.photoUrl) {
+    const allowedHosts = await allowedMediaHostsForContext(context.supabase);
+    const classified = classifyMediaUrl(parsed.data.photoUrl, allowedHosts);
+    if (!classified.ok) return { error: classified.message };
+    cleanPhotoUrl = classified.url;
+  }
+
+  const record = {
+    name: parsed.data.name,
+    role: parsed.data.role,
+    tier: parsed.data.tier,
+    department: parsed.data.department,
+    photo_url: cleanPhotoUrl,
+    message: parsed.data.message,
+    email: parsed.data.email,
+    sort_order: parsed.data.sortOrder,
+    published: parsed.data.published,
+  };
+
+  const saved = id
+    ? await context.supabase.from("campus_faculty").update(record).eq("id", id).select("id").maybeSingle()
+    : await context.supabase.from("campus_faculty").insert(record).select("id").maybeSingle();
+
+  if (saved.error) {
+    if (isMissingTableError(saved.error)) {
+      return { error: MISSING_FACULTY_TABLE_MESSAGE };
+    }
+    return { error: databaseError(saved.error, "The faculty member could not be saved.") };
+  }
+
+  if (id && !saved.data) {
+    return { error: "Faculty member not found." };
+  }
+
+  await writeAudit(
+    context.supabase,
+    context.actor.userId,
+    id ? "update" : "create",
+    "campus_faculty",
+    saved.data?.id ?? (id || null),
+  );
+  revalidateFacultyRoutes();
+  return {
+    ok: `${parsed.data.name} saved successfully.`,
+    createdId: !id ? (saved.data?.id ?? undefined) : undefined,
+  };
+}
+
+export async function deleteFacultyMember(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return { error: "Missing faculty record id." };
+  if (formData.get("confirm") !== "yes") {
+    return { error: "Tick confirm delete to remove this faculty member." };
+  }
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_council"));
+    if ("error" in access) return access;
+    const { deleteFacultyMemberFromStore } = await import("@/lib/data/file-content");
+    if (!deleteFacultyMemberFromStore(id)) return { error: deleteFailed };
+    revalidateFacultyRoutes();
+    return { ok: "Faculty member removed." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_council")) return { error: genericDenial };
+
+  const removed = await context.supabase.from("campus_faculty").delete().eq("id", id);
+  if (removed.error) {
+    if (isMissingTableError(removed.error)) {
+      return { error: MISSING_FACULTY_TABLE_MESSAGE };
+    }
+    return { error: databaseError(removed.error, deleteFailed) };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, "delete", "campus_faculty", id);
+  revalidateFacultyRoutes();
+  return { ok: "Faculty member removed." };
+}

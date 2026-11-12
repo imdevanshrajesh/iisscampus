@@ -11,6 +11,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/council",
     "/council/socials",
     "/achievements",
+    "/school/houses",
+    "/school/faculty",
     "/gallery",
     "/newsletter",
     "/wellness",

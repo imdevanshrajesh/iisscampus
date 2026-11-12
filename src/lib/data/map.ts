@@ -1,4 +1,5 @@
 import { councilMemberSlugs } from "@/lib/data/catalog";
+import { mapFacultyMemberRow } from "@/lib/faculty";
 import type {
   Achievement,
   Announcement,
@@ -16,6 +17,7 @@ import type {
   CustomProgram,
   CustomProgramLink,
   CustomProgramPhoto,
+  FacultyMember,
   Faq,
   HeadTier,
   House,
@@ -321,6 +323,10 @@ export function mapSchoolIncharge(row: Record<string, unknown>): SchoolHead {
     published: Boolean(row.published ?? true),
     createdAt: String(row.created_at ?? row.createdAt ?? new Date().toISOString()),
   };
+}
+
+export function mapFacultyMember(row: Record<string, unknown>): FacultyMember {
+  return mapFacultyMemberRow(row);
 }
 
 export function mapFaq(row: Record<string, unknown>): Faq {

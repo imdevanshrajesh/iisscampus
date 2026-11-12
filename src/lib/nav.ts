@@ -20,6 +20,7 @@ export const primaryNav: NavLink[] = [
   { href: "/council/socials", label: "Socials" },
   { href: "/achievements", label: "Achievements" },
   { href: "/school/houses", label: "Houses" },
+  { href: "/school/faculty", label: "Faculty" },
   { href: "/gallery", label: "Gallery" },
   { href: "/wellness", label: "Wellness" },
   { href: "/about", label: "FAQ & About" },
@@ -112,6 +113,7 @@ export const defaultNavGroups: NavGroup[] = [
     sortOrder: 40,
     items: [
       item("nav-houses", "nav-school", "Houses", "Ruby, Sapphire, Topaz & Emerald", "/school/houses", 0),
+      item("nav-faculty", "nav-school", "Faculty", "Principal, Vice Principals, Heads & Supervisors", "/school/faculty", 5),
       item("nav-gallery", "nav-school", "Gallery", "Photographs from campus", "/gallery", 10),
       item("nav-wellness", "nav-school", "Wellness", "A quiet corner for wellbeing", "/wellness", 20),
       item("nav-achievements", "nav-school", "Achievements", "Awards and results", "/achievements", 30),
@@ -190,7 +192,8 @@ export function resolvePublicNav(
       const councilGroup =
         group.label.trim().toLowerCase() === "council" || group.items.some((entry) => entry.href === "/council");
       const schoolGroup =
-        group.label.trim().toLowerCase().includes("school") || group.items.some((entry) => entry.href === "/gallery");
+        group.label.trim().toLowerCase().includes("school") ||
+        group.items.some((entry) => entry.href === "/gallery" || entry.href === "/school/faculty");
 
       if (!councilGroup) {
         for (let index = links.length - 1; index >= 0; index -= 1) {
@@ -276,6 +279,18 @@ export function resolvePublicNav(
             title: "Houses",
             description: "Ruby, Sapphire, Topaz & Emerald",
             href: "/school/houses",
+          });
+        }
+        // Surface Faculty under School unless an admin explicitly configured/disabled it in navigation
+        const hasConfiguredFaculty = group.items.some(
+          (entry) => entry.href === "/school/faculty" || entry.href === "/faculty",
+        );
+        if (!hasConfiguredFaculty && !links.some((link) => link.href === "/school/faculty" || link.href === "/faculty")) {
+          const housesIdx = links.findIndex((link) => link.href === "/school/houses" || link.href === "/houses");
+          links.splice(housesIdx >= 0 ? housesIdx + 1 : 0, 0, {
+            title: "Faculty",
+            description: "Principal, Vice Principals, Heads & Supervisors",
+            href: "/school/faculty",
           });
         }
       }

@@ -95,17 +95,13 @@ export function SiteFooter({
               preserveAspectRatio="xMidYMid meet"
             >
               <defs>
+                {/* Solid pre-blended stops + no internal stroke prevents Fraunces uppercase Y contour overlaps */}
                 <linearGradient id="iissboysGlowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#ffffff" stopOpacity="0.25" />
-                  <stop offset="35%" stopColor="#c4a574" stopOpacity="0.65" />
-                  <stop offset="50%" stopColor="#e2d4b7" stopOpacity="0.8" />
-                  <stop offset="65%" stopColor="#c4a574" stopOpacity="0.65" />
-                  <stop offset="100%" stopColor="#ffffff" stopOpacity="0.25" />
-                </linearGradient>
-                <linearGradient id="iissboysStrokeGlow" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#ffffff" stopOpacity="0.3" />
-                  <stop offset="50%" stopColor="#c4a574" stopOpacity="0.6" />
-                  <stop offset="100%" stopColor="#ffffff" stopOpacity="0.3" />
+                  <stop offset="0%" stopColor="#474a53" />
+                  <stop offset="35%" stopColor="#847056" />
+                  <stop offset="50%" stopColor="#b8ae99" />
+                  <stop offset="65%" stopColor="#847056" />
+                  <stop offset="100%" stopColor="#474a53" />
                 </linearGradient>
               </defs>
               <text
@@ -114,9 +110,7 @@ export function SiteFooter({
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="url(#iissboysGlowGradient)"
-                stroke="url(#iissboysStrokeGlow)"
-                strokeWidth="1.2"
-                className="font-display font-black tracking-[-0.07em] uppercase"
+                className="font-display font-black uppercase"
                 style={{
                   fontSize: "215px",
                   letterSpacing: "-0.05em",

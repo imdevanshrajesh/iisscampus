@@ -57,6 +57,7 @@ const navigationCategories: NavSection[] = [
     links: [
       { href: "/manage/council", label: "Council", icon: Users },
       { href: "/manage/houses", label: "Houses", icon: Shield },
+      { href: "/manage/faculty", label: "Faculty", icon: GraduationCap },
       { href: "/manage/achievements", label: "Achievements", icon: Trophy },
       { href: "/manage/socials", label: "Social Posts", icon: Share2 },
       { href: "/manage/wellness", label: "Wellness", icon: HeartHandshake },

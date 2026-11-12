@@ -3,7 +3,7 @@ import {
   getPublicCatalog,
   getPublicCustomPrograms,
   getPublicFaqs,
-  getPublicSchoolIncharges,
+  getPublicFaculty,
   getPublicHouses,
   getPublicSocial,
   getPublicWellnessItems,
@@ -11,7 +11,7 @@ import {
 } from "@/lib/data/queries";
 
 export async function buildCampusAiSystemPrompt(): Promise<string> {
-  const [catalog, brand, social, announcements, faqs, wellnessItems, programs, incharges, houses] =
+  const [catalog, brand, social, announcements, faqs, wellnessItems, programs, facultyResult, houses] =
     await Promise.all([
       getPublicCatalog(),
       getSiteBrand(),
@@ -20,7 +20,7 @@ export async function buildCampusAiSystemPrompt(): Promise<string> {
       getPublicFaqs(),
       getPublicWellnessItems(),
       getPublicCustomPrograms(),
-      getPublicSchoolIncharges(),
+      getPublicFaculty(),
       getPublicHouses(),
     ]);
 
@@ -146,6 +146,7 @@ LINK, TABLE & FORMATTING RULES (STRICT):
      - Events page: [View All Events](/events) or [Explore Upcoming Events](/events?status=upcoming)
      - Specific event: [View {Event Title} Details](/events/{slug})
      - Council: [Meet the Student Council](/council)
+     - Faculty: [Meet Our School Faculty](/school/faculty)
      - Achievements: [See School Achievements](/achievements)
      - Announcements: [Read Announcements](/announcements)
      - Gallery: [View Campus Gallery](/gallery)
@@ -177,6 +178,19 @@ ${JSON.stringify(achievementsSummary, null, 2)}
 
 Official Houses (Ruby, Sapphire, Topaz, Emerald):
 ${JSON.stringify(housesSummary, null, 2)}
+
+School Faculty Directory:
+${JSON.stringify(
+  facultyResult.items.map((member) => ({
+    name: member.name,
+    role: member.role,
+    tier: member.tier,
+    department: member.department,
+    message: member.message,
+  })),
+  null,
+  2,
+)}
 
 Active Announcements & Directives:
 ${JSON.stringify(announcementsSummary, null, 2)}

@@ -299,6 +299,23 @@ export type SchoolHead = {
 
 export type SchoolIncharge = SchoolHead;
 
+export type FacultyTier = "principal" | "vice_principal" | "head" | "supervisor";
+
+export type FacultyMember = {
+  id: string;
+  name: string;
+  role: string;
+  tier: FacultyTier;
+  department: string | null;
+  photoUrl: string | null;
+  message: string;
+  email: string | null;
+  sortOrder: number;
+  published: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Faq = {
   id: string;
   question: string;

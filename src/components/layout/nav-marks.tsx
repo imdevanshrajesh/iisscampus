@@ -29,6 +29,8 @@ const icons: Record<string, LucideIcon> = {
   "/achievements": Award,
   "/gallery": Images,
   "/newsletter": Newspaper,
+  "/school/faculty": GraduationCap,
+  "/faculty": GraduationCap,
   "/school/heads": GraduationCap,
   "/heads": GraduationCap,
   "/school/incharges": GraduationCap,

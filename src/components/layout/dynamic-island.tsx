@@ -56,6 +56,8 @@ const sectionHrefs = new Set([
   "/socials",
   "/school/houses",
   "/houses",
+  "/school/faculty",
+  "/faculty",
   "/achievements",
   "/gallery",
   "/wellness",
@@ -421,6 +423,7 @@ function fallbackGroups(): PublicNavGroup[] {
       href: "/school/houses",
       links: [
         { href: "/school/houses", title: "Houses", description: "Ruby, Sapphire, Topaz & Emerald" },
+        { href: "/school/faculty", title: "Faculty", description: "Principal, Vice Principals, Heads & Supervisors" },
         { href: "/gallery", title: "Gallery", description: "High-resolution campus photography" },
         { href: "/wellness", title: "Wellness Corner", description: "A quiet space for student wellbeing" },
         { href: "/achievements", title: "Achievements", description: "Trophies, awards, and victories" },
