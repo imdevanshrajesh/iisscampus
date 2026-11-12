@@ -129,7 +129,7 @@ export function CouncilPageView({
       )}
 
       {collapsed.length > 0 ? (
-        <section className="border-t border-line bg-wash/20">
+        <section className="council-year-block border-t border-line">
           <div className="mx-auto max-w-6xl px-5 py-12 md:px-8 md:py-16">
             <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-5">
               <div>
@@ -147,7 +147,7 @@ export function CouncilPageView({
                 <button
                   type="button"
                   onClick={toggleAllArchives}
-                  className="rounded-full border border-line bg-white px-4 py-2 text-xs font-semibold text-ink transition hover:border-ink/40"
+                  className="rounded-full border border-[rgba(158,192,223,0.45)] bg-white/10 px-4 py-2 text-xs font-semibold text-ink transition hover:border-[rgba(127,178,220,0.8)] hover:bg-white/[0.16]"
                 >
                   {allArchiveExpanded ? "Collapse all years" : "Expand all years"}
                 </button>
@@ -169,18 +169,18 @@ export function CouncilPageView({
                   <div
                     key={year.id}
                     id={year.slug}
-                    className="overflow-hidden rounded-2xl border border-line bg-white shadow-xs transition"
+                    className="overflow-hidden rounded-2xl border border-[rgba(141,180,214,0.22)] bg-[#0c335c]/72 shadow-[0_10px_28px_-18px_rgba(4,15,32,0.65)] transition hover:border-[rgba(127,178,220,0.55)]"
                   >
                     <button
                       type="button"
                       onClick={() => toggleArchiveYear(year.id)}
                       aria-expanded={isOpen}
                       aria-controls={`council-panel-${year.slug}`}
-                      className="flex w-full items-center justify-between gap-4 px-5 py-5 text-left transition hover:bg-wash/35 sm:px-7"
+                      className="group flex w-full items-center justify-between gap-4 px-5 py-5 text-left transition hover:bg-white/[0.04] sm:px-7"
                     >
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2.5">
-                          <span className="rounded-full bg-wash px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-accent">
+                          <span className="rounded-full border border-line bg-background/55 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-accent">
                             {kindLabel[year.kind]}
                           </span>
                           {counts ? (
@@ -197,7 +197,7 @@ export function CouncilPageView({
                         ) : null}
                       </div>
 
-                      <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-2 text-xs font-semibold text-ink">
+                      <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[rgba(158,192,223,0.45)] bg-white/10 px-3.5 py-2 text-xs font-semibold text-ink transition group-hover:border-[rgba(127,178,220,0.8)] group-hover:bg-white/[0.16]">
                         <span>{isOpen ? "Hide details" : "View year"}</span>
                         <ChevronDown
                           size={15}
@@ -209,7 +209,7 @@ export function CouncilPageView({
                     {isOpen ? (
                       <div
                         id={`council-panel-${year.slug}`}
-                        className="border-t border-line/80 px-5 py-8 sm:px-7"
+                        className="border-t border-line bg-[#08274b]/65 px-5 py-8 sm:px-7"
                       >
                         <CouncilYearBody year={year} hosts={hosts} />
                       </div>
