@@ -17,7 +17,9 @@ import {
   deleteCouncilPhotoInStore,
   deleteCouncilPostInStore,
   deleteFromStore,
+  demoteCurrentCouncilYearsInStore,
   reorderCouncilChildrenInStore,
+  saveAcademicTermToStore,
   saveAchievementToStore,
   saveCategoryToStore,
   saveCouncilMemberInStore,
@@ -37,6 +39,7 @@ import { parseSocialInput } from "@/lib/social";
 import { isMissingTableError, missingCouncilTablesMessage } from "@/lib/supabase/errors";
 import { createStaffClient } from "@/lib/supabase/server";
 import {
+  academicTermInputSchema,
   achievementInputSchema,
   categoryInputSchema,
   councilInputFromForm,
@@ -343,6 +346,7 @@ function eventRecord(input: EventInput, status: PublicationStatus, featured: boo
     cover_attribution: input.coverAttribution,
     event_date: input.eventDate,
     end_date: input.endDate,
+    academic_year: input.academicYear,
     start_time: input.startTime,
     end_time: input.endTime,
     location_name: input.locationName,
@@ -505,6 +509,7 @@ function readEventInput(formData: FormData) {
     coverAttribution: formData.get("coverAttribution"),
     eventDate: formData.get("eventDate"),
     endDate: formData.get("endDate"),
+    academicYear: formData.get("academicYear"),
     startTime: formData.get("startTime"),
     endTime: formData.get("endTime"),
     locationName: formData.get("locationName"),
@@ -736,6 +741,12 @@ export async function saveEvent(_state: ActionState, formData: FormData): Promis
           .maybeSingle();
 
   let saved = await writeEvent(record);
+  const academicMsg = (saved.error?.message ?? "").toLowerCase();
+  if (saved.error && academicMsg.includes("academic_year")) {
+    const { academic_year: omittedYear, ...withoutAcademicYear } = record;
+    void omittedYear;
+    saved = await writeEvent(withoutAcademicYear);
+  }
   const firstMessage = (saved.error?.message ?? "").toLowerCase();
   if (saved.error && firstMessage.includes("push_to_arigo")) {
     if (parsed.input.pushToArigo) {
@@ -1060,6 +1071,97 @@ export async function saveSettings(_state: ActionState, formData: FormData): Pro
   revalidatePath("/");
   revalidatePath("/manage/settings");
   return { ok: "Image hosts saved." };
+}
+
+export async function saveAcademicTerm(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = academicTermInputSchema.safeParse({
+    label: formData.get("activeTermLabel"),
+    startDate: formData.get("activeTermStart"),
+  });
+  if (!parsed.success) return { error: issueMessage(parsed.error) };
+
+  const demoteOldCouncil = formData.get("demoteOldCouncil") === "on";
+  const payload = {
+    label: parsed.data.label,
+    startDate: parsed.data.startDate,
+  };
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    if (!saveAcademicTermToStore(payload)) {
+      return { error: "The academic term settings could not be saved." };
+    }
+    if (demoteOldCouncil) {
+      demoteCurrentCouncilYearsInStore();
+    }
+    revalidatePath("/", "layout");
+    revalidatePath("/manage/settings");
+    revalidatePath("/manage/council");
+    return {
+      ok: payload.label || payload.startDate
+        ? `Active term saved${payload.label ? ` (${payload.label})` : ""}.`
+        : "Academic term filter cleared (showing all published years).",
+    };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const saved = await context.supabase
+    .from("campus_settings")
+    .update({
+      active_term_label: payload.label,
+      active_term_start: payload.startDate,
+    })
+    .eq("id", true);
+
+  if (saved.error) {
+    const msg = (saved.error.message ?? "").toLowerCase();
+    if (msg.includes("active_term")) {
+      return {
+        error: "Run supabase/migrations/20261112140000_academic_terms.sql in the Supabase SQL Editor, then save again.",
+      };
+    }
+    return { error: databaseError(saved.error, "Academic term settings could not be saved.") };
+  }
+
+  if (demoteOldCouncil) {
+    const demoted = await context.supabase
+      .from("campus_council_years")
+      .update({ kind: "past" })
+      .eq("kind", "current");
+    if (demoted.error) {
+      return {
+        error: databaseError(
+          demoted.error,
+          "Active term saved, but previous sitting Student Council years could not be moved to Earlier.",
+        ),
+      };
+    }
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, "update_academic_term", "campus_settings", null);
+  revalidatePath("/", "layout");
+  revalidatePath("/");
+  revalidatePath("/events");
+  revalidatePath("/competitions");
+  revalidatePath("/gallery");
+  revalidatePath("/achievements");
+  revalidatePath("/announcements");
+  revalidatePath("/council");
+  revalidatePath("/council/socials");
+  revalidatePath("/manage/settings");
+  revalidatePath("/manage/events");
+  revalidatePath("/manage/achievements");
+  revalidatePath("/manage/announcements");
+  revalidatePath("/manage/council");
+  return {
+    ok: payload.label || payload.startDate
+      ? `Active term saved${payload.label ? ` (${payload.label})` : ""}. Earlier content moves automatically to archives.`
+      : "Academic term filter cleared (all published years shown).",
+  };
 }
 
 export async function saveAiSettings(_state: ActionState, formData: FormData): Promise<ActionState> {
@@ -2479,6 +2581,7 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
   const wellnessIdRaw = String(formData.get("wellnessId") ?? "").trim();
   const categoryRaw = String(formData.get("category") ?? "General").trim();
   const coverImageUrlRaw = String(formData.get("coverImageUrl") ?? "").trim();
+  const academicYearRaw = String(formData.get("academicYear") ?? "").trim();
   const enabled = formData.get("enabled") === "on";
   const resources = readList(formData, "resources");
   if (!resources) return { error: "A list field could not be read." };
@@ -2492,6 +2595,7 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
     programId: /^[0-9a-f-]{36}$/i.test(programIdRaw) ? programIdRaw : null,
     wellnessId: wellnessIdRaw || null,
     category: categoryRaw || "General",
+    academicYear: academicYearRaw || undefined,
     coverImageUrl: coverImageUrlRaw || null,
     enabled,
   });
@@ -2499,7 +2603,7 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
     return { error: issueMessage(parsed.error) };
   }
 
-  const { title, body, eventId, programId, wellnessId, category, coverImageUrl } = parsed.data;
+  const { title, body, eventId, programId, wellnessId, category, academicYear, coverImageUrl } = parsed.data;
 
   if ((await contentMode()) === "file") {
     const access = await fileActor((actor) => can(actor, "manage_settings"));
@@ -2515,6 +2619,7 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
         programId,
         wellnessId,
         category,
+        academicYear,
         coverImageUrl,
         enabled: parsed.data.enabled,
       })
@@ -2543,12 +2648,20 @@ export async function saveAnnouncement(_state: ActionState, formData: FormData):
     program_id: programId,
     wellness_id: wellnessId,
     category,
+    academic_year: academicYear,
     cover_image_url: coverImageUrl,
     enabled: parsed.data.enabled,
   };
-  const saved = id
+  let saved = id
     ? await context.supabase.from("campus_announcements").update(record).eq("id", id).select("id").maybeSingle()
     : await context.supabase.from("campus_announcements").insert(record).select("id").maybeSingle();
+  if (saved.error && (saved.error.message ?? "").toLowerCase().includes("academic_year")) {
+    const { academic_year: omittedYear, ...withoutYear } = record;
+    void omittedYear;
+    saved = id
+      ? await context.supabase.from("campus_announcements").update(withoutYear).eq("id", id).select("id").maybeSingle()
+      : await context.supabase.from("campus_announcements").insert(withoutYear).select("id").maybeSingle();
+  }
   if (saved.error) {
     const detail = (saved.error.message ?? "").toLowerCase();
     const missing =
@@ -3378,18 +3491,19 @@ export async function saveSocialPost(_state: ActionState, formData: FormData): P
     pinned: formData.get("pinned") === "on" || formData.get("pinned") === "true",
     sortOrder: Number(formData.get("sortOrder") ?? 0) || 0,
     councilTag: String(formData.get("councilTag") ?? "all"),
+    academicYear: formData.get("academicYear") || undefined,
   });
   if (!parsed.success) {
     return { error: issueMessage(parsed.error) };
   }
 
-  const { instagramUrl, caption, imageUrl, pinned, sortOrder, councilTag } = parsed.data;
+  const { instagramUrl, caption, imageUrl, pinned, sortOrder, councilTag, academicYear } = parsed.data;
 
   if ((await contentMode()) === "file") {
     const access = await fileActor((actor) => can(actor, "manage_settings"));
     if ("error" in access) return access;
     const { saveSocialPostToStore } = await import("@/lib/data/file-content");
-    if (!saveSocialPostToStore({ id: id || undefined, instagramUrl, caption, imageUrl, pinned, sortOrder, councilTag })) {
+    if (!saveSocialPostToStore({ id: id || undefined, instagramUrl, caption, imageUrl, pinned, sortOrder, councilTag, academicYear })) {
       return { error: "The social post could not be saved." };
     }
     revalidatePath("/council/socials");
@@ -3408,10 +3522,18 @@ export async function saveSocialPost(_state: ActionState, formData: FormData): P
     pinned,
     sort_order: sortOrder,
     council_tag: councilTag,
+    academic_year: academicYear,
   };
-  const saved = id
+  let saved = id
     ? await context.supabase.from("campus_social_posts").update(record).eq("id", id).select("id").maybeSingle()
     : await context.supabase.from("campus_social_posts").insert(record).select("id").maybeSingle();
+  if (saved.error && (saved.error.message ?? "").toLowerCase().includes("academic_year")) {
+    const { academic_year: omittedYear, ...withoutYear } = record;
+    void omittedYear;
+    saved = id
+      ? await context.supabase.from("campus_social_posts").update(withoutYear).eq("id", id).select("id").maybeSingle()
+      : await context.supabase.from("campus_social_posts").insert(withoutYear).select("id").maybeSingle();
+  }
 
   if (saved.error) {
     return {

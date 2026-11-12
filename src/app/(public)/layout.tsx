@@ -15,6 +15,7 @@ import {
   getWellnessPageSettings,
 } from "@/lib/data/queries";
 import { defaultNavGroups, resolvePublicNav, withWellnessNavLabel } from "@/lib/nav";
+import { filterEventsForTerm } from "@/lib/terms";
 import type { CampusEvent, Category, MarqueeMessage, PublicNavGroup } from "@/lib/types";
 
 export default async function PublicLayout({ children }: LayoutProps<"/">) {
@@ -27,6 +28,7 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
   let contactEmail: string | null = null;
   let marquee: MarqueeMessage[] = [];
   let events: CampusEvent[] = [];
+  let termEvents: CampusEvent[] = [];
   let categories: Category[] = [];
   let hosts: string[] = [];
   let nav = withWellnessNavLabel();
@@ -48,10 +50,11 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
     contactEmail = brand.contactEmail;
     marquee = publicMarquee;
     events = catalog.events;
+    termEvents = filterEventsForTerm(catalog.events, catalog.activeTerm);
     categories = catalog.categories;
     hosts = catalog.mediaHosts;
     nav = withWellnessNavLabel(wellness.navLabel);
-    menu = resolvePublicNav(navGroups, events, wellness.navLabel);
+    menu = resolvePublicNav(navGroups, termEvents, wellness.navLabel);
   } catch (error) {
     console.error(error);
   }
@@ -61,7 +64,7 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
       <IntroSplash logoUrl={logoUrl} />
       <SiteChrome logoUrl={navLogoUrl ?? logoUrl} brandHref={navLogoHref} brandLabel={navLabel} groups={menu} />
       <PublicMain>
-        <AnnouncementBar messages={marquee} events={events} />
+        <AnnouncementBar messages={marquee} events={termEvents} />
         <PreviewProvider categories={categories} hosts={hosts} events={events}>
           {children}
         </PreviewProvider>

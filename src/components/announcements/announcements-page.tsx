@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Bell, Newspaper, Search, Tag, Share2 } from "lucide-react";
+import { Bell, ChevronDown, History, Newspaper, Search, Tag } from "lucide-react";
 import { AnnouncementList } from "@/components/announcements/announcement-list";
-import type { Announcement, CampusEvent, CustomProgram, WellnessItem } from "@/lib/types";
+import { filterAnnouncementsForTerm, hasActiveTerm } from "@/lib/terms";
+import type { AcademicTermConfig, Announcement, CampusEvent, CustomProgram, WellnessItem } from "@/lib/types";
 
 function noticeTag(item: Announcement): string {
   if (item.category && item.category !== "General") return item.category;
@@ -35,16 +36,19 @@ export function AnnouncementsPage({
   events,
   programs = [],
   wellnessItems = [],
+  activeTerm,
   initialOpenId,
 }: {
   announcements: Announcement[];
   events: CampusEvent[];
   programs?: CustomProgram[];
   wellnessItems?: WellnessItem[];
+  activeTerm?: AcademicTermConfig;
   initialOpenId?: string | null;
 }) {
   const [selectedTag, setSelectedTag] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const termConfigured = hasActiveTerm(activeTerm);
 
   const filtered = useMemo(() => {
     return announcements.filter((item) => {
@@ -59,6 +63,19 @@ export function AnnouncementsPage({
       return matchesTag && matchesSearch;
     });
   }, [announcements, selectedTag, searchQuery]);
+
+  const { currentItems, archivedItems } = useMemo(() => {
+    if (!termConfigured) return { currentItems: filtered, archivedItems: [] as Announcement[] };
+    const currentList = filterAnnouncementsForTerm(filtered, activeTerm);
+    const currentIds = new Set(currentList.map((item) => item.id));
+    return {
+      currentItems: currentList,
+      archivedItems: filtered.filter((item) => !currentIds.has(item.id)),
+    };
+  }, [filtered, termConfigured, activeTerm]);
+
+  const openInArchive = Boolean(initialOpenId && archivedItems.some((item) => item.id === initialOpenId));
+  const [archiveOpen, setArchiveOpen] = useState(openInArchive);
 
   return (
     <div className="mx-auto max-w-[90rem] px-5 py-10 md:px-8 md:py-16">
@@ -124,14 +141,54 @@ export function AnnouncementsPage({
 
       {/* Blog & Dispatches Feed */}
       <div className="mt-8 grid gap-8 lg:grid-cols-12">
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-8 space-y-6">
           <AnnouncementList
-            announcements={filtered}
+            announcements={currentItems}
             events={events}
             programs={programs}
             wellnessItems={wellnessItems}
             initialOpenId={initialOpenId}
           />
+
+          {archivedItems.length > 0 ? (
+            <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-xs">
+              <button
+                type="button"
+                onClick={() => setArchiveOpen((prev) => !prev)}
+                aria-expanded={archiveOpen}
+                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-wash/35"
+              >
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent">
+                    <History size={14} />
+                    <span>Previous Terms Archive</span>
+                  </div>
+                  <p className="mt-1 text-sm font-semibold text-ink">
+                    Earlier Circulars &amp; Notices ({archivedItems.length})
+                  </p>
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-ink">
+                  <span>{archiveOpen ? "Hide" : "Show"}</span>
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 ${archiveOpen ? "rotate-180" : ""}`}
+                  />
+                </span>
+              </button>
+
+              {archiveOpen ? (
+                <div className="border-t border-line/80 p-4 sm:p-5">
+                  <AnnouncementList
+                    announcements={archivedItems}
+                    events={events}
+                    programs={programs}
+                    wellnessItems={wellnessItems}
+                    initialOpenId={initialOpenId}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         {/* Sidebar Bulletin Info */}

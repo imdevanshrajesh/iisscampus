@@ -12,6 +12,7 @@ export function ManageAnnouncementsList({
   wellnessItems = [],
   defaultEventId = null,
   initialEditId = null,
+  defaultAcademicYear = null,
 }: {
   announcements: Announcement[];
   events: CampusEvent[];
@@ -19,6 +20,7 @@ export function ManageAnnouncementsList({
   wellnessItems?: WellnessItem[];
   defaultEventId?: string | null;
   initialEditId?: string | null;
+  defaultAcademicYear?: string | null;
 }) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "hidden">("all");
@@ -136,6 +138,7 @@ export function ManageAnnouncementsList({
           programs={programs}
           wellnessItems={wellnessItems}
           defaultEventId={defaultEventId}
+          defaultAcademicYear={defaultAcademicYear}
           isOpen={openIds.new}
           onToggle={() => toggleOpen("new")}
         />
@@ -153,6 +156,7 @@ export function ManageAnnouncementsList({
               events={events}
               programs={programs}
               wellnessItems={wellnessItems}
+              defaultAcademicYear={defaultAcademicYear}
               isOpen={openIds[item.id] || (Boolean(query) && true)}
               onToggle={() => toggleOpen(item.id)}
             />

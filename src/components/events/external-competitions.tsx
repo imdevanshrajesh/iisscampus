@@ -3,23 +3,42 @@
 import { useMemo, useState } from "react";
 import { EventCard } from "@/components/events/event-card";
 import { eventCategoryIds } from "@/lib/data/catalog";
-import type { CampusEvent, Category } from "@/lib/types";
+import { filterEventsForTerm, hasActiveTerm, normalizeTermText } from "@/lib/terms";
+import type { AcademicTermConfig, CampusEvent, Category } from "@/lib/types";
 
 export function ExternalCompetitions({
   events,
   categories,
   hosts,
+  activeTerm,
+  yearFilter,
 }: {
   events: CampusEvent[];
   categories: Category[];
   hosts: readonly string[];
+  activeTerm?: AcademicTermConfig;
+  yearFilter?: string;
 }) {
   const [grade, setGrade] = useState("");
   const [topic, setTopic] = useState("");
-  const outside = useMemo(
-    () => events.filter((event) => event.listing === "external" && event.publicationStatus === "published"),
-    [events],
-  );
+  const outside = useMemo(() => {
+    const publishedExternal = events.filter(
+      (event) => event.listing === "external" && event.publicationStatus === "published",
+    );
+    const termConfigured = hasActiveTerm(activeTerm);
+    if (termConfigured && (!yearFilter || yearFilter === "current")) {
+      return filterEventsForTerm(publishedExternal, activeTerm);
+    }
+    if (yearFilter && yearFilter !== "all" && yearFilter !== "current") {
+      const normalized = normalizeTermText(yearFilter);
+      return publishedExternal.filter(
+        (event) =>
+          normalizeTermText(event.academicYear) === normalized ||
+          Boolean(event.eventDate?.startsWith(`${yearFilter}-`)),
+      );
+    }
+    return publishedExternal;
+  }, [events, activeTerm, yearFilter]);
   const topicMatch = categories.find((category) => category.slug === topic);
   const gradeNumber = Number(grade);
   const visible = outside.filter((event) => {

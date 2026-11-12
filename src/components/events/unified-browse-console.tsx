@@ -16,7 +16,8 @@ import {
 import { ActivityCalendar } from "@/components/events/activity-calendar";
 import { EventCard } from "@/components/events/event-card";
 import { EventRowTimeline } from "@/components/events/event-row-timeline";
-import type { CampusEvent, Category } from "@/lib/types";
+import { hasActiveTerm } from "@/lib/terms";
+import type { AcademicTermConfig, CampusEvent, Category } from "@/lib/types";
 
 type ViewMode = "postcard" | "timeline" | "calendar" | "agenda";
 
@@ -35,6 +36,7 @@ export function UnifiedBrowseConsole({
   basePath,
   categories,
   years,
+  activeTerm,
   filters,
   events,
   allEvents,
@@ -43,12 +45,14 @@ export function UnifiedBrowseConsole({
   basePath: "/events" | "/competitions";
   categories: Category[];
   years: string[];
+  activeTerm?: AcademicTermConfig;
   filters: Filters;
   events: CampusEvent[];
   allEvents: CampusEvent[];
   hosts: readonly string[];
 }) {
   const [viewMode, setViewMode] = useState<ViewMode>("postcard");
+  const termConfigured = hasActiveTerm(activeTerm);
 
   const activeCount = [
     filters.query,
@@ -245,10 +249,19 @@ export function UnifiedBrowseConsole({
                   Academic Year
                   <select
                     name="year"
-                    defaultValue={filters.year}
+                    defaultValue={filters.year ?? (termConfigured ? "current" : "")}
                     className="rounded-lg border border-line bg-wash/30 px-3 py-2 text-sm text-ink focus:bg-white"
                   >
-                    <option value="">Any Year</option>
+                    {termConfigured ? (
+                      <>
+                        <option value="current">
+                          Current Term{activeTerm?.label ? ` (${activeTerm.label})` : ""}
+                        </option>
+                        <option value="all">All Years (Archive)</option>
+                      </>
+                    ) : (
+                      <option value="">Any Year</option>
+                    )}
                     {years.map((y) => (
                       <option key={y} value={y}>
                         {y}

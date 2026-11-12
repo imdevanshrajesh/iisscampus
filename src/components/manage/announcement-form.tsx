@@ -50,6 +50,7 @@ export function AnnouncementForm({
   programs = [],
   wellnessItems = [],
   defaultEventId,
+  defaultAcademicYear = null,
   isOpen: controlledOpen,
   onToggle,
 }: {
@@ -58,6 +59,7 @@ export function AnnouncementForm({
   programs?: CustomProgram[];
   wellnessItems?: WellnessItem[];
   defaultEventId?: string | null;
+  defaultAcademicYear?: string | null;
   isOpen?: boolean;
   onToggle?: () => void;
 }) {
@@ -639,10 +641,23 @@ export function AnnouncementForm({
               </label>
             </div>
 
-            <label className="flex items-center gap-2 text-sm pt-2">
-              <input type="checkbox" name="enabled" defaultChecked={announcement?.enabled ?? true} />
-              <span>Show on public notices &amp; blog (Active)</span>
-            </label>
+            <div className="grid gap-3 sm:grid-cols-2 items-end pt-1">
+              <label className="grid gap-1.5 text-sm">
+                <span>Academic term / year (optional)</span>
+                <input
+                  name="academicYear"
+                  defaultValue={announcement?.academicYear ?? defaultAcademicYear ?? ""}
+                  maxLength={32}
+                  placeholder={defaultAcademicYear || "e.g. 2026-2027"}
+                  className={fieldClass}
+                />
+              </label>
+
+              <label className="flex items-center gap-2 text-sm pb-2">
+                <input type="checkbox" name="enabled" defaultChecked={announcement?.enabled ?? true} />
+                <span>Show on public notices &amp; blog (Active)</span>
+              </label>
+            </div>
 
             {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
             {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}

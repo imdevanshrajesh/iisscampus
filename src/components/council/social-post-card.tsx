@@ -25,11 +25,14 @@ export function SocialPostCard({ post }: { post: SocialPost }) {
   const postId = extractInstagramId(post.instagramUrl);
   const is12th = post.councilTag === "12th";
   const is11th = post.councilTag === "11th";
+  const customTag = post.councilTag && post.councilTag !== "all" ? post.councilTag : null;
   const councilName = is12th
     ? "12th Council · SciXcom"
     : is11th
       ? "11th Council · IISS"
-      : "Student Council · Boys";
+      : customTag
+        ? `Student Council · ${customTag}`
+        : "Student Council · Boys";
   const councilHandle = is12th ? "@scixcom.27" : "@iisscampus";
   const embedUrl = postId ? `https://www.instagram.com/p/${postId}/embed` : null;
 
@@ -67,7 +70,7 @@ export function SocialPostCard({ post }: { post: SocialPost }) {
                       : "rounded-full bg-white/10 border border-white/15 px-1.5 py-0.5 text-[10px] font-semibold text-white/90"
                 }
               >
-                {is12th ? "12th · SciXcom" : is11th ? "11th" : "Council"}
+                {is12th ? "12th · SciXcom" : is11th ? "11th" : customTag || "Council"}
               </span>
             </div>
             <p className="text-[11px] text-muted">{councilName}</p>

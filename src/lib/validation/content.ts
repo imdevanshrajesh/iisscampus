@@ -170,6 +170,7 @@ export const eventInputSchema = z
     coverAttribution: optionalText(160),
     eventDate: dateSchema,
     endDate: dateSchema,
+    academicYear: optionalText(32),
     startTime: timeSchema,
     endTime: timeSchema,
     locationName: optionalText(160),
@@ -524,9 +525,16 @@ export const announcementInputSchema = z.object({
   programId: z.string().uuid().nullable().optional().default(null),
   wellnessId: z.string().trim().max(100).nullable().optional().default(null),
   category: z.string().trim().max(100).default("General"),
+  academicYear: optionalText(32),
   coverImageUrl: z.string().trim().max(2048).nullable().optional().default(null),
   enabled: z.boolean().default(true),
 });
+
+export const academicTermInputSchema = z.object({
+  label: optionalText(32),
+  startDate: dateSchema,
+});
+export type AcademicTermInput = z.infer<typeof academicTermInputSchema>;
 
 export const schoolInchargeInputSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters.").max(120),
@@ -752,6 +760,7 @@ export const socialPostInputSchema = z.object({
   pinned: z.boolean().default(true),
   sortOrder: z.number().int().min(0).max(10000).default(0),
   councilTag: z.string().trim().default("all"),
+  academicYear: optionalText(32),
 });
 export type SocialPostInput = z.infer<typeof socialPostInputSchema>;
 

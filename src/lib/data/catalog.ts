@@ -1,3 +1,4 @@
+import { compareCouncilYears, normalizeTermText } from "../terms.ts";
 import type {
   Achievement,
   CampusEvent,
@@ -34,7 +35,7 @@ export function selectPublicCouncil(years: CouncilYear[]) {
   return years
     .filter((year) => year.publicationStatus === "published")
     .slice()
-    .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label));
+    .sort(compareCouncilYears);
 }
 
 export function councilYearsOfKind(years: CouncilYear[], kind: CouncilKind) {
@@ -290,7 +291,13 @@ export function filterPublishedEvents(
       if (listing && (event.listing ?? "event") !== listing) return false;
       if (category && !eventCategoryIds(event).includes(category.id)) return false;
       if (status && event.eventStatus !== status) return false;
-      if (year && !event.eventDate?.startsWith(`${year}-`)) return false;
+      if (year && year !== "all" && year !== "current") {
+        const normalizedFilter = normalizeTermText(year);
+        const eventTerm = normalizeTermText(event.academicYear);
+        const matchesTerm = Boolean(eventTerm && eventTerm === normalizedFilter);
+        const matchesDateYear = Boolean(event.eventDate?.startsWith(`${year}-`));
+        if (!matchesTerm && !matchesDateYear) return false;
+      }
       if (from && (event.eventDate ?? "") < from) return false;
       if (to && (event.eventDate ?? "9999-99-99") > to) return false;
       if (Number.isFinite(grade) && grade > 0) {
@@ -313,10 +320,15 @@ export function selectByListing(events: CampusEvent[], listing: EventListing) {
 export function publishedYears(events: CampusEvent[]) {
   const years = new Set<string>();
   for (const event of selectPublicEvents(events)) {
+    const academicYear = event.academicYear?.trim();
+    if (academicYear) {
+      years.add(academicYear);
+      continue;
+    }
     const year = event.eventDate?.slice(0, 4);
     if (year && /^\d{4}$/.test(year)) years.add(year);
   }
-  return [...years].sort((a, b) => Number(b) - Number(a));
+  return [...years].sort((a, b) => b.localeCompare(a));
 }
 
 export function relatedPublishedEvents(events: CampusEvent[], event: CampusEvent) {

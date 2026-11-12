@@ -18,6 +18,7 @@ export default async function NewEventPage() {
           role={access.role}
           mediaHosts={access.workspace.mediaHosts}
           announcements={access.workspace.announcements}
+          defaultAcademicYear={access.workspace.activeTerm.label}
         />
       </div>
     </div>

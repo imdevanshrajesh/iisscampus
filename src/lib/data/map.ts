@@ -130,6 +130,7 @@ export function mapEvent(
     coverAttribution: row.cover_attribution ? String(row.cover_attribution) : null,
     eventDate: row.event_date ? String(row.event_date) : null,
     endDate: row.end_date ? String(row.end_date) : null,
+    academicYear: row.academic_year ? String(row.academic_year).trim() || null : null,
     startTime: optionalTime(row.start_time),
     endTime: optionalTime(row.end_time),
     locationName: row.location_name ? String(row.location_name) : null,
@@ -287,6 +288,7 @@ export function mapAnnouncement(row: Record<string, unknown>): Announcement {
     programId: row.program_id ? String(row.program_id) : null,
     wellnessId: row.wellness_id ? String(row.wellness_id) : null,
     category: row.category ? String(row.category) : "General",
+    academicYear: row.academic_year ? String(row.academic_year).trim() || null : null,
     coverImageUrl: row.cover_image_url ? String(row.cover_image_url) : null,
     enabled: Boolean(row.enabled),
     sortOrder: Number(row.sort_order ?? 0),
@@ -469,6 +471,7 @@ export function mapSocialPost(row: Record<string, unknown>): SocialPost {
     pinned: row.pinned !== false,
     sortOrder: Number(row.sort_order ?? row.sortOrder ?? 0) || 0,
     councilTag: String(row.council_tag ?? row.councilTag ?? "all"),
+    academicYear: row.academic_year ? String(row.academic_year).trim() || null : row.academicYear ? String(row.academicYear).trim() || null : null,
     publishedOn: String(row.published_on ?? row.publishedOn ?? new Date().toISOString()),
     createdAt: String(row.created_at ?? row.createdAt ?? new Date().toISOString()),
   };

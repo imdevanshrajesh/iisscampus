@@ -1,9 +1,11 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { MediaFrame } from "@/components/media/media-frame";
 import { PreviewAchievement } from "@/components/preview/preview-provider";
 import { categoryById, formatEventDate } from "@/lib/data/catalog";
 import { getPublicCatalog } from "@/lib/data/queries";
 import { classifyNavigationUrl } from "@/lib/media/url";
+import { filterAchievementsForTerm, hasActiveTerm, normalizeTermText } from "@/lib/terms";
 
 export const metadata: Metadata = {
   title: "Achievements",
@@ -21,18 +23,30 @@ export default async function AchievementsPage({
   const year = first(params.year);
   const category = first(params.category);
   const categoryMatch = catalog.categories.find((item) => item.slug === category);
+  const termConfigured = hasActiveTerm(catalog.activeTerm);
+  const currentTermItems = termConfigured
+    ? filterAchievementsForTerm(catalog.achievements, catalog.activeTerm)
+    : catalog.achievements;
+  const pastArchiveCount = Math.max(0, catalog.achievements.length - currentTermItems.length);
+
   const years = [
     ...new Set(
       catalog.achievements
-        .map((item) => item.eventDate?.slice(0, 4) || item.academicYear)
+        .map((item) => item.academicYear?.trim() || item.eventDate?.slice(0, 4))
         .filter((value): value is string => Boolean(value)),
     ),
-  ];
-  const visible = catalog.achievements.filter((item) => {
+  ].sort((a, b) => b.localeCompare(a));
+
+  const usingCurrentDefault = termConfigured && (!year || year === "current");
+  const basePool = usingCurrentDefault ? currentTermItems : catalog.achievements;
+
+  const visible = basePool.filter((item) => {
     if (categoryMatch && item.categoryId !== categoryMatch.id) return false;
-    if (year) {
-      const itemYear = item.eventDate?.slice(0, 4) || item.academicYear;
-      if (itemYear !== year) return false;
+    if (year && year !== "all" && year !== "current") {
+      const normalizedYear = normalizeTermText(year);
+      const academicMatch = normalizeTermText(item.academicYear) === normalizedYear;
+      const dateMatch = Boolean(item.eventDate?.startsWith(`${year}-`));
+      if (!academicMatch && !dateMatch) return false;
     }
     return true;
   });
@@ -40,11 +54,18 @@ export default async function AchievementsPage({
   return (
     <div className="mx-auto max-w-6xl px-5 py-14 md:px-8 md:py-20">
       <p className="text-sm text-accent">Record</p>
-      <h1 className="font-display mt-3 text-5xl text-ink md:text-6xl">Achievements</h1>
+      <div className="mt-3 flex flex-wrap items-baseline justify-between gap-4">
+        <h1 className="font-display text-5xl text-ink md:text-6xl">Achievements</h1>
+        {termConfigured && catalog.activeTerm.label && usingCurrentDefault ? (
+          <span className="rounded-full border border-line bg-wash/50 px-3 py-1 text-xs font-semibold text-navy">
+            {catalog.activeTerm.label}
+          </span>
+        ) : null}
+      </div>
       <p className="mt-4 max-w-xl text-base leading-7 text-muted">
         Named results are shown only when they have been approved for publication.
       </p>
-      <form method="get" className="mt-8 flex flex-wrap gap-4" action="/achievements">
+      <form method="get" className="mt-8 flex flex-wrap items-end gap-4" action="/achievements">
         <label className="grid gap-1.5 text-sm">
           Category
           <select name="category" defaultValue={category ?? ""} className="rounded-md border border-line bg-white px-3 py-2">
@@ -56,11 +77,20 @@ export default async function AchievementsPage({
             ))}
           </select>
         </label>
-        {years.length ? (
+        {years.length || termConfigured ? (
           <label className="grid gap-1.5 text-sm">
-            Year
-            <select name="year" defaultValue={year ?? ""} className="rounded-md border border-line bg-white px-3 py-2">
-              <option value="">All</option>
+            Academic Year
+            <select name="year" defaultValue={year ?? (termConfigured ? "current" : "")} className="rounded-md border border-line bg-white px-3 py-2">
+              {termConfigured ? (
+                <>
+                  <option value="current">
+                    Current Term{catalog.activeTerm.label ? ` (${catalog.activeTerm.label})` : ""}
+                  </option>
+                  <option value="all">All Years (Archive)</option>
+                </>
+              ) : (
+                <option value="">All</option>
+              )}
               {years.map((item) => (
                 <option key={item} value={item}>
                   {item}
@@ -73,6 +103,27 @@ export default async function AchievementsPage({
           Apply
         </button>
       </form>
+
+      {usingCurrentDefault && pastArchiveCount > 0 ? (
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-wash/35 px-4 py-2.5 text-xs text-muted">
+          <span>
+            Showing current term{catalog.activeTerm.label ? ` (${catalog.activeTerm.label})` : ""}.{" "}
+            {pastArchiveCount} earlier {pastArchiveCount === 1 ? "result" : "results"} preserved in the archive.
+          </span>
+          <Link href="/achievements?year=all" className="font-semibold text-accent hover:underline">
+            View archive ({pastArchiveCount})
+          </Link>
+        </div>
+      ) : year && year !== "current" && termConfigured ? (
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-wash/35 px-4 py-2.5 text-xs text-muted">
+          <span>
+            Viewing archive filter: <strong className="text-ink">{year === "all" ? "All Years" : year}</strong>
+          </span>
+          <Link href="/achievements" className="font-semibold text-accent hover:underline">
+            Back to current term
+          </Link>
+        </div>
+      ) : null}
 
       {visible.length ? (
         <ul className="mt-10 grid gap-6 md:grid-cols-2">

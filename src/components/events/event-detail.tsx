@@ -31,6 +31,7 @@ export function EventDetail({
   hosts,
   notices = [],
   preview = false,
+  archivedTerm = false,
 }: {
   event: CampusEvent;
   events: CampusEvent[];
@@ -39,6 +40,7 @@ export function EventDetail({
   hosts: readonly string[];
   notices?: Announcement[];
   preview?: boolean;
+  archivedTerm?: boolean;
 }) {
   const categoryNames = eventCategoryIds(event)
     .map((id) => categoryById(categories, id)?.name)
@@ -83,6 +85,7 @@ export function EventDetail({
               listingLabel,
               categoryNames.join(", ") || null,
               getEffectiveEventStatus(event) || null,
+              event.academicYear || (archivedTerm ? "Earlier Term Archive" : null),
             ]
               .filter(Boolean)
               .join(" · ")}

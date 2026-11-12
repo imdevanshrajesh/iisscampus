@@ -25,6 +25,7 @@ export default async function ManageAchievementsPage() {
           events={access.workspace.events}
           role={access.role}
           mediaHosts={access.workspace.mediaHosts}
+          defaultAcademicYear={access.workspace.activeTerm.label}
         />
       </div>
     </div>

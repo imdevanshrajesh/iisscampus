@@ -25,6 +25,7 @@ export default async function EventsPage({
       events={catalog.events}
       categories={catalog.categories}
       hosts={catalog.mediaHosts}
+      activeTerm={catalog.activeTerm}
       filters={activityFiltersFromParams(params)}
     />
   );

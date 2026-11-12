@@ -5,6 +5,7 @@ import { FormAutoSave } from "@/components/manage/form-auto-save";
 import { ImageUploader } from "@/components/manage/image-uploader";
 import {
   grantRole,
+  saveAcademicTerm,
   saveContactEmail,
   saveCouncilLogo,
   saveNavBrand,
@@ -12,10 +13,168 @@ import {
   saveSocial,
   type ActionState,
 } from "@/lib/manage/actions";
-import type { ExtraSiteLink, SocialLinks } from "@/lib/types";
+import {
+  hasActiveTerm,
+  matchesAcademicTerm,
+  suggestNextTermLabel,
+  type TermMatchRecord,
+} from "@/lib/terms";
+import type { AcademicTermConfig, CouncilYear, ExtraSiteLink, SocialLinks } from "@/lib/types";
 import { IMAGE_URL_EXAMPLE, RECOMMENDED_IMAGE_HOST } from "@/lib/media/guide";
 
 const fieldClass = "w-full rounded-md border border-line bg-white px-3 py-2 text-sm";
+
+export function AcademicTermForm({
+  activeTerm,
+  eventRecords = [],
+  achievementRecords = [],
+  announcementRecords = [],
+  currentCouncilLabels = [],
+}: {
+  activeTerm: AcademicTermConfig;
+  eventRecords?: TermMatchRecord[];
+  achievementRecords?: TermMatchRecord[];
+  announcementRecords?: TermMatchRecord[];
+  currentCouncilLabels?: { id: string; label: string; kind: CouncilYear["kind"] }[];
+}) {
+  const [state, action, pending] = useActionState(saveAcademicTerm, {} as ActionState);
+  const [label, setLabel] = useState(activeTerm.label ?? "");
+  const [startDate, setStartDate] = useState(activeTerm.startDate ?? "");
+  const [demoteOldCouncil, setDemoteOldCouncil] = useState(false);
+
+  const draftTerm: AcademicTermConfig = {
+    label: label.trim() || null,
+    startDate: startDate.trim() || null,
+  };
+  const filteringActive = hasActiveTerm(draftTerm);
+  const suggestedNext = suggestNextTermLabel(label || activeTerm.label);
+  const currentCouncils = currentCouncilLabels.filter((y) => y.kind === "current");
+
+  const visibleEvents = filteringActive
+    ? eventRecords.filter((r) => matchesAcademicTerm(r, draftTerm)).length
+    : eventRecords.length;
+  const visibleAchievements = filteringActive
+    ? achievementRecords.filter((r) => matchesAcademicTerm(r, draftTerm)).length
+    : achievementRecords.length;
+  const visibleAnnouncements = filteringActive
+    ? announcementRecords.filter((r) => matchesAcademicTerm(r, draftTerm)).length
+    : announcementRecords.length;
+
+  return (
+    <form action={action} className="grid max-w-2xl gap-4 rounded-xl border border-line bg-white p-5">
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="grid gap-1.5 text-sm">
+          <span>Active term / academic year</span>
+          <input
+            name="activeTermLabel"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            maxLength={32}
+            placeholder="e.g. 2026-2027"
+            className={fieldClass}
+          />
+          <span className="text-xs text-muted">
+            New events, achievements, notices, and Instagram highlights auto-tag with this label when saved.
+          </span>
+        </label>
+        <label className="grid gap-1.5 text-sm">
+          <span>Term start date (optional cutoff)</span>
+          <input
+            type="date"
+            name="activeTermStart"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className={fieldClass}
+          />
+          <span className="text-xs text-muted">
+            Older items dated before this cutoff (without matching the label) stay preserved in archives and off main pages.
+          </span>
+        </label>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setLabel(suggestedNext)}
+          className="rounded-md border border-line bg-paper px-3 py-1.5 text-xs font-medium text-ink hover:border-ink/40"
+        >
+          Fill next term ({suggestedNext})
+        </button>
+        {(label || startDate) && (
+          <button
+            type="button"
+            onClick={() => {
+              setLabel("");
+              setStartDate("");
+              setDemoteOldCouncil(false);
+            }}
+            className="rounded-md border border-line bg-white px-3 py-1.5 text-xs font-medium text-muted hover:text-ink"
+          >
+            Clear filter inputs
+          </button>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-line/80 bg-paper px-3.5 py-3 text-xs leading-5 text-muted">
+        {filteringActive ? (
+          <>
+            <p className="font-semibold text-ink">
+              Public visibility preview ({draftTerm.label || `From ${draftTerm.startDate}`}):
+            </p>
+            <p className="mt-1">
+              Events &amp; competitions: <strong className="text-ink">{visibleEvents}</strong> of{" "}
+              {eventRecords.length} on main pages ({Math.max(0, eventRecords.length - visibleEvents)} archived)
+              {" · "}
+              Achievements: <strong className="text-ink">{visibleAchievements}</strong> of{" "}
+              {achievementRecords.length} ({Math.max(0, achievementRecords.length - visibleAchievements)} archived)
+              {" · "}
+              Notices: <strong className="text-ink">{visibleAnnouncements}</strong> of{" "}
+              {announcementRecords.length} ({Math.max(0, announcementRecords.length - visibleAnnouncements)} archived)
+            </p>
+          </>
+        ) : (
+          <p>
+            No active term filter set — all {eventRecords.length} events, {achievementRecords.length} achievements, and{" "}
+            {announcementRecords.length} notices remain in main feeds until a term is set for rollover.
+          </p>
+        )}
+      </div>
+
+      {currentCouncils.length > 0 && (
+        <label className="flex items-start gap-2.5 rounded-lg border border-line bg-paper/60 px-3.5 py-2.5 text-xs leading-5 text-ink">
+          <input
+            type="checkbox"
+            name="demoteOldCouncil"
+            checked={demoteOldCouncil}
+            onChange={(e) => setDemoteOldCouncil(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            <strong>Roll over Student Council:</strong> move currently sitting{" "}
+            {currentCouncils.map((c) => c.label).join(", ")} to <em>Earlier</em> (collapsed archive at the bottom of
+            /council) when saving this term.
+          </span>
+        </label>
+      )}
+
+      {state.error ? <p className="text-sm text-red-600">{state.error}</p> : null}
+      {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="submit"
+          disabled={pending}
+          className="rounded-md bg-ink px-4 py-2 text-sm text-white disabled:opacity-50"
+        >
+          {pending ? "Saving…" : "Save active term"}
+        </button>
+        <span className="text-xs text-muted">
+          Nothing is ever deleted on rollover — historical terms stay browsable in year archives and collapsed accordions.
+        </span>
+      </div>
+    </form>
+  );
+}
 
 export function HostForm({ hosts }: { hosts: string[] }) {
   const [state, action, pending] = useActionState(saveSettings, {} as ActionState);

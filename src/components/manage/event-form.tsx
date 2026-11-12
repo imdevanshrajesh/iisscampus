@@ -39,6 +39,7 @@ export function EventForm({
   role,
   mediaHosts,
   announcements = [],
+  defaultAcademicYear = null,
 }: {
   event: CampusEvent | null;
   categories: Category[];
@@ -46,6 +47,7 @@ export function EventForm({
   role: CampusRole;
   mediaHosts: string[];
   announcements?: Announcement[];
+  defaultAcademicYear?: string | null;
 }) {
   const [state, action, pending] = useActionState(saveEvent, {} as ActionState);
   const [title, setTitle] = useState(event?.title ?? "");
@@ -108,6 +110,7 @@ export function EventForm({
   const [purpose, setPurpose] = useState(event?.purpose ?? "");
   const [activities, setActivities] = useState(event?.activities ?? "");
   const [eventStatus, setEventStatus] = useState(event?.eventStatus ?? "");
+  const [academicYear, setAcademicYear] = useState(event?.academicYear ?? defaultAcademicYear ?? "");
   const [clientError, setClientError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [createdEventId, setCreatedEventId] = useState<string>("");
@@ -270,6 +273,7 @@ export function EventForm({
           purpose,
           activities,
           eventStatus,
+          academicYear,
         }}
         onCreatedId={(newId) => {
           setCreatedEventId(newId);
@@ -319,6 +323,7 @@ export function EventForm({
           if (first("purpose") !== undefined) setPurpose(first("purpose")!);
           if (first("activities") !== undefined) setActivities(first("activities")!);
           if (first("eventStatus") !== undefined) setEventStatus(first("eventStatus")!);
+          if (first("academicYear") !== undefined) setAcademicYear(first("academicYear")!);
           if (first("registrationUrl") !== undefined) setRegistrationUrl(first("registrationUrl")!);
           if (first("registrationLimit") !== undefined) setRegistrationLimit(first("registrationLimit")!);
           if (first("registrationCount") !== undefined) setRegistrationCount(first("registrationCount")!);
@@ -565,6 +570,21 @@ export function EventForm({
             />
           </label>
         </div>
+
+        <label className="grid gap-1.5 text-sm">
+          Academic term / year (optional)
+          <input
+            name="academicYear"
+            value={academicYear}
+            onChange={(e) => setAcademicYear(e.target.value)}
+            maxLength={32}
+            placeholder={defaultAcademicYear || "e.g. 2026-2027"}
+            className={fieldClass}
+          />
+          <span className="text-xs text-muted">
+            Auto-filled from your active term when set in Settings; older terms automatically move to year archives on rollover.
+          </span>
+        </label>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-1.5 text-sm">
             Start time

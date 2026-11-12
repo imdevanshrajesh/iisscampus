@@ -25,6 +25,7 @@ export default async function EditAchievementPage({ params }: { params: Promise<
           events={access.workspace.events}
           role={access.role}
           mediaHosts={access.workspace.mediaHosts}
+          defaultAcademicYear={access.workspace.activeTerm.label}
         />
       </div>
       {canDelete({ userId: "staff", role: access.role }, achievement.publicationStatus) ? (

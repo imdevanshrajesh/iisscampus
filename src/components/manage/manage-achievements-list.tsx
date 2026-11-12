@@ -15,12 +15,14 @@ export function ManageAchievementsList({
   events,
   role,
   mediaHosts,
+  defaultAcademicYear = null,
 }: {
   achievements: Achievement[];
   categories: Category[];
   events: CampusEvent[];
   role: CampusRole;
   mediaHosts: string[];
+  defaultAcademicYear?: string | null;
 }) {
   const [query, setQuery] = useState("");
   const [newOpen, setNewOpen] = useState(false);
@@ -82,6 +84,7 @@ export function ManageAchievementsList({
             events={events}
             role={role}
             mediaHosts={mediaHosts}
+            defaultAcademicYear={defaultAcademicYear}
           />
         </div>
       )}
@@ -98,6 +101,11 @@ export function ManageAchievementsList({
                 <span className="rounded-full bg-navy/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-navy">
                   {item.publicationStatus.replace("_", " ")}
                 </span>
+                {item.academicYear ? (
+                  <span className="rounded-full border border-line bg-paper px-2 py-0.5 text-[10px] font-medium text-muted">
+                    {item.academicYear}
+                  </span>
+                ) : null}
                 {item.award ? (
                   <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
                     {item.award}

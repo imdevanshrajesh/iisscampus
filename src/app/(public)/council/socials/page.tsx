@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { ArrowUpRight } from "lucide-react";
 import { InstagramMark } from "@/components/brand/instagram-mark";
 import { SocialPostCard } from "@/components/council/social-post-card";
-import { getPublicSocial, getPublicSocialPosts } from "@/lib/data/queries";
+import { SocialPostsArchive } from "@/components/council/social-posts-archive";
+import { getPublicCatalog, getPublicSocial, getPublicSocialPosts } from "@/lib/data/queries";
+import { filterSocialPostsForTerm, hasActiveTerm, partitionCouncilYears } from "@/lib/terms";
 
 export const metadata: Metadata = {
   title: "Socials · Student Council",
@@ -11,7 +13,24 @@ export const metadata: Metadata = {
 };
 
 export default async function CouncilSocialsPage() {
-  const [social, posts] = await Promise.all([getPublicSocial(), getPublicSocialPosts()]);
+  const [social, posts, catalog] = await Promise.all([
+    getPublicSocial(),
+    getPublicSocialPosts(),
+    getPublicCatalog(),
+  ]);
+
+  const { primary, collapsed } = partitionCouncilYears(catalog.councilYears);
+  const termConfigured = hasActiveTerm(catalog.activeTerm);
+  const currentPosts = termConfigured ? filterSocialPostsForTerm(posts, catalog.activeTerm) : posts;
+  const currentIds = new Set(currentPosts.map((post) => post.id));
+  const archivedPosts = termConfigured ? posts.filter((post) => !currentIds.has(post.id)) : [];
+
+  const primaryTitle = primary?.label
+    ? `${primary.label} Student Council`
+    : "Current Student Council";
+  const campusTitle = collapsed[0]?.label
+    ? `${collapsed[0].label} & Campus Archive`
+    : "Campus Student Council";
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-14 md:px-8 md:py-20">
@@ -22,13 +41,12 @@ export default async function CouncilSocialsPage() {
           Council <span className="italic text-accent">Socials</span>
         </h1>
         <p className="mt-4 text-base leading-7 text-muted">
-          Official Instagram handles, event drops, and pinned highlights from the 12th and 11th Student Councils.
+          Official Instagram handles, event drops, and pinned highlights from the sitting and previous Student Councils.
         </p>
       </div>
 
-      {/* Top 2 Council Instagram Buttons (12th is SciXcom, 11th is Main) */}
+      {/* Top Council Instagram Buttons */}
       <div className="mt-10 grid gap-4 sm:grid-cols-2">
-        {/* 12th Council Button (SciXcom) */}
         <a
           href={social.scixcomInstagramUrl}
           target="_blank"
@@ -40,16 +58,16 @@ export default async function CouncilSocialsPage() {
               <InstagramMark />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-display text-lg text-ink group-hover:text-accent transition">
-                  12th Student Council
+                  {primaryTitle}
                 </span>
                 <span className="rounded-full bg-accent/20 border border-accent/30 px-2 py-0.5 text-[10px] font-semibold text-accent">
                   {social.scixcomLabel || "SciXcom"}
                 </span>
               </div>
               <p className="text-xs text-muted mt-0.5">
-                {social.scixcomLabel || "SciXcom"} · @{social.scixcomLabel || "Instagram"} 
+                {social.scixcomLabel || "Council"} · Official Term Account
               </p>
             </div>
           </div>
@@ -58,7 +76,6 @@ export default async function CouncilSocialsPage() {
           </div>
         </a>
 
-        {/* 11th Council Button */}
         <a
           href={social.instagramUrl}
           target="_blank"
@@ -70,16 +87,16 @@ export default async function CouncilSocialsPage() {
               <InstagramMark />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-display text-lg text-ink group-hover:text-accent transition">
-                  11th Student Council
+                  {campusTitle}
                 </span>
                 <span className="rounded-full bg-sky/20 border border-sky/30 px-2 py-0.5 text-[10px] font-semibold text-sky">
                   {social.instagramLabel || "Instagram"}
                 </span>
               </div>
               <p className="text-xs text-muted mt-0.5">
-                {social.instagramLabel || "Instagram"} · @{social.instagramLabel || "Instagram"} 
+                {social.instagramLabel || "Instagram"} · Campus Feed
               </p>
             </div>
           </div>
@@ -93,15 +110,19 @@ export default async function CouncilSocialsPage() {
       <div className="mt-14">
         <div className="flex items-end justify-between border-b border-white/10 pb-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted">Pinned Posts</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+              {termConfigured && catalog.activeTerm.label ? `Pinned Posts · ${catalog.activeTerm.label}` : "Pinned Posts"}
+            </p>
             <h2 className="font-display text-2xl text-ink md:text-3xl">Latest on Instagram</h2>
           </div>
-          <span className="text-xs text-muted">{posts.length} {posts.length === 1 ? "post" : "posts"} pinned</span>
+          <span className="text-xs text-muted">
+            {currentPosts.length} {currentPosts.length === 1 ? "post" : "posts"} pinned
+          </span>
         </div>
 
-        {posts.length ? (
+        {currentPosts.length ? (
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {posts.map((post) => (
+            {currentPosts.map((post) => (
               <SocialPostCard key={post.id} post={post} />
             ))}
           </div>
@@ -110,12 +131,18 @@ export default async function CouncilSocialsPage() {
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-wash text-muted">
               <InstagramMark size={28} />
             </div>
-            <h3 className="mt-4 font-display text-2xl text-ink">No Pinned Posts</h3>
+            <h3 className="mt-4 font-display text-2xl text-ink">
+              {archivedPosts.length
+                ? `No Pinned Posts in ${catalog.activeTerm.label || "Current Term"} Yet`
+                : "No Pinned Posts"}
+            </h3>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">
-              No pinned posts found in the database. Posts pinned from the admin Content Desk (/manage/socials) will appear here.
+              Posts pinned for the current term from the Content Desk (/manage/socials) will appear here.
             </p>
           </div>
         )}
+
+        <SocialPostsArchive posts={archivedPosts} />
       </div>
     </div>
   );

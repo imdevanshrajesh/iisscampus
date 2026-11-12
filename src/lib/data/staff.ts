@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { contentMode } from "@/lib/data/content-mode";
-import { readContentStore } from "@/lib/data/file-content";
+import { readAcademicTerm, readContentStore } from "@/lib/data/file-content";
 import {
   groupCouncilRows,
   mapAchievement,
@@ -11,9 +11,10 @@ import {
   mapImage,
 } from "@/lib/data/map";
 import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "@/lib/data/seed";
+import { cleanTermLabel, cleanTermStartDate, EMPTY_ACADEMIC_TERM } from "@/lib/terms";
 import { logPostgrestUnlessMissing } from "@/lib/supabase/errors";
 import { createStaffClient } from "@/lib/supabase/server";
-import type { Achievement, Announcement, CampusEvent, Category, CouncilYear, Faq } from "@/lib/types";
+import type { AcademicTermConfig, Achievement, Announcement, CampusEvent, Category, CouncilYear, Faq } from "@/lib/types";
 
 function workspaceFromStore() {
   const store = readContentStore();
@@ -24,6 +25,7 @@ function workspaceFromStore() {
     councilYears: store.councilYears,
     mediaHosts: [] as string[],
     councilLogoUrl: store.councilLogoUrl ?? null,
+    activeTerm: readAcademicTerm(),
     announcements: store.announcements ?? [],
     faqs: store.faqs ?? [],
   };
@@ -37,6 +39,7 @@ function seedWorkspace() {
     councilYears: seedCouncilYears,
     mediaHosts: [] as string[],
     councilLogoUrl: null as string | null,
+    activeTerm: EMPTY_ACADEMIC_TERM,
     announcements: [] as Announcement[],
     faqs: [] as Faq[],
   };
@@ -71,6 +74,7 @@ async function loadStaffWorkspace() {
     categoriesResult,
     achievementsResult,
     settingsResult,
+    termResult,
     councilYearsResult,
     councilPhotosResult,
     councilPostsResult,
@@ -85,6 +89,7 @@ async function loadStaffWorkspace() {
     supabase.from("campus_categories").select("*").order("sort_order"),
     supabase.from("campus_achievements").select("*").order("updated_at", { ascending: false }),
     supabase.from("campus_settings").select("media_hosts, council_logo_url").eq("id", true).maybeSingle(),
+    supabase.from("campus_settings").select("active_term_label, active_term_start").eq("id", true).maybeSingle(),
     supabase.from("campus_council_years").select("*").order("sort_order"),
     supabase.from("campus_council_photos").select("*"),
     supabase.from("campus_council_posts").select("*"),
@@ -150,6 +155,13 @@ async function loadStaffWorkspace() {
         councilMembersResult.error ? [] : ((councilMembersResult.data ?? []) as Record<string, unknown>[]),
       );
 
+  const activeTerm: AcademicTermConfig = !termResult.error && termResult.data
+    ? {
+        label: cleanTermLabel(termResult.data.active_term_label as string | null),
+        startDate: cleanTermStartDate(termResult.data.active_term_start as string | null),
+      }
+    : EMPTY_ACADEMIC_TERM;
+
   return {
     events,
     categories: categoriesResult.error
@@ -161,6 +173,7 @@ async function loadStaffWorkspace() {
     councilYears,
     mediaHosts: Array.isArray(hosts) ? hosts.map(String) : [],
     councilLogoUrl: settingsResult.data?.council_logo_url ? String(settingsResult.data.council_logo_url) : null,
+    activeTerm,
     announcements: announcementsResult.error
       ? []
       : (announcementsResult.data ?? []).map((row) => mapAnnouncement(row as Record<string, unknown>)),

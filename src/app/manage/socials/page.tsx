@@ -46,7 +46,7 @@ export default async function ManageSocialsPage() {
       <div className="mt-8 grid gap-8 lg:grid-cols-12">
         <div className="lg:col-span-5">
           <h2 className="text-lg font-medium tracking-tight text-ink mb-3">Add Instagram Post</h2>
-          <SocialPostForm post={null} />
+          <SocialPostForm post={null} defaultAcademicYear={access.workspace.activeTerm.label} />
         </div>
 
         <div className="lg:col-span-7">
@@ -60,7 +60,7 @@ export default async function ManageSocialsPage() {
           {posts.length ? (
             <div className="grid gap-4">
               {posts.map((post) => (
-                <SocialPostForm key={post.id} post={post} />
+                <SocialPostForm key={post.id} post={post} defaultAcademicYear={access.workspace.activeTerm.label} />
               ))}
             </div>
           ) : (

@@ -9,6 +9,13 @@ import {
   getPublicWellnessItems,
   getSiteBrand,
 } from "@/lib/data/queries";
+import {
+  filterAchievementsForTerm,
+  filterAnnouncementsForTerm,
+  filterEventsForTerm,
+  hasActiveTerm,
+  partitionCouncilYears,
+} from "@/lib/terms";
 
 export async function buildCampusAiSystemPrompt(): Promise<string> {
   const [catalog, brand, social, announcements, faqs, wellnessItems, programs, facultyResult, houses] =
@@ -26,6 +33,15 @@ export async function buildCampusAiSystemPrompt(): Promise<string> {
 
   const now = new Date();
   const currentDateStr = now.toISOString().split("T")[0];
+  const termActive = hasActiveTerm(catalog.activeTerm);
+
+  const currentEvents = filterEventsForTerm(catalog.events, catalog.activeTerm);
+  const currentEventIds = new Set(currentEvents.map((e) => e.id));
+  const currentAchievements = filterAchievementsForTerm(catalog.achievements, catalog.activeTerm);
+  const currentAchievementIds = new Set(currentAchievements.map((a) => a.id));
+  const currentAnnouncements = filterAnnouncementsForTerm(announcements, catalog.activeTerm);
+  const currentAnnouncementIds = new Set(currentAnnouncements.map((a) => a.id));
+  const { primary: sittingCouncil, ordered: orderedCouncilYears } = partitionCouncilYears(catalog.councilYears);
 
   // Format events
   const eventsSummary = catalog.events.map((e) => {
@@ -34,6 +50,8 @@ export async function buildCampusAiSystemPrompt(): Promise<string> {
       slug: e.slug,
       pageLink: `/events/${e.slug}`,
       status: e.eventStatus || "upcoming",
+      academicYear: e.academicYear || null,
+      termScope: currentEventIds.has(e.id) ? "current" : "archived",
       date: e.eventDate || "TBA",
       endDate: e.endDate || null,
       time: e.startTime ? `${e.startTime}${e.endTime ? ` - ${e.endTime}` : ""}` : null,
@@ -49,9 +67,10 @@ export async function buildCampusAiSystemPrompt(): Promise<string> {
   });
 
   // Format council
-  const councilSummary = catalog.councilYears.map((year) => ({
+  const councilSummary = orderedCouncilYears.map((year) => ({
     label: year.label,
     kind: year.kind,
+    sitting: sittingCouncil?.id === year.id,
     summary: year.summary,
     members: year.members.map((m) => ({
       name: m.name,
@@ -59,7 +78,7 @@ export async function buildCampusAiSystemPrompt(): Promise<string> {
       board: m.board,
       about: m.about,
       quote: m.quote,
-      profileLink: `/council#member-${m.slug}`,
+      profileLink: `/council#${year.slug}`,
     })),
   }));
 
@@ -71,12 +90,15 @@ export async function buildCampusAiSystemPrompt(): Promise<string> {
     award: a.award,
     date: a.eventDate,
     academicYear: a.academicYear,
+    termScope: currentAchievementIds.has(a.id) ? "current" : "archived",
   }));
 
   // Format announcements
   const announcementsSummary = announcements.map((ann) => ({
     title: ann.title,
     body: ann.body,
+    academicYear: ann.academicYear || null,
+    termScope: currentAnnouncementIds.has(ann.id) ? "current" : "archived",
     createdAt: ann.createdAt,
   }));
 
@@ -108,6 +130,8 @@ export async function buildCampusAiSystemPrompt(): Promise<string> {
 
   return `You are the official AI Assistant for India International School Campus (Boys Wing).
 Today's date is ${currentDateStr}.
+Active Academic Term Filter: ${termActive ? `${catalog.activeTerm.label || ""}${catalog.activeTerm.startDate ? ` (starting ${catalog.activeTerm.startDate})` : ""}`.trim() : "None (all published years currently active)"}.
+IMPORTANT TERM SCOPE RULE: By default, only present events, achievements, and notices marked \`termScope: "current"\`, and treat the Student Council year marked \`sitting: true\` as the current Student Council. Items with \`termScope: "archived"\` or \`sitting: false\` belong to earlier school years — only discuss them when the user specifically asks about a previous academic year or historical archive, and clearly label them as archived/past records.
 
 =========================================
 CRITICAL GUARDRAILS & BOUNDARIES (STRICT):

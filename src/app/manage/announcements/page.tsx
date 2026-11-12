@@ -45,6 +45,7 @@ export default async function AnnouncementsPage({
           wellnessItems={wellnessItems}
           defaultEventId={defaultEventId}
           initialEditId={initialEditId}
+          defaultAcademicYear={access.workspace.activeTerm.label}
         />
       </div>
     </div>

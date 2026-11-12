@@ -16,6 +16,7 @@ export default async function CompetitionsPage({
 }) {
   const params = await searchParams;
   const catalog = await getPublicCatalog();
+  const filters = activityFiltersFromParams(params);
   return (
     <>
     <ActivitiesBrowse
@@ -27,9 +28,16 @@ export default async function CompetitionsPage({
       events={catalog.events}
       categories={catalog.categories}
       hosts={catalog.mediaHosts}
-      filters={activityFiltersFromParams(params)}
+      activeTerm={catalog.activeTerm}
+      filters={filters}
     />
-    <ExternalCompetitions events={catalog.events} categories={catalog.categories} hosts={catalog.mediaHosts} />
+    <ExternalCompetitions
+      events={catalog.events}
+      categories={catalog.categories}
+      hosts={catalog.mediaHosts}
+      activeTerm={catalog.activeTerm}
+      yearFilter={filters.year}
+    />
     </>
   );
 }

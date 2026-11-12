@@ -9,7 +9,8 @@ import { formatEventDate } from "@/lib/data/catalog";
 import { formatEventDay } from "@/lib/events/display";
 import { deleteEvent } from "@/lib/manage/actions";
 import { registrationState } from "@/lib/registration";
-import type { CampusEvent, CampusRole, PublicationStatus } from "@/lib/types";
+import { hasActiveTerm, matchesAcademicTerm } from "@/lib/terms";
+import type { AcademicTermConfig, CampusEvent, CampusRole, PublicationStatus } from "@/lib/types";
 
 const statusTone: Record<PublicationStatus, string> = {
   draft: "bg-wash text-ink border-line",
@@ -48,25 +49,44 @@ export function ManageEventsList({
   role,
   initialQuery = "",
   initialStatus = "",
+  activeTerm = null,
 }: {
   events: CampusEvent[];
   role: CampusRole;
   initialQuery?: string;
   initialStatus?: string;
+  activeTerm?: AcademicTermConfig | null;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [selectedStatus, setSelectedStatus] = useState(initialStatus);
+  const [termFilter, setTermFilter] = useState<"all" | "current">("all");
+  const termEnabled = hasActiveTerm(activeTerm);
 
-  // Filter events based on search query and status filter
+  // Filter events based on search query, status filter, and term filter
   const filteredEvents = useMemo(() => {
     const q = query.trim().toLowerCase();
     return events.filter((event) => {
       if (selectedStatus && event.publicationStatus !== selectedStatus) return false;
+      if (
+        termFilter === "current" &&
+        termEnabled &&
+        !matchesAcademicTerm(
+          {
+            academicYear: event.academicYear,
+            eventDate: event.eventDate,
+            endDate: event.endDate,
+            createdAt: event.createdAt,
+          },
+          activeTerm,
+        )
+      ) {
+        return false;
+      }
       if (!q) return true;
-      const haystack = `${event.title} ${event.shortDescription ?? ""} ${event.locationName ?? ""}`.toLowerCase();
+      const haystack = `${event.title} ${event.shortDescription ?? ""} ${event.locationName ?? ""} ${event.academicYear ?? ""}`.toLowerCase();
       return haystack.includes(q);
     });
-  }, [events, query, selectedStatus]);
+  }, [events, query, selectedStatus, termFilter, termEnabled, activeTerm]);
 
   // Group filtered events by status
   const grouped = useMemo(() => {
@@ -163,6 +183,19 @@ export function ManageEventsList({
               <option value="draft" className="bg-white dark:bg-black text-ink dark:text-white">Drafts</option>
               <option value="archived" className="bg-white dark:bg-black text-ink dark:text-white">Archived</option>
             </select>
+            {termEnabled && (
+              <select
+                value={termFilter}
+                onChange={(e) => setTermFilter(e.target.value as "all" | "current")}
+                aria-label="Filter academic term"
+                className="rounded-lg border border-line bg-white dark:bg-black text-ink dark:text-white px-3 py-2 text-sm outline-none transition focus:border-navy"
+              >
+                <option value="all" className="bg-white dark:bg-black text-ink dark:text-white">All Terms</option>
+                <option value="current" className="bg-white dark:bg-black text-ink dark:text-white">
+                  Current Term ({activeTerm?.label || activeTerm?.startDate})
+                </option>
+              </select>
+            )}
           </div>
         </div>
 
@@ -271,6 +304,11 @@ export function ManageEventsList({
                                   {event.featured ? (
                                     <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[0.65rem] font-medium text-accent">
                                       Featured
+                                    </span>
+                                  ) : null}
+                                  {event.academicYear ? (
+                                    <span className="rounded-full border border-line bg-paper px-2 py-0.5 text-[0.65rem] font-medium text-muted">
+                                      {event.academicYear}
                                     </span>
                                   ) : null}
                                 </div>

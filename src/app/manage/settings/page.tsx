@@ -1,4 +1,5 @@
 import {
+  AcademicTermForm,
   ContactEmailForm,
   CouncilLogoForm,
   HostForm,
@@ -34,7 +35,40 @@ export default async function SettingsPage() {
   return (
     <div className="mx-auto max-w-6xl px-5 py-12 md:px-8">
       <h1 className="text-3xl font-medium tracking-tight">Settings</h1>
-      <section className="mt-8">
+      <section className="mt-8" id="academic-term">
+        <h2 className="text-xl font-medium">Academic term &amp; year rollover</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+          Control which academic year appears on the Home page and default public feeds. When a new school year begins,
+          set the new term label or start date here so previous years move into archives automatically without losing any
+          records.
+        </p>
+        <div className="mt-4">
+          <AcademicTermForm
+            activeTerm={access.workspace.activeTerm}
+            eventRecords={access.workspace.events.map((event) => ({
+              academicYear: event.academicYear,
+              eventDate: event.eventDate,
+              endDate: event.endDate,
+              createdAt: event.createdAt,
+            }))}
+            achievementRecords={access.workspace.achievements.map((item) => ({
+              academicYear: item.academicYear,
+              eventDate: item.eventDate,
+              createdAt: item.createdAt,
+            }))}
+            announcementRecords={access.workspace.announcements.map((item) => ({
+              academicYear: item.academicYear,
+              createdAt: item.createdAt,
+            }))}
+            currentCouncilLabels={access.workspace.councilYears.map((year) => ({
+              id: year.id,
+              label: year.label,
+              kind: year.kind,
+            }))}
+          />
+        </div>
+      </section>
+      <section className="mt-12">
         <h2 className="text-xl font-medium">Image hosts</h2>
         <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
           The site stores image addresses, not files. Visitors&apos; browsers load each photograph from the HTTPS URL you

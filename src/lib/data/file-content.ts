@@ -5,6 +5,7 @@ import { defaultNavGroups, isNavIncludeListing } from "@/lib/nav";
 import { councilMemberSlugs } from "@/lib/data/catalog";
 import { seedAchievements, seedCategories, seedCouncilYears, seedEvents } from "@/lib/data/seed";
 import type {
+  AcademicTermConfig,
   Achievement,
   Announcement,
   CustomProgram,
@@ -55,6 +56,7 @@ type Store = {
   navLogoUrl?: string | null;
   navLogoHref?: string | null;
   navLabel?: string | null;
+  activeTerm?: AcademicTermConfig | null;
   announcements?: Announcement[];
   schoolIncharges?: SchoolIncharge[];
   faculty?: FacultyMember[];
@@ -105,6 +107,7 @@ function normalizeAnnouncement(item: Announcement & { message?: string }): Annou
     programId: item.programId ?? null,
     wellnessId: item.wellnessId ?? null,
     category: item.category || "General",
+    academicYear: item.academicYear ?? null,
     coverImageUrl: item.coverImageUrl ?? null,
     enabled: Boolean(item.enabled),
     sortOrder: Number(item.sortOrder ?? 0),
@@ -398,6 +401,7 @@ export function readContentStore(): Store {
       navLogoUrl: parsed.navLogoUrl ?? null,
       navLogoHref: parsed.navLogoHref ?? null,
       navLabel: parsed.navLabel ?? null,
+      activeTerm: parsed.activeTerm ?? null,
       announcements: Array.isArray(parsed.announcements)
         ? parsed.announcements.map((item) => normalizeAnnouncement(item as Announcement))
         : [],
@@ -530,6 +534,7 @@ export function saveEventToStore(
     coverAttribution: input.coverAttribution,
     eventDate: input.eventDate,
     endDate: input.endDate,
+    academicYear: input.academicYear ?? store.activeTerm?.label ?? null,
     startTime: input.startTime,
     endTime: input.endTime,
     locationName: input.locationName,
@@ -1172,6 +1177,31 @@ export function saveContactEmailToStore(contactEmail: string | null) {
   return writeContentStore(store);
 }
 
+export function readAcademicTerm(): AcademicTermConfig {
+  const term = readContentStore().activeTerm;
+  return {
+    label: term?.label?.trim() || null,
+    startDate: term?.startDate?.trim().slice(0, 10) || null,
+  };
+}
+
+export function saveAcademicTermToStore(term: AcademicTermConfig) {
+  const store = readContentStore();
+  store.activeTerm = {
+    label: term.label?.trim() || null,
+    startDate: term.startDate?.trim().slice(0, 10) || null,
+  };
+  return writeContentStore(store);
+}
+
+export function demoteCurrentCouncilYearsInStore() {
+  const store = readContentStore();
+  store.councilYears = store.councilYears.map((year) =>
+    year.kind === "current" ? { ...year, kind: "past", updatedAt: new Date().toISOString() } : year,
+  );
+  return writeContentStore(store);
+}
+
 export function saveAnnouncementToStore(input: {
   id?: string;
   title: string;
@@ -1181,6 +1211,7 @@ export function saveAnnouncementToStore(input: {
   programId?: string | null;
   wellnessId?: string | null;
   category?: string;
+  academicYear?: string | null;
   coverImageUrl?: string | null;
   enabled: boolean;
 }) {
@@ -1196,6 +1227,10 @@ export function saveAnnouncementToStore(input: {
     programId: input.programId ?? null,
     wellnessId: input.wellnessId ?? null,
     category: input.category || "General",
+    academicYear:
+      input.academicYear !== undefined
+        ? input.academicYear
+        : existing?.academicYear ?? store.activeTerm?.label ?? null,
     coverImageUrl: input.coverImageUrl ?? null,
     enabled: input.enabled,
     sortOrder: existing?.sortOrder ?? 0,
@@ -1697,6 +1732,7 @@ export function saveSocialPostToStore(input: {
   pinned: boolean;
   sortOrder: number;
   councilTag: string;
+  academicYear?: string | null;
 }) {
   const store = readContentStore();
   const list = store.socialPosts ?? [];
@@ -1710,6 +1746,10 @@ export function saveSocialPostToStore(input: {
     pinned: input.pinned,
     sortOrder: input.sortOrder,
     councilTag: input.councilTag,
+    academicYear:
+      input.academicYear !== undefined
+        ? input.academicYear
+        : existing?.academicYear ?? store.activeTerm?.label ?? null,
     publishedOn: existing?.publishedOn ?? now,
     createdAt: existing?.createdAt ?? now,
   };

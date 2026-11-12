@@ -13,6 +13,7 @@ import {
   saveWellnessItemToStore,
   readContentStore,
 } from "@/lib/data/file-content";
+import { getActiveTerm } from "@/lib/data/queries";
 import { createStaffClient } from "@/lib/supabase/server";
 import type { EventInput, AchievementInput } from "@/lib/validation/content";
 
@@ -49,6 +50,7 @@ export async function autoAddAiRecord(payload: AutoAddPayload): Promise<AutoAddR
 
   const isFile = (await contentMode()) === "file";
   const { section, fields } = payload;
+  const activeTerm = await getActiveTerm();
 
   try {
     if (section === "event") {
@@ -85,6 +87,7 @@ export async function autoAddAiRecord(payload: AutoAddPayload): Promise<AutoAddR
         feeAed: fields.feeAed ? Number(fields.feeAed) : 0,
         capacity: fields.capacity ? Number(fields.capacity) : null,
         packingList: fields.packingList || null,
+        academicYear: fields.academicYear || activeTerm.label || null,
         eventStatus: "upcoming",
         featured: false,
         registrationEnabled: false,
@@ -174,6 +177,7 @@ export async function autoAddAiRecord(payload: AutoAddPayload): Promise<AutoAddR
           body,
           resources: [],
           eventId: null,
+          academicYear: fields.academicYear || activeTerm.label || null,
           enabled: true,
         });
         if (!saved) return { ok: false, error: "Could not save announcement." };
@@ -202,7 +206,7 @@ export async function autoAddAiRecord(payload: AutoAddPayload): Promise<AutoAddR
         winnerName: fields.winnerName || null,
         award: fields.award || null,
         eventDate: fields.eventDate || null,
-        academicYear: fields.academicYear || "2026–27",
+        academicYear: fields.academicYear || activeTerm.label || "2026-2027",
         categoryId: fields.categoryId || firstCat,
         eventId: null,
         imageUrl: null,

@@ -4,6 +4,7 @@ import { EventDetail } from "@/components/events/event-detail";
 import { getCampusActor } from "@/lib/auth/session";
 import { getStaffWorkspace } from "@/lib/data/staff";
 import { achievementsForEvent, getPublicAnnouncements, getPublicEvent } from "@/lib/data/queries";
+import { hasActiveTerm, matchesAcademicTerm } from "@/lib/terms";
 import { siteConfig } from "@/lib/config";
 
 export async function generateMetadata({
@@ -64,6 +65,17 @@ export default async function EventPage({
   if (event) {
     const allNotices = await getPublicAnnouncements();
     const eventNotices = allNotices.filter((notice) => notice.eventId === event.id);
+    const archivedTerm =
+      hasActiveTerm(catalog.activeTerm) &&
+      !matchesAcademicTerm(
+        {
+          academicYear: event.academicYear,
+          eventDate: event.eventDate,
+          endDate: event.endDate,
+          createdAt: event.createdAt,
+        },
+        catalog.activeTerm,
+      );
 
     return (
       <>
@@ -77,6 +89,7 @@ export default async function EventPage({
           achievements={achievementsForEvent(catalog.achievements, event.id)}
           hosts={catalog.mediaHosts}
           notices={eventNotices}
+          archivedTerm={archivedTerm}
         />
       </>
     );

@@ -4,6 +4,7 @@ import { unstable_cache } from "next/cache";
 import { selectPublicAchievements, selectPublicCouncil, selectPublicEvents } from "@/lib/data/catalog";
 import {
   listSuggestionsFromStore,
+  readAcademicTerm,
   readAiConfig,
   readContentStore,
   readNewsletter,
@@ -12,6 +13,7 @@ import {
   readWellnessPageSettings,
   type StoredAiConfig,
 } from "@/lib/data/file-content";
+import { cleanTermLabel, cleanTermStartDate, EMPTY_ACADEMIC_TERM } from "@/lib/terms";
 import { normalizeSocialLinks } from "@/lib/social";
 import {
   groupCouncilRows,
@@ -39,6 +41,7 @@ import { isMissingTableError, logPostgrestUnlessMissing } from "@/lib/supabase/e
 import { createPublicClient } from "@/lib/supabase/public";
 import { createStaffClient } from "@/lib/supabase/server";
 import type {
+  AcademicTermConfig,
   Achievement,
   Announcement,
   CustomProgram,
@@ -71,6 +74,7 @@ function localCatalog(): PublicCatalog {
     councilYears: selectPublicCouncil(store.councilYears),
     mediaHosts: seedMediaHosts,
     councilLogoUrl: store.councilLogoUrl ?? null,
+    activeTerm: readAcademicTerm(),
   };
 }
 
@@ -96,6 +100,7 @@ async function supabaseCatalog(): Promise<PublicCatalog> {
     categoriesResult,
     achievementsResult,
     settingsResult,
+    termResult,
     councilYearsResult,
     councilPhotosResult,
     councilPostsResult,
@@ -108,6 +113,7 @@ async function supabaseCatalog(): Promise<PublicCatalog> {
     supabase.from("campus_categories").select("*").order("sort_order"),
     supabase.from("campus_achievements").select("*").eq("publication_status", "published"),
     supabase.from("campus_settings").select("media_hosts, council_logo_url").eq("id", true).maybeSingle(),
+    supabase.from("campus_settings").select("active_term_label, active_term_start").eq("id", true).maybeSingle(),
     supabase.from("campus_council_years").select("*").eq("publication_status", "published").order("sort_order"),
     supabase.from("campus_council_photos").select("*"),
     supabase.from("campus_council_posts").select("*"),
@@ -168,6 +174,13 @@ async function supabaseCatalog(): Promise<PublicCatalog> {
         councilPostsResult.error ? [] : ((councilPostsResult.data ?? []) as Record<string, unknown>[]),
         councilMembersResult.error ? [] : ((councilMembersResult.data ?? []) as Record<string, unknown>[]),
       );
+  const activeTerm: AcademicTermConfig = !termResult.error && termResult.data
+    ? {
+        label: cleanTermLabel(termResult.data.active_term_label as string | null),
+        startDate: cleanTermStartDate(termResult.data.active_term_start as string | null),
+      }
+    : EMPTY_ACADEMIC_TERM;
+
   return {
     source: "supabase",
     categories: (categoriesResult.data ?? []).map((row) => mapCategory(row as Record<string, unknown>)),
@@ -178,7 +191,13 @@ async function supabaseCatalog(): Promise<PublicCatalog> {
     councilYears,
     mediaHosts: Array.isArray(hosts) ? hosts.map(String) : [],
     councilLogoUrl: logoRaw ? String(logoRaw) : null,
+    activeTerm,
   };
+}
+
+export async function getActiveTerm(): Promise<AcademicTermConfig> {
+  const catalog = await getPublicCatalog();
+  return catalog.activeTerm;
 }
 
 export async function getPublicNewsletter(): Promise<Newsletter | null> {

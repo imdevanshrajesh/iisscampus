@@ -66,6 +66,7 @@ export type CampusEvent = {
   coverAttribution: string | null;
   eventDate: string | null;
   endDate: string | null;
+  academicYear?: string | null;
   startTime: string | null;
   endTime: string | null;
   locationName: string | null;
@@ -207,6 +208,7 @@ export type SocialPost = {
   pinned: boolean;
   sortOrder: number;
   councilTag: string;
+  academicYear?: string | null;
   publishedOn: string;
   createdAt: string;
 };
@@ -272,6 +274,7 @@ export type Announcement = {
   programId?: string | null;
   wellnessId?: string | null;
   category?: string;
+  academicYear?: string | null;
   coverImageUrl?: string | null;
   enabled: boolean;
   sortOrder: number;
@@ -382,6 +385,11 @@ export type WellnessPageSettings = {
   navLabel: string;
 };
 
+export type AcademicTermConfig = {
+  label: string | null;
+  startDate: string | null;
+};
+
 export type PublicCatalog = {
   source: "local" | "supabase";
   categories: Category[];
@@ -390,6 +398,7 @@ export type PublicCatalog = {
   councilYears: CouncilYear[];
   mediaHosts: string[];
   councilLogoUrl: string | null;
+  activeTerm: AcademicTermConfig;
 };
 
 export type HouseColor = "ruby" | "sapphire" | "topaz" | "emerald";

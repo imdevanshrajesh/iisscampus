@@ -10,7 +10,13 @@ import { ImageUploader } from "@/components/manage/image-uploader";
 
 const fieldClass = "w-full rounded-md border border-line bg-background px-3 py-2 text-sm";
 
-export function SocialPostForm({ post }: { post: SocialPost | null }) {
+export function SocialPostForm({
+  post,
+  defaultAcademicYear = null,
+}: {
+  post: SocialPost | null;
+  defaultAcademicYear?: string | null;
+}) {
   const [state, action, pending] = useActionState(saveSocialPost, {} as ActionState);
   const [deleteState, deleteAction, deleting] = useActionState(deleteSocialPost, {} as ActionState);
   const [url, setUrl] = useState(post?.instagramUrl ?? "");
@@ -57,6 +63,11 @@ export function SocialPostForm({ post }: { post: SocialPost | null }) {
                 <span className="inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-navy/10 text-navy">
                   {post.councilTag}
                 </span>
+                {post.academicYear ? (
+                  <span className="inline-block text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded-full border border-line bg-paper text-muted">
+                    {post.academicYear}
+                  </span>
+                ) : null}
                 {post.pinned ? (
                   <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-full">
                     <Pin size={10} className="fill-emerald-600" /> Pinned
@@ -165,7 +176,19 @@ export function SocialPostForm({ post }: { post: SocialPost | null }) {
               </select>
             </label>
 
-            <div className="space-y-1">
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium">Academic term / year (optional)</span>
+              <input
+                name="academicYear"
+                defaultValue={post?.academicYear ?? defaultAcademicYear ?? ""}
+                maxLength={32}
+                placeholder={defaultAcademicYear || "e.g. 2026-2027"}
+                className={fieldClass}
+              />
+            </label>
+          </div>
+
+          <div className="space-y-1">
               <input type="hidden" name="imageUrl" value={imageUrl} />
               <ImageUploader
                 name="socialImageUpload"
@@ -177,7 +200,6 @@ export function SocialPostForm({ post }: { post: SocialPost | null }) {
                 hint="Upload a social preview image to the Socials folder or enter URL."
                 aspectRatio="1:1"
               />
-            </div>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-4 pt-1">

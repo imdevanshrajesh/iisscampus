@@ -35,6 +35,7 @@ export default async function ManageEventsPage({
           role={access.role}
           initialQuery={query}
           initialStatus={status}
+          activeTerm={access.workspace.activeTerm}
         />
       </div>
 

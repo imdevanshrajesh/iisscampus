@@ -18,12 +18,14 @@ export function AchievementForm({
   events,
   role,
   mediaHosts,
+  defaultAcademicYear = null,
 }: {
   achievement: Achievement | null;
   categories: Category[];
   events: CampusEvent[];
   role: CampusRole;
   mediaHosts: string[];
+  defaultAcademicYear?: string | null;
 }) {
   const [state, action, pending] = useActionState(saveAchievement, {} as ActionState);
   const [title, setTitle] = useState(achievement?.title ?? "");
@@ -117,7 +119,7 @@ export function AchievementForm({
         <label className="grid gap-1.5 text-sm">Winner or team, if approved<input name="winnerName" defaultValue={achievement?.winnerName ?? ""} className={fieldClass} /></label>
         <label className="grid gap-1.5 text-sm">Award<input name="award" defaultValue={achievement?.award ?? ""} className={fieldClass} /></label>
         <label className="grid gap-1.5 text-sm">Date<input type="date" name="eventDate" defaultValue={achievement?.eventDate ?? ""} className={fieldClass} /></label>
-        <label className="grid gap-1.5 text-sm">Academic year<input name="academicYear" defaultValue={achievement?.academicYear ?? ""} className={fieldClass} /></label>
+        <label className="grid gap-1.5 text-sm">Academic year<input name="academicYear" defaultValue={achievement?.academicYear ?? defaultAcademicYear ?? ""} maxLength={32} placeholder={defaultAcademicYear || "e.g. 2026-2027"} className={fieldClass} /></label>
         <label className="grid gap-1.5 text-sm">
           Category
           <select name="categoryId" defaultValue={achievement?.categoryId ?? ""} className={fieldClass}>

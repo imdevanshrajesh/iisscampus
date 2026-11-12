@@ -33,6 +33,7 @@ export default async function Page({
       events={catalog.events}
       programs={programs}
       wellnessItems={wellnessItems}
+      activeTerm={catalog.activeTerm}
       initialOpenId={open}
     />
   );
