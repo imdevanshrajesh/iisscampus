@@ -68,15 +68,16 @@ export function ManageFacultyList({
             Principal · Vice Principals · Headmistress &amp; Headmaster · Supervisors
           </p>
           <p className="mt-0.5 text-xs text-muted">
-            Updates appear immediately on the public Faculty page and can also be edited inline there.
+            Updates publish directly to the live Faculty directory on the school site.
           </p>
         </div>
 
         <Link
           href="/school/faculty"
+          target="_blank"
           className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-navy transition hover:text-ink"
         >
-          <span>Open &amp; edit on page</span>
+          <span>View public page</span>
           <ExternalLink className="h-3.5 w-3.5" />
         </Link>
       </div>
@@ -163,7 +164,6 @@ export function ManageFacultyList({
           <FacultyForm
             key={item.id}
             member={item}
-            variant="accordion"
             isOpen={Boolean(openIds[item.id])}
             onToggle={() => toggleOpen(item.id)}
           />
@@ -186,7 +186,6 @@ export function ManageFacultyList({
       <div className="pt-2">
         <FacultyForm
           member={null}
-          variant="accordion"
           isOpen={Boolean(openIds.new)}
           onToggle={() => toggleOpen("new")}
         />

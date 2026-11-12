@@ -110,6 +110,7 @@ export function SiteFooter({
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="url(#iissboysGlowGradient)"
+                fillRule="nonzero"
                 className="font-display font-black uppercase"
                 style={{
                   fontSize: "215px",
