@@ -197,6 +197,10 @@ export type SocialLinks = {
   instagramUrl: string;
   scixcomLabel: string;
   scixcomInstagramUrl: string;
+  youtubeLabel: string;
+  youtubeUrl: string;
+  youtubeDescription: string;
+  youtubeEnabled: boolean;
   extraLinks: ExtraSiteLink[];
 };
 

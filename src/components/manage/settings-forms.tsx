@@ -488,10 +488,48 @@ export function SocialForm({ social }: { social: SocialLinks }) {
         label={social.scixcomLabel}
         url={social.scixcomInstagramUrl}
       />
+      <fieldset className="grid gap-3 rounded-xl border border-line p-4">
+        <legend className="px-1 text-xs font-semibold uppercase tracking-wider text-muted">
+          YouTube channel
+        </legend>
+        <p className="text-xs leading-5 text-muted">
+          Shown at the bottom of the Council Socials page with a Subscribe CTA, plus in the footer and about page.
+        </p>
+        <input type="hidden" name="youtubeFormPresent" value="1" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="grid gap-1.5 text-sm">
+            Label
+            <input name="youtubeLabel" defaultValue={social.youtubeLabel} className={fieldClass} maxLength={60} />
+          </label>
+          <label className="grid gap-1.5 text-sm">
+            Link
+            <input name="youtubeUrl" defaultValue={social.youtubeUrl} className={fieldClass} placeholder="https://www.youtube.com/@iissboys" />
+          </label>
+        </div>
+        <label className="grid gap-1.5 text-sm">
+          Description
+          <textarea
+            name="youtubeDescription"
+            defaultValue={social.youtubeDescription}
+            rows={2}
+            maxLength={240}
+            className={fieldClass}
+          />
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="youtubeEnabled"
+            defaultChecked={social.youtubeEnabled}
+            className="h-4 w-4 rounded border-line"
+          />
+          <span>Show YouTube channel section publicly</span>
+        </label>
+      </fieldset>
       <ExtraLinksEditor links={extraLinks} onChange={setExtraLinks} />
       <input type="hidden" name="extraLinks" value={JSON.stringify(extraLinks)} />
       <p className="text-xs leading-5 text-muted">
-        Leave a label or link blank on the three accounts above to restore its usual text and address.
+        Leave a label or link blank on the accounts above to restore its usual text and address.
       </p>
       {state.error ? <p className="text-sm">{state.error}</p> : null}
       {state.ok ? <p className="text-sm text-accent">{state.ok}</p> : null}

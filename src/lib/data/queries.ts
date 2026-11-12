@@ -1031,7 +1031,7 @@ export async function getPublicSocialPosts(): Promise<SocialPost[]> {
 export async function getEditableSocialPosts(): Promise<SocialPost[]> {
   try {
     if ((await contentMode()) === "supabase") {
-      const supabase = createPublicClient();
+      const supabase = await createStaffClient();
       if (supabase) {
         const result = await supabase
           .from("campus_social_posts")
@@ -1041,6 +1041,7 @@ export async function getEditableSocialPosts(): Promise<SocialPost[]> {
         if (!result.error) {
           return (result.data ?? []).map((row) => mapSocialPost(row as Record<string, unknown>));
         }
+        logPostgrestUnlessMissing(result.error);
       }
     }
   } catch (error) {

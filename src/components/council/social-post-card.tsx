@@ -20,21 +20,50 @@ function extractInstagramId(url: string): string | null {
   }
 }
 
-export function SocialPostCard({ post }: { post: SocialPost }) {
+export type SocialCardHandles = {
+  scixcomHandle?: string | null;
+  scixcomLabel?: string | null;
+  instagramHandle?: string | null;
+  instagramLabel?: string | null;
+};
+
+function isConfiguredNextImageUrl(url: string): boolean {
+  if (url.startsWith("/")) return true;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === "cdn.iissboys.com" || host === "res.cloudinary.com";
+  } catch {
+    return false;
+  }
+}
+
+export function SocialPostCard({
+  post,
+  handles,
+}: {
+  post: SocialPost;
+  handles?: SocialCardHandles;
+}) {
   const [copied, setCopied] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const postId = extractInstagramId(post.instagramUrl);
+  const isReel = /instagram\.com\/(?:[^/]+\/)?(?:reel|reels)\//i.test(post.instagramUrl);
   const is12th = post.councilTag === "12th";
   const is11th = post.councilTag === "11th";
   const customTag = post.councilTag && post.councilTag !== "all" ? post.councilTag : null;
   const councilName = is12th
-    ? "12th Council · SciXcom"
+    ? `12th Council · ${handles?.scixcomLabel || "SciXcom"}`
     : is11th
-      ? "11th Council · IISS"
+      ? `11th Council · ${handles?.instagramLabel || "IISS"}`
       : customTag
         ? `Student Council · ${customTag}`
         : "Student Council · Boys";
-  const councilHandle = is12th ? "@scixcom.27" : "@iisscampus";
+  const councilHandle = is12th
+    ? handles?.scixcomHandle || "@scixcom.27"
+    : handles?.instagramHandle || "@iisscampus";
   const embedUrl = postId ? `https://www.instagram.com/p/${postId}/embed` : null;
+  const showImage = Boolean(post.imageUrl) && !imgError;
+  const useNextImage = showImage && post.imageUrl ? isConfiguredNextImageUrl(post.imageUrl) : false;
 
   const dateFormatted = post.publishedOn
     ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(
@@ -82,14 +111,30 @@ export function SocialPostCard({ post }: { post: SocialPost }) {
 
       {/* Media or Embed Preview */}
       <div className="relative aspect-square w-full overflow-hidden bg-wash/70">
-        {post.imageUrl ? (
-          <Image
-            src={post.imageUrl}
-            alt={post.caption || "Instagram photograph"}
-            fill
-            sizes="(max-width: 768px) 100vw, 480px"
-            className="object-cover transition duration-500 group-hover:scale-105"
-          />
+        {isReel ? (
+          <span className="pointer-events-none absolute right-3 top-3 z-10 rounded-full bg-black/75 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm">
+            Reel
+          </span>
+        ) : null}
+        {showImage && post.imageUrl ? (
+          useNextImage ? (
+            <Image
+              src={post.imageUrl}
+              alt={post.caption || "Instagram photograph"}
+              fill
+              sizes="(max-width: 768px) 100vw, 480px"
+              onError={() => setImgError(true)}
+              className="object-cover transition duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <img
+              src={post.imageUrl}
+              alt={post.caption || "Instagram photograph"}
+              loading="lazy"
+              onError={() => setImgError(true)}
+              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            />
+          )
         ) : embedUrl ? (
           <iframe
             src={embedUrl}

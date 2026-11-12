@@ -35,7 +35,20 @@ import {
 import { expandMapUrl } from "@/lib/media/map";
 import { googleFormUrl } from "@/lib/registration";
 import { classifyMediaUrl, classifyNavigationUrl, parseMediaHostList } from "@/lib/media/url";
-import { parseSocialInput } from "@/lib/social";
+import {
+  normalizeSocialLinks,
+  parseSocialInput,
+  parseYouTubeSettingsInput,
+  resolveConfiguredInstagramAccounts,
+} from "@/lib/social";
+import {
+  fetchInstagramProfilePosts,
+  mirrorInstagramThumbnail,
+  planSocialPullDrafts,
+  type InstagramFetchResult,
+  type SocialPullAccountInput,
+  type SocialPullAccountSummary,
+} from "@/lib/social-pull";
 import { isMissingTableError, missingCouncilTablesMessage } from "@/lib/supabase/errors";
 import { createStaffClient } from "@/lib/supabase/server";
 import {
@@ -63,6 +76,15 @@ export type ActionState = {
   error?: string;
   ok?: string;
   createdId?: string;
+};
+
+export type AutoPullActionState = {
+  error?: string;
+  ok?: string;
+  addedCount?: number;
+  skippedCount?: number;
+  accountSummaries?: SocialPullAccountSummary[];
+  pulledAt?: string;
 };
 
 const genericDenial = "You do not have permission to do that.";
@@ -2364,7 +2386,19 @@ export async function saveNewsletter(_state: ActionState, formData: FormData): P
 export async function saveSocial(_state: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = parseSocialInput(formData);
   if ("error" in parsed) return { error: parsed.error };
-  const links = parsed.links;
+  let links = parsed.links;
+
+  if (!formData.has("youtubeFormPresent")) {
+    const { getPublicSocial } = await import("@/lib/data/queries");
+    const existing = await getPublicSocial();
+    links = {
+      ...links,
+      youtubeLabel: existing.youtubeLabel,
+      youtubeUrl: existing.youtubeUrl,
+      youtubeDescription: existing.youtubeDescription,
+      youtubeEnabled: existing.youtubeEnabled,
+    };
+  }
 
   if ((await contentMode()) === "file") {
     const access = await fileActor(() => true);
@@ -2373,6 +2407,8 @@ export async function saveSocial(_state: ActionState, formData: FormData): Promi
     revalidatePath("/", "layout");
     revalidatePath("/about");
     revalidatePath("/council");
+    revalidatePath("/council/socials");
+    revalidatePath("/manage/socials");
     revalidatePath("/manage/settings");
     return { ok: "Links saved." };
   }
@@ -2405,9 +2441,10 @@ export async function saveSocial(_state: ActionState, formData: FormData): Promi
         links.schoolUrl.replace(/\/$/, "") !== defaultSocialLinks.schoolUrl.replace(/\/$/, "") ||
         links.instagramLabel !== defaultSocialLinks.instagramLabel ||
         links.scixcomLabel !== defaultSocialLinks.scixcomLabel ||
+        links.youtubeUrl !== defaultSocialLinks.youtubeUrl ||
         links.extraLinks.length > 0;
       if (extras) {
-        return { error: "The Instagram addresses were saved. Run supabase/SYNC_LIVE.sql to save labels, the school website, and extra links." };
+        return { error: "The Instagram addresses were saved. Run supabase/SYNC_LIVE.sql to save labels, YouTube, the school website, and extra links." };
       }
     } else {
       return { error: databaseError(saved.error, "The links could not be saved.") };
@@ -2418,8 +2455,81 @@ export async function saveSocial(_state: ActionState, formData: FormData): Promi
   revalidatePath("/", "layout");
   revalidatePath("/about");
   revalidatePath("/council");
+  revalidatePath("/council/socials");
+  revalidatePath("/manage/socials");
   revalidatePath("/manage/settings");
   return { ok: "Links saved." };
+}
+
+export async function saveYouTubeSettings(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = parseYouTubeSettingsInput(formData);
+  if ("error" in parsed) return { error: parsed.error };
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { readSocial } = await import("@/lib/data/file-content");
+    const { normalizeSocialLinks } = await import("@/lib/social");
+    const current = normalizeSocialLinks(readSocial());
+    const updated = { ...current, ...parsed };
+    if (!saveSocialToStore(updated)) return { error: "YouTube settings could not be saved." };
+    revalidatePath("/", "layout");
+    revalidatePath("/about");
+    revalidatePath("/council/socials");
+    revalidatePath("/manage/socials");
+    revalidatePath("/manage/settings");
+    return { ok: "YouTube channel settings saved." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const { normalizeSocialLinks } = await import("@/lib/social");
+  const currentRow = await context.supabase
+    .from("campus_settings")
+    .select("site_links, instagram_url, scixcom_instagram_url")
+    .eq("id", true)
+    .maybeSingle();
+
+  if (currentRow.error && (currentRow.error.message ?? "").toLowerCase().includes("site_links")) {
+    return { error: "Run supabase/SYNC_LIVE.sql in the database first to enable saving site_links settings." };
+  }
+
+  const stored =
+    currentRow.data?.site_links &&
+    typeof currentRow.data.site_links === "object" &&
+    !Array.isArray(currentRow.data.site_links)
+      ? (currentRow.data.site_links as Record<string, unknown>)
+      : {};
+
+  const currentLinks = normalizeSocialLinks({
+    ...stored,
+    instagramUrl: stored.instagramUrl || currentRow.data?.instagram_url,
+    scixcomInstagramUrl: stored.scixcomInstagramUrl || currentRow.data?.scixcom_instagram_url,
+  });
+
+  const updatedLinks = {
+    ...currentLinks,
+    ...parsed,
+  };
+
+  const saved = await context.supabase
+    .from("campus_settings")
+    .update({ site_links: updatedLinks })
+    .eq("id", true);
+
+  if (saved.error) {
+    return { error: databaseError(saved.error, "YouTube settings could not be saved.") };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, "update_youtube_social", "campus_settings", null);
+  revalidatePath("/", "layout");
+  revalidatePath("/about");
+  revalidatePath("/council/socials");
+  revalidatePath("/manage/socials");
+  revalidatePath("/manage/settings");
+  return { ok: "YouTube channel settings saved." };
 }
 
 export async function saveCouncilLogo(_state: ActionState, formData: FormData): Promise<ActionState> {
@@ -3573,6 +3683,266 @@ export async function deleteSocialPost(_state: ActionState, formData: FormData):
   revalidatePath("/council/socials");
   revalidatePath("/manage/socials");
   return { ok: "Deleted." };
+}
+
+export async function toggleSocialPostPinned(_state: ActionState, formData: FormData): Promise<ActionState> {
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return { error: "Missing post identifier." };
+
+  const rawPinned = String(formData.get("pinned") ?? "").trim().toLowerCase();
+  const pinned = rawPinned === "true" || rawPinned === "1" || rawPinned === "on";
+
+  if ((await contentMode()) === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return access;
+    const { readSocialPostsFromStore, saveSocialPostToStore } = await import("@/lib/data/file-content");
+    const existing = readSocialPostsFromStore().find((item) => item.id === id);
+    if (!existing) return { error: "Social post not found." };
+    if (
+      !saveSocialPostToStore({
+        id: existing.id,
+        instagramUrl: existing.instagramUrl,
+        caption: existing.caption,
+        imageUrl: existing.imageUrl,
+        pinned,
+        sortOrder: existing.sortOrder,
+        councilTag: existing.councilTag,
+        academicYear: existing.academicYear,
+        publishedOn: existing.publishedOn,
+      })
+    ) {
+      return { error: "The post visibility could not be updated." };
+    }
+    revalidatePath("/council/socials");
+    revalidatePath("/manage/socials");
+    return { ok: pinned ? "Post pinned publicly." : "Post moved to drafts." };
+  }
+
+  const context = await staffContext();
+  if ("error" in context) return { error: context.error };
+  if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+
+  const updated = await context.supabase
+    .from("campus_social_posts")
+    .update({ pinned })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (updated.error) {
+    return { error: databaseError(updated.error, "The post visibility could not be updated.") };
+  }
+
+  await writeAudit(context.supabase, context.actor.userId, "update", "campus_social_posts", updated.data?.id ?? id);
+  revalidatePath("/council/socials");
+  revalidatePath("/manage/socials");
+  return { ok: pinned ? "Post pinned publicly." : "Post moved to drafts." };
+}
+
+export async function autoPullSocialPosts(
+  _state: AutoPullActionState,
+  _formData: FormData,
+): Promise<AutoPullActionState> {
+  void _state;
+  void _formData;
+  const mode = await contentMode();
+  let socialLinks = defaultSocialLinks;
+  let activeTermLabel: string | null = null;
+  let existingPosts: Array<{ instagramUrl: string }> = [];
+  let staffCtx: Extract<Awaited<ReturnType<typeof staffContext>>, { supabase: unknown }> | null = null;
+
+  if (mode === "file") {
+    const access = await fileActor((actor) => can(actor, "manage_settings"));
+    if ("error" in access) return { error: access.error };
+    const { readAcademicTerm, readSocial, readSocialPostsFromStore } = await import("@/lib/data/file-content");
+    socialLinks = normalizeSocialLinks(readSocial());
+    activeTermLabel = readAcademicTerm().label;
+    existingPosts = readSocialPostsFromStore().map((item) => ({ instagramUrl: item.instagramUrl }));
+  } else {
+    const context = await staffContext();
+    if ("error" in context) return { error: context.error };
+    if (!can(context.actor, "manage_settings")) return { error: genericDenial };
+    staffCtx = context;
+
+    const settingsRes = await context.supabase
+      .from("campus_settings")
+      .select("site_links, instagram_url, scixcom_instagram_url, active_term_label")
+      .eq("id", true)
+      .maybeSingle();
+    let rowData = settingsRes.data as Record<string, unknown> | null;
+    if (settingsRes.error) {
+      const legacyRes = await context.supabase
+        .from("campus_settings")
+        .select("site_links, instagram_url, scixcom_instagram_url")
+        .eq("id", true)
+        .maybeSingle();
+      if (!legacyRes.error) {
+        rowData = legacyRes.data as Record<string, unknown> | null;
+      } else {
+        const oldestRes = await context.supabase
+          .from("campus_settings")
+          .select("instagram_url, scixcom_instagram_url")
+          .eq("id", true)
+          .maybeSingle();
+        rowData = oldestRes.data as Record<string, unknown> | null;
+      }
+    }
+
+    const stored =
+      rowData?.site_links && typeof rowData.site_links === "object" && !Array.isArray(rowData.site_links)
+        ? (rowData.site_links as Record<string, unknown>)
+        : {};
+    socialLinks = normalizeSocialLinks({
+      ...stored,
+      instagramUrl: stored.instagramUrl || rowData?.instagram_url,
+      scixcomInstagramUrl: stored.scixcomInstagramUrl || rowData?.scixcom_instagram_url,
+    });
+    activeTermLabel =
+      typeof rowData?.active_term_label === "string" && rowData.active_term_label.trim()
+        ? rowData.active_term_label.trim()
+        : null;
+
+    const existingRes = await context.supabase.from("campus_social_posts").select("instagram_url");
+    if (existingRes.error) {
+      return {
+        error: isMissingTableError(existingRes.error)
+          ? "The social posts table has not been created yet."
+          : databaseError(existingRes.error, "Could not load existing social posts."),
+      };
+    }
+    existingPosts = (existingRes.data ?? []).map((row) => ({
+      instagramUrl: String((row as Record<string, unknown>).instagram_url ?? ""),
+    }));
+  }
+
+  const accounts = resolveConfiguredInstagramAccounts(socialLinks);
+  const fetchPromises = new Map<string, Promise<InstagramFetchResult>>();
+  for (const account of accounts) {
+    if (!account.username) continue;
+    const key = account.username.toLowerCase();
+    if (!fetchPromises.has(key)) {
+      fetchPromises.set(key, fetchInstagramProfilePosts(account.username));
+    }
+  }
+
+  const accountsResults: SocialPullAccountInput[] = await Promise.all(
+    accounts.map(async (account) => {
+      if (!account.username) {
+        return {
+          account,
+          result: { ok: false, reason: "Invalid Instagram URL configured in Settings." },
+        };
+      }
+      const result = await fetchPromises.get(account.username.toLowerCase())!;
+      return { account, result };
+    }),
+  );
+
+  const plan = planSocialPullDrafts({
+    existingPosts,
+    accountsResults,
+    activeTermLabel,
+  });
+
+  const mirroredImages = new Array<string | null>(plan.draftsToCreate.length).fill(null);
+  if (plan.draftsToCreate.length > 0) {
+    let cursor = 0;
+    const workerCount = Math.min(4, plan.draftsToCreate.length);
+    await Promise.all(
+      Array.from({ length: workerCount }, async () => {
+        while (cursor < plan.draftsToCreate.length) {
+          const index = cursor;
+          cursor += 1;
+          const draft = plan.draftsToCreate[index];
+          mirroredImages[index] = await mirrorInstagramThumbnail(draft.thumbnailUrl, draft.code);
+        }
+      }),
+    );
+
+    if (mode === "file") {
+      const { appendSocialPostsToStore } = await import("@/lib/data/file-content");
+      const saved = appendSocialPostsToStore(
+        plan.draftsToCreate.map((draft, index) => ({
+          instagramUrl: draft.instagramUrl,
+          caption: draft.caption,
+          imageUrl: mirroredImages[index],
+          pinned: false,
+          sortOrder: draft.sortOrder,
+          councilTag: draft.councilTag,
+          academicYear: draft.academicYear,
+          publishedOn: draft.publishedOn,
+        })),
+      );
+      if (!saved) {
+        return {
+          error: "Pulled posts could not be saved as drafts.",
+          accountSummaries: plan.accountSummaries,
+        };
+      }
+    } else if (staffCtx) {
+      const rows = plan.draftsToCreate.map((draft, index) => ({
+        instagram_url: draft.instagramUrl,
+        caption: draft.caption,
+        image_url: mirroredImages[index],
+        pinned: false,
+        sort_order: draft.sortOrder,
+        council_tag: draft.councilTag,
+        academic_year: draft.academicYear,
+        published_on: draft.publishedOn,
+      }));
+      let inserted = await staffCtx.supabase.from("campus_social_posts").insert(rows).select("id");
+      if (inserted.error && (inserted.error.message ?? "").toLowerCase().includes("academic_year")) {
+        const withoutYear = rows.map(({ academic_year: omittedYear, ...rest }) => {
+          void omittedYear;
+          return rest;
+        });
+        inserted = await staffCtx.supabase.from("campus_social_posts").insert(withoutYear).select("id");
+      }
+      if (inserted.error) {
+        return {
+          error: isMissingTableError(inserted.error)
+            ? "The social posts table has not been created yet."
+            : databaseError(inserted.error, "Pulled posts could not be saved as drafts."),
+          accountSummaries: plan.accountSummaries,
+        };
+      }
+      await writeAudit(staffCtx.supabase, staffCtx.actor.userId, "auto_pull", "campus_social_posts", null);
+    }
+
+    revalidatePath("/council/socials");
+    revalidatePath("/manage/socials");
+  }
+
+  const pulledAt = new Date().toISOString();
+  const failed = plan.accountSummaries.filter((summary) => !summary.ok);
+  if (failed.length === plan.accountSummaries.length) {
+    return {
+      error: failed.map((summary) => `${summary.label}: ${summary.error ?? "Pull failed."}`).join(" · "),
+      addedCount: 0,
+      skippedCount: 0,
+      accountSummaries: plan.accountSummaries,
+      pulledAt,
+    };
+  }
+
+  const addedCount = plan.draftsToCreate.length;
+  const skippedCount = plan.skippedExistingCount;
+  const baseMessage =
+    addedCount > 0
+      ? `Added ${addedCount} new ${addedCount === 1 ? "draft" : "drafts"}${skippedCount > 0 ? ` (${skippedCount} already existed)` : ""}.`
+      : `No new posts or reels found${skippedCount > 0 ? ` (${skippedCount} already saved)` : ""}.`;
+  const partialNote =
+    failed.length > 0
+      ? ` ${failed.map((summary) => `${summary.label}: ${summary.error}`).join(" · ")}`
+      : "";
+
+  return {
+    ok: `${baseMessage}${partialNote}`.trim(),
+    addedCount,
+    skippedCount,
+    accountSummaries: plan.accountSummaries,
+    pulledAt,
+  };
 }
 
 export async function saveSchoolIncharge(_state: ActionState, formData: FormData): Promise<ActionState> {

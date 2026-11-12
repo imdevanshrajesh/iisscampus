@@ -187,6 +187,7 @@ Brand & Contact:
 - Contact Email: ${brand.contactEmail || "contact@campus.edu"}
 - School Link: ${social.schoolUrl} (${social.schoolLabel})
 - Instagram: ${social.instagramUrl} (${social.instagramLabel})
+${social.youtubeEnabled && social.youtubeUrl ? `- YouTube: ${social.youtubeUrl} (${social.youtubeLabel})\n` : ""}
 
 Categories:
 ${JSON.stringify(categoriesSummary, null, 2)}

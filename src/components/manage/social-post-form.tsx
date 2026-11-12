@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
-import { deleteSocialPost, saveSocialPost, type ActionState } from "@/lib/manage/actions";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { deleteSocialPost, saveSocialPost, toggleSocialPostPinned, type ActionState } from "@/lib/manage/actions";
 import { FormAutoSave } from "@/components/manage/form-auto-save";
 import type { SocialPost } from "@/lib/types";
 import { ChevronDown, ExternalLink, Pin, Trash2 } from "lucide-react";
@@ -17,13 +18,22 @@ export function SocialPostForm({
   post: SocialPost | null;
   defaultAcademicYear?: string | null;
 }) {
+  const router = useRouter();
   const [state, action, pending] = useActionState(saveSocialPost, {} as ActionState);
+  const [toggleState, toggleAction, toggling] = useActionState(toggleSocialPostPinned, {} as ActionState);
   const [deleteState, deleteAction, deleting] = useActionState(deleteSocialPost, {} as ActionState);
   const [url, setUrl] = useState(post?.instagramUrl ?? "");
   const [imageUrl, setImageUrl] = useState(post?.imageUrl ?? "");
+  const [thumbError, setThumbError] = useState(false);
   const [clientError, setClientError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(!post); // Collapsed by default for existing posts
   const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (toggleState.ok) {
+      router.refresh();
+    }
+  }, [toggleState.ok, router]);
 
   const isFormValid = url.trim().length >= 5 && (url.includes("instagram.com") || url.includes("instagr.am"));
 
@@ -38,27 +48,40 @@ export function SocialPostForm({
 
   // Extract a readable Instagram snippet
   const captionPreview = post?.caption?.trim() || post?.instagramUrl || "Instagram Post";
-  const postCode = post?.instagramUrl?.match(/\/(?:p|reel)\/([A-Za-z0-9_-]+)/)?.[1] ?? "";
+  const postCode = post?.instagramUrl?.match(/\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/)?.[1] ?? "";
+  const isReel = Boolean(post?.instagramUrl && /\/(?:reel|reels)\//i.test(post.instagramUrl));
 
   return (
     <div className="rounded-xl border border-line bg-white shadow-xs overflow-hidden transition-all duration-200">
       {/* Collapsible Accordion Bar for Existing Posts */}
       {post ? (
-        <button
-          type="button"
-          onClick={() => setIsOpen((prev) => !prev)}
-          className="w-full flex items-center justify-between p-3.5 sm:p-4 text-left hover:bg-wash/40 transition cursor-pointer select-none border-b border-transparent data-[open=true]:border-line/70"
+        <div
+          className="flex items-center justify-between gap-2 border-b border-transparent p-3.5 transition hover:bg-wash/40 data-[open=true]:border-line/70 sm:p-4"
           data-open={isOpen}
-          aria-expanded={isOpen}
         >
-          <div className="flex items-center gap-3 min-w-0 pr-2">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pink-50 border border-pink-200/60 text-accent">
-              <InstagramMark size={16} />
+          <button
+            type="button"
+            onClick={() => setIsOpen((prev) => !prev)}
+            aria-expanded={isOpen}
+            className="flex min-w-0 flex-1 items-center gap-3 pr-2 text-left cursor-pointer select-none"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-pink-200/60 bg-pink-50 text-accent">
+              {post.imageUrl && !thumbError ? (
+                <img
+                  src={post.imageUrl}
+                  alt=""
+                  loading="lazy"
+                  onError={() => setThumbError(true)}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <InstagramMark size={16} />
+              )}
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <span className="font-semibold text-xs text-ink truncate">
-                  {postCode ? `Post #${postCode}` : "Instagram Post"}
+                  {postCode ? `${isReel ? "Reel" : "Post"} #${postCode}` : "Instagram Post"}
                 </span>
                 <span className="inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-navy/10 text-navy">
                   {post.councilTag}
@@ -73,8 +96,8 @@ export function SocialPostForm({
                     <Pin size={10} className="fill-emerald-600" /> Pinned
                   </span>
                 ) : (
-                  <span className="text-[10px] font-semibold text-muted bg-gray-100 px-2 py-0.5 rounded-full">
-                    Hidden
+                  <span className="text-[10px] font-semibold text-amber-800 bg-amber-50 border border-amber-200/70 px-2 py-0.5 rounded-full">
+                    Draft
                   </span>
                 )}
               </div>
@@ -82,18 +105,45 @@ export function SocialPostForm({
                 {captionPreview}
               </p>
             </div>
-          </div>
+          </button>
 
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs font-medium text-navy/75 hover:text-navy hidden sm:inline">
-              {isOpen ? "Close" : "Edit"}
-            </span>
-            <ChevronDown
-              size={16}
-              className={`text-muted transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-            />
+            <form action={toggleAction}>
+              <input type="hidden" name="id" value={post.id} />
+              <input type="hidden" name="pinned" value={post.pinned ? "false" : "true"} />
+              <button
+                type="submit"
+                disabled={toggling}
+                className={
+                  post.pinned
+                    ? "rounded-md border border-line bg-white px-2.5 py-1 text-xs font-medium text-muted hover:text-ink cursor-pointer disabled:opacity-50"
+                    : "rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 cursor-pointer disabled:opacity-50"
+                }
+              >
+                {toggling ? "..." : post.pinned ? "To Draft" : "Publish"}
+              </button>
+            </form>
+
+            <button
+              type="button"
+              onClick={() => setIsOpen((prev) => !prev)}
+              aria-expanded={isOpen}
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-navy/75 hover:text-navy cursor-pointer"
+            >
+              <span className="hidden sm:inline">{isOpen ? "Close" : "Edit"}</span>
+              <ChevronDown
+                size={16}
+                className={`text-muted transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+              />
+            </button>
           </div>
-        </button>
+        </div>
+      ) : null}
+
+      {post && toggleState.error ? (
+        <p className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs font-medium text-red-800">
+          {toggleState.error}
+        </p>
       ) : null}
 
       {/* Expanded Form Content */}
@@ -160,7 +210,7 @@ export function SocialPostForm({
               name="caption"
               defaultValue={post?.caption ?? ""}
               rows={2}
-              maxLength={1000}
+              maxLength={2200}
               className={fieldClass}
               placeholder="Event highlights, victory celebration, or announcement text..."
             />

@@ -122,10 +122,10 @@ export default async function SettingsPage() {
           <ContactEmailForm contactEmail={brand.contactEmail} />
         </div>
       </section>
-      <section className="mt-12">
+      <section id="links" className="mt-12">
         <h2 className="text-xl font-medium">Links</h2>
         <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-          Change the name and address for the school website, Instagram, and the council account. Add any other links
+          Change the name and address for the school website, both Instagram accounts, and the YouTube channel. Add any other links
           the footer and about page should list.
         </p>
         <div className="mt-4">

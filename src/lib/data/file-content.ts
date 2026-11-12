@@ -1733,6 +1733,7 @@ export function saveSocialPostToStore(input: {
   sortOrder: number;
   councilTag: string;
   academicYear?: string | null;
+  publishedOn?: string;
 }) {
   const store = readContentStore();
   const list = store.socialPosts ?? [];
@@ -1750,12 +1751,44 @@ export function saveSocialPostToStore(input: {
       input.academicYear !== undefined
         ? input.academicYear
         : existing?.academicYear ?? store.activeTerm?.label ?? null,
-    publishedOn: existing?.publishedOn ?? now,
+    publishedOn: existing?.publishedOn ?? input.publishedOn ?? now,
     createdAt: existing?.createdAt ?? now,
   };
   store.socialPosts = existing
     ? list.map((item) => (item.id === existing.id ? record : item))
     : [...list, record];
+  return writeContentStore(store);
+}
+
+export function appendSocialPostsToStore(
+  inputs: Array<{
+    instagramUrl: string;
+    caption: string | null;
+    imageUrl: string | null;
+    pinned: boolean;
+    sortOrder: number;
+    councilTag: string;
+    academicYear?: string | null;
+    publishedOn?: string;
+  }>,
+) {
+  if (!inputs.length) return true;
+  const store = readContentStore();
+  const list = store.socialPosts ?? [];
+  const now = new Date().toISOString();
+  const created: SocialPost[] = inputs.map((input) => ({
+    id: crypto.randomUUID(),
+    instagramUrl: input.instagramUrl,
+    caption: input.caption,
+    imageUrl: input.imageUrl,
+    pinned: input.pinned,
+    sortOrder: input.sortOrder,
+    councilTag: input.councilTag,
+    academicYear: input.academicYear !== undefined ? input.academicYear : store.activeTerm?.label ?? null,
+    publishedOn: input.publishedOn ?? now,
+    createdAt: now,
+  }));
+  store.socialPosts = [...created, ...list];
   return writeContentStore(store);
 }
 

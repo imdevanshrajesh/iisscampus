@@ -3,12 +3,15 @@ import { ArrowUpRight } from "lucide-react";
 import { InstagramMark } from "@/components/brand/instagram-mark";
 import { SocialPostCard } from "@/components/council/social-post-card";
 import { SocialPostsArchive } from "@/components/council/social-posts-archive";
+import { YouTubeChannelSection } from "@/components/council/youtube-channel-section";
 import { getPublicCatalog, getPublicSocial, getPublicSocialPosts } from "@/lib/data/queries";
+import { extractInstagramUsername } from "@/lib/social";
+import { fetchYouTubeChannelOverview } from "@/lib/social-pull";
 import { filterSocialPostsForTerm, hasActiveTerm, partitionCouncilYears } from "@/lib/terms";
 
 export const metadata: Metadata = {
   title: "Socials · Student Council",
-  description: "Official Instagram posts and accounts from the boys' student council.",
+  description: "Official Instagram posts, reels, YouTube channel, and accounts from the boys' student council.",
   alternates: { canonical: "/council/socials" },
 };
 
@@ -18,6 +21,18 @@ export default async function CouncilSocialsPage() {
     getPublicSocialPosts(),
     getPublicCatalog(),
   ]);
+  const youtubeOverview =
+    social.youtubeEnabled && social.youtubeUrl
+      ? await fetchYouTubeChannelOverview(social.youtubeUrl)
+      : null;
+  const scixcomUsername = extractInstagramUsername(social.scixcomInstagramUrl);
+  const instagramUsername = extractInstagramUsername(social.instagramUrl);
+  const handles = {
+    scixcomHandle: scixcomUsername ? `@${scixcomUsername}` : null,
+    scixcomLabel: social.scixcomLabel,
+    instagramHandle: instagramUsername ? `@${instagramUsername}` : null,
+    instagramLabel: social.instagramLabel,
+  };
 
   const { primary, collapsed } = partitionCouncilYears(catalog.councilYears);
   const termConfigured = hasActiveTerm(catalog.activeTerm);
@@ -123,7 +138,7 @@ export default async function CouncilSocialsPage() {
         {currentPosts.length ? (
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {currentPosts.map((post) => (
-              <SocialPostCard key={post.id} post={post} />
+              <SocialPostCard key={post.id} post={post} handles={handles} />
             ))}
           </div>
         ) : (
@@ -142,8 +157,12 @@ export default async function CouncilSocialsPage() {
           </div>
         )}
 
-        <SocialPostsArchive posts={archivedPosts} />
+        <SocialPostsArchive posts={archivedPosts} handles={handles} />
       </div>
+
+      {social.youtubeEnabled && social.youtubeUrl ? (
+        <YouTubeChannelSection social={social} overview={youtubeOverview} />
+      ) : null}
     </div>
   );
 }

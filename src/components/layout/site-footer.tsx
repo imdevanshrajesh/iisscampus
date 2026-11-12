@@ -1,5 +1,6 @@
 import { ArrowUpRight, Compass, Heart, Mail, Shield } from "lucide-react";
 import { InstagramMark } from "@/components/brand/instagram-mark";
+import { YouTubeMark } from "@/components/brand/youtube-mark";
 import Link from "next/link";
 import { contactMailto, siteConfig } from "@/lib/config";
 import type { SocialLinks } from "@/lib/types";
@@ -47,6 +48,19 @@ export function SiteFooter({
               <span>11th · {social.instagramLabel || "Council"}</span>
               <ArrowUpRight size={12} className="text-gold" />
             </a>
+
+            {social.youtubeEnabled && social.youtubeUrl ? (
+              <a
+                href={social.youtubeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-white/90 backdrop-blur-md transition hover:border-red-400 hover:bg-white/10 hover:text-white"
+              >
+                <YouTubeMark size={14} className="text-red-400" />
+                <span>{social.youtubeLabel || "YouTube"}</span>
+                <ArrowUpRight size={12} className="text-gold" />
+              </a>
+            ) : null}
 
             <Link
               href="/council/socials"

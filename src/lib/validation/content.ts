@@ -746,7 +746,7 @@ export const socialPostInputSchema = z.object({
   caption: z
     .string()
     .trim()
-    .max(1000)
+    .max(2200)
     .optional()
     .nullable()
     .transform((value) => value || null),

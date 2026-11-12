@@ -1,6 +1,7 @@
 import { ArrowUpRight, Link2 } from "lucide-react";
 import { CustomProgramCards } from "@/components/about/custom-program-cards";
 import { InstagramMark } from "@/components/brand/instagram-mark";
+import { YouTubeMark } from "@/components/brand/youtube-mark";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { contactMailto, siteConfig } from "@/lib/config";
@@ -112,6 +113,17 @@ export default async function AboutPage() {
               <InstagramMark size={13} />
               {social.scixcomLabel}
             </a>
+            {social.youtubeEnabled && social.youtubeUrl ? (
+              <a
+                href={social.youtubeUrl}
+                className="inline-flex items-center gap-1 text-link text-ink"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                <YouTubeMark size={14} className="text-red-500" />
+                {social.youtubeLabel}
+              </a>
+            ) : null}
             {social.extraLinks.map((link) => (
               <span key={link.id}>
                 {" · "}

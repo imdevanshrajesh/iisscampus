@@ -2,10 +2,16 @@
 
 import { useState } from "react";
 import { ChevronDown, History } from "lucide-react";
-import { SocialPostCard } from "@/components/council/social-post-card";
+import { SocialPostCard, type SocialCardHandles } from "@/components/council/social-post-card";
 import type { SocialPost } from "@/lib/types";
 
-export function SocialPostsArchive({ posts }: { posts: SocialPost[] }) {
+export function SocialPostsArchive({
+  posts,
+  handles,
+}: {
+  posts: SocialPost[];
+  handles?: SocialCardHandles;
+}) {
   const [open, setOpen] = useState(false);
 
   if (!posts.length) return null;
@@ -40,7 +46,7 @@ export function SocialPostsArchive({ posts }: { posts: SocialPost[] }) {
         <div className="border-t border-line bg-[#08274b]/65 p-5 sm:p-6">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {posts.map((post) => (
-              <SocialPostCard key={post.id} post={post} />
+              <SocialPostCard key={post.id} post={post} handles={handles} />
             ))}
           </div>
         </div>

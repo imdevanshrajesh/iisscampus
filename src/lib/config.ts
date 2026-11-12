@@ -38,6 +38,10 @@ export const defaultSocialLinks: SocialLinks = {
   instagramUrl: "https://www.instagram.com/iisscampus/",
   scixcomLabel: "SciXcom",
   scixcomInstagramUrl: "https://www.instagram.com/scixcom.27/",
+  youtubeLabel: "IISS Boys",
+  youtubeUrl: "https://www.youtube.com/@iissboys",
+  youtubeDescription: "Official videos, campus highlights, and student productions on YouTube.",
+  youtubeEnabled: true,
   extraLinks: [],
 };
 
